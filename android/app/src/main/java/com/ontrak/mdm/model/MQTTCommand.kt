@@ -1,0 +1,44 @@
+package com.ontrak.mdm.model
+
+import com.google.gson.annotations.SerializedName
+
+data class MQTTCommand(
+    @SerializedName("action")
+    val action: CommandAction,
+    
+    @SerializedName("params")
+    val params: Map<String, Any>? = null
+)
+
+enum class CommandAction {
+    @SerializedName("LOCK_DEVICE")
+    LOCK_DEVICE,
+    
+    @SerializedName("UNLOCK_DEVICE")
+    UNLOCK_DEVICE,
+    
+    @SerializedName("RESTART_DEVICE")
+    RESTART_DEVICE,
+    
+    @SerializedName("WIFI_ON")
+    WIFI_ON,
+    
+    @SerializedName("WIFI_OFF")
+    WIFI_OFF,
+    
+    @SerializedName("OPEN_APP")
+    OPEN_APP,
+    
+    @SerializedName("SHOW_MESSAGE")
+    SHOW_MESSAGE,
+    
+    @SerializedName("PLAY_SOUND")
+    PLAY_SOUND,
+    
+    @SerializedName("ENABLE_KIOSK")
+    ENABLE_KIOSK,
+    
+    @SerializedName("DISABLE_KIOSK")
+    DISABLE_KIOSK
+}
+

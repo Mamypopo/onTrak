@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OnTrak MDM</string>
+    <string name="service_notification_title">OnTrak MDM Service</string>
+    <string name="service_notification_text">Tracking device status...</string>
+    <string name="mqtt_connected">MQTT Connected</string>
+    <string name="mqtt_disconnected">MQTT Disconnected</string>
+    <string name="device_owner_not_set">Device Owner mode not set</string>
+    <string name="kiosk_mode_enabled">Kiosk Mode Enabled</string>
+    <string name="kiosk_mode_disabled">Kiosk Mode Disabled</string>
+</resources>
+

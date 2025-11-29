@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id            String   @id @default(uuid())
+  deviceCode    String   @unique
+  name          String?
+  serialNumber  String?
+  model         String?
+  osVersion     String?
+  lastSeen      DateTime @default(now())
+  battery       Int      @default(0)
+  wifiStatus    Boolean  @default(false)
+  latitude      Float?
+  longitude     Float?
+  kioskMode     Boolean  @default(false)
+  status        DeviceStatus @default(OFFLINE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  metrics       DeviceMetrics[]
+  borrowRecords BorrowRecord[]
+  actionLogs    DeviceActionLog[]
+
+  @@index([deviceCode])
+  @@index([status])
+  @@index([lastSeen])
+  @@map("devices")
+}
+
+model DeviceMetrics {
+  id           String   @id @default(uuid())
+  deviceId     String
+  cpu          Float    @default(0)
+  memoryTotal  BigInt   @default(0)
+  memoryUsed   BigInt   @default(0)
+  memoryAvailable BigInt @default(0)
+  storageTotal BigInt   @default(0)
+  storageUsed  BigInt   @default(0)
+  storageAvailable BigInt @default(0)
+  networkType  String?
+  foregroundApp String?
+  createdAt    DateTime @default(now())
+
+  device       Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([createdAt])
+  @@map("device_metrics")
+}
+
+model BorrowRecord {
+  id          String          @id @default(uuid())
+  deviceId    String
+  userId      String?
+  user        String  // Keep for backward compatibility
+  reason      String?
+  borrowTime  DateTime        @default(now())
+  returnTime  DateTime?
+  status      BorrowStatus    @default(BORROWED)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  device      Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  userRef     User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId])
+  @@index([status])
+  @@index([user])
+  @@index([userId])
+  @@map("borrow_records")
+}
+
+model DeviceActionLog {
+  id          String   @id @default(uuid())
+  deviceId    String
+  userId      String?
+  user        String?  // Keep for backward compatibility
+  action      String
+  payload     Json?
+  createdAt   DateTime @default(now())
+
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  userRef     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("device_action_logs")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  username    String?
+  action      String
+  resource    String?
+  resourceId  String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  IN_USE
+  AVAILABLE
+}
+
+enum BorrowStatus {
+  BORROWED
+  RETURNED
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  email       String?  @unique
+  password    String   // Hashed password
+  fullName    String?
+  role        UserRole @default(USER)
+  isActive    Boolean  @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  borrowRecords BorrowRecord[]
+  actionLogs    DeviceActionLog[]
+  auditLogs     AuditLog[]
+
+  @@index([username])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
