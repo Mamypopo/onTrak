@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useParams } from "next/navigation";
 import { useWebSocket, WebSocketMessage } from "@/lib/websocket";
 import api from "@/lib/api";
@@ -13,6 +14,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
+
+// Dynamic import for Map component to avoid SSR issues
+const DeviceMap = dynamic(() => import("@/components/DeviceMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  ),
+});
 
 interface Device {
   id: string;
@@ -50,17 +61,7 @@ export default function DeviceDetailPage() {
     }
   });
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    fetchDevice();
-  }, [deviceId, router]);
-
-  const fetchDevice = async () => {
+  const fetchDevice = useCallback(async () => {
     try {
       const response = await api.get(`/api/device/${deviceId}`);
       if (response.data.success) {
@@ -83,7 +84,17 @@ export default function DeviceDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [deviceId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    fetchDevice();
+  }, [deviceId, router, fetchDevice]);
 
   const sendCommand = async (action: string, params?: any) => {
     setSendingCommand(true);
@@ -249,7 +260,7 @@ export default function DeviceDetailPage() {
             </Card>
 
             {/* Location Card */}
-            {device.latitude && device.longitude && (
+            {device.latitude && device.longitude ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Location</CardTitle>
@@ -261,8 +272,22 @@ export default function DeviceDetailPage() {
                       {device.latitude.toFixed(6)}, {device.longitude.toFixed(6)}
                     </span>
                   </div>
+                  <DeviceMap
+                    latitude={device.latitude}
+                    longitude={device.longitude}
+                    deviceName={device.name || undefined}
+                    deviceCode={device.deviceCode}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Location</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
-                    <p className="text-muted-foreground">Map View (Coming Soon)</p>
+                    <p className="text-muted-foreground">No GPS location available</p>
                   </div>
                 </CardContent>
               </Card>
