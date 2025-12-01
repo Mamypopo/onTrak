@@ -58,7 +58,10 @@ class MQTTManager private constructor(private val context: Context) {
     
     fun connect() {
         try {
+            Log.d(TAG, "Attempting to connect to MQTT broker: ${MQTTConfig.BROKER_URL}")
             val clientId = "${MQTTConfig.CLIENT_ID_PREFIX}$deviceId"
+            Log.d(TAG, "Client ID: $clientId")
+            
             mqttClient = MqttAndroidClient(context, MQTTConfig.BROKER_URL, clientId)
             mqttClient?.setCallback(messageCallback)
             
@@ -84,9 +87,12 @@ class MQTTManager private constructor(private val context: Context) {
                 setWill(willTopic, willMessage.toByteArray(), 1, false)
             }
             
+            Log.d(TAG, "Calling mqttClient.connect()...")
             mqttClient?.connect(options, null, connectionCallback)
+            Log.d(TAG, "mqttClient.connect() called, waiting for callback...")
         } catch (e: Exception) {
             Log.e(TAG, "Error connecting to MQTT", e)
+            e.printStackTrace()
         }
     }
     

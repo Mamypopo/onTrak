@@ -25,7 +25,7 @@ import kotlinx.coroutines.*
 class MDMService : Service() {
     
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private lateinit var mqttManager: MQTTManager
+    private var mqttManager: MQTTManager? = null
     private lateinit var locationManager: LocationManager
     private var locationListener: LocationListener? = null
     private val deviceId: String by lazy {
@@ -44,20 +44,51 @@ class MDMService : Service() {
     
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "MDMService onCreate")
+        Log.d(TAG, "MDMService onCreate - START")
         
         try {
+            Log.d(TAG, "Creating notification channel...")
             createNotificationChannel()
-            startForeground(NOTIFICATION_ID, createNotification())
+            Log.d(TAG, "Starting foreground service...")
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // Android 13+ requires foreground service type
+                    // Using DATA_SYNC type to avoid location permission issues
+                    startForeground(
+                        NOTIFICATION_ID,
+                        createNotification(),
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    )
+                } else {
+                    startForeground(NOTIFICATION_ID, createNotification())
+                }
+            } catch (e: Exception) {
+                // บนอีมูเลเตอร์ / Android 14 อาจบล็อค startForeground ถ้ามองว่าเริ่มจาก background
+                // ให้รันต่อโดยไม่ crash (service จะเป็น background service แทน)
+                Log.e(TAG, "startForeground failed, continue as background service", e)
+            }
             
+            Log.d(TAG, "Getting MQTTManager instance...")
             mqttManager = MQTTManager.getInstance(this)
-            locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            Log.d(TAG, "MQTTManager instance obtained")
             
+            Log.d(TAG, "Getting LocationManager...")
+            locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            Log.d(TAG, "LocationManager obtained")
+            
+            Log.d(TAG, "Setting up location listener...")
             setupLocationListener()
+            
+            Log.d(TAG, "Connecting to MQTT...")
             connectMQTT()
+            
+            Log.d(TAG, "Starting data collection...")
             startDataCollection()
+            
+            Log.d(TAG, "MDMService onCreate completed successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error in MDMService onCreate", e)
+            e.printStackTrace()
             // Don't crash, just log the error
         }
     }
@@ -103,7 +134,14 @@ class MDMService : Service() {
     }
     
     private fun connectMQTT() {
-        mqttManager.connect()
+        try {
+            Log.d(TAG, "connectMQTT() called")
+            mqttManager?.connect()
+            Log.d(TAG, "mqttManager.connect() called")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in connectMQTT()", e)
+            e.printStackTrace()
+        }
     }
     
     private fun setupLocationListener() {
@@ -172,7 +210,7 @@ class MDMService : Service() {
             eventType = EventType.BOOT,
             message = "Heartbeat"
         )
-        mqttManager.publishEvent(event)
+        mqttManager?.publishEvent(event)
     }
     
     private fun publishStatus() {
@@ -192,7 +230,7 @@ class MDMService : Service() {
                 uptime = uptime
             )
             
-            mqttManager.publishStatus(status)
+            mqttManager?.publishStatus(status)
         } catch (e: Exception) {
             Log.e(TAG, "Error publishing status", e)
         }
@@ -221,7 +259,7 @@ class MDMService : Service() {
                 accuracy = location.accuracy
             )
             
-            mqttManager.publishLocation(deviceLocation)
+            mqttManager?.publishLocation(deviceLocation)
         } catch (e: Exception) {
             Log.e(TAG, "Error publishing location", e)
         }
@@ -252,7 +290,7 @@ class MDMService : Service() {
                 foregroundApp = foregroundApp
             )
             
-            mqttManager.publishMetrics(metrics)
+            mqttManager?.publishMetrics(metrics)
         } catch (e: Exception) {
             Log.e(TAG, "Error publishing metrics", e)
         }
@@ -262,20 +300,30 @@ class MDMService : Service() {
         super.onDestroy()
         Log.d(TAG, "MDMService onDestroy")
         
-        serviceScope.cancel()
-        locationListener?.let {
-            locationManager.removeUpdates(it)
+        try {
+            serviceScope.cancel()
+            
+            locationListener?.let {
+                try {
+                    locationManager.removeUpdates(it)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error removing location updates", e)
+                }
+            }
+            
+            mqttManager?.disconnect()
+            
+            // Auto-restart service using AlarmManager
+            val restartIntent = Intent(this, MDMService::class.java)
+            val pendingIntent = PendingIntent.getService(
+                this, 0, restartIntent,
+                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarmManager.set(AlarmManager.ELAPSED_REALTIME, 1000, pendingIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onDestroy", e)
         }
-        mqttManager.disconnect()
-        
-        // Auto-restart service using AlarmManager
-        val restartIntent = Intent(this, MDMService::class.java)
-        val pendingIntent = PendingIntent.getService(
-            this, 0, restartIntent,
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME, 1000, pendingIntent)
     }
     
     companion object {

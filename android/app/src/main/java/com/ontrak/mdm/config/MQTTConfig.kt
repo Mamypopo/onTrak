@@ -11,15 +11,19 @@ object MQTTConfig {
      * - tcp://mqtt.example.com:1883 (Domain, ไม่เข้ารหัส)
      * - ssl://mqtt.example.com:8883 (Domain, เข้ารหัส SSL/TLS)
      * - tcp://localhost:1883 (Localhost สำหรับทดสอบ)
+     * - tcp://10.0.2.2:1883 (Android Emulator → localhost mapping)
      * 
      * พอร์ตมาตรฐาน:
      * - 1883 = MQTT (ไม่เข้ารหัส)
      * - 8883 = MQTT over SSL/TLS (เข้ารหัส)
      * 
-     * TODO: เปลี่ยนเป็นค่าจริงของ MQTT Broker ของคุณ
-     * หรือใช้ SharedPreferences/BuildConfig เพื่อตั้งค่าแบบ dynamic
+     * หมายเหตุ:
+     * - ถ้าใช้ Android Emulator: ใช้ 10.0.2.2 แทน localhost
+     * - ถ้าใช้ Device จริง: ใช้ IP จริงของเครื่อง (เช่น 192.168.1.75)
      */
-    const val BROKER_URL = "tcp://your-mqtt-broker:1883"
+    // สำหรับ Android Emulator: ใช้ 10.0.2.2 (mapping ไปที่ localhost ของเครื่อง)
+    // สำหรับ Device จริง: ใช้ IP จริงของเครื่อง (เช่น 192.168.1.75)
+    const val BROKER_URL = "tcp://10.0.2.2:1883"  // Android Emulator → localhost
     
     /**
      * Prefix สำหรับ Client ID

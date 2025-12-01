@@ -11,7 +11,10 @@ android {
     defaultConfig {
         applicationId = "com.ontrak.mdm"
         minSdk = 26
-        targetSdk = 34
+        // ลด targetSdk ชั่วคราวให้ต่ำกว่า 31
+        // เพื่อเลี่ยงปัญหา PendingIntent / BroadcastReceiver ของ Paho MQTT บน Android 12+
+        // ใช้ได้สำหรับแอปภายในองค์กรที่ไม่ต้องขึ้น Store
+        targetSdk = 30
         versionCode = 1
         versionName = "1.0.0"
 

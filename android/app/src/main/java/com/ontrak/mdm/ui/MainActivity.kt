@@ -11,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.ontrak.mdm.R
+import com.ontrak.mdm.mqtt.MQTTManager
 import com.ontrak.mdm.receiver.DeviceOwnerReceiver
 import com.ontrak.mdm.service.MDMService
 import com.ontrak.mdm.util.DeviceInfo
@@ -42,11 +43,22 @@ class MainActivity : AppCompatActivity() {
             checkDeviceOwnerStatus()
             Log.d(TAG, "checkDeviceOwnerStatus completed")
             
+            // Initialize MQTT status
+            updateMQTTStatus()
+            
             // Start service in background to avoid blocking UI
             // Delay service start to avoid blocking UI thread
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 startMDMService()
             }, 500)
+            
+            // Update MQTT status every 2 seconds
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(object : Runnable {
+                override fun run() {
+                    updateMQTTStatus()
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, 2000)
+                }
+            }, 2000)
             
             Log.d(TAG, "MainActivity onCreate completed successfully")
         } catch (e: Exception) {
@@ -117,6 +129,21 @@ class MainActivity : AppCompatActivity() {
             deviceOwnerStatusText.text = "Device Owner: Error\n${e.message}"
             enableKioskButton.isEnabled = false
             disableKioskButton.isEnabled = false
+        }
+    }
+    
+    private fun updateMQTTStatus() {
+        try {
+            val mqttManager = MQTTManager.getInstance(this)
+            val isConnected = mqttManager.isConnected()
+            mqttStatusText.text = if (isConnected) {
+                "MQTT: Connected"
+            } else {
+                "MQTT: Disconnected"
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating MQTT status", e)
+            mqttStatusText.text = "MQTT: Error"
         }
     }
     

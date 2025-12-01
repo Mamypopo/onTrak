@@ -10,6 +10,50 @@ class MQTTClient {
     this.messageHandlers = new Map();
   }
 
+  /**
+   * Check if a topic matches a subscription pattern that may contain MQTT wildcards
+   * Supports:
+   * - + : matches a single level
+   * - # : matches all remaining levels
+   */
+  topicMatches(pattern, topic) {
+    // Exact match fast-path
+    if (!pattern.includes('+') && !pattern.includes('#')) {
+      return pattern === topic;
+    }
+
+    const patternLevels = pattern.split('/');
+    const topicLevels = topic.split('/');
+
+    let i = 0;
+    for (; i < patternLevels.length; i++) {
+      const p = patternLevels[i];
+      const t = topicLevels[i];
+
+      if (p === '#') {
+        // '#' must be last, matches everything after
+        return true;
+      }
+
+      if (t === undefined) {
+        // Topic ended but pattern still has more (and not '#')
+        return false;
+      }
+
+      if (p === '+') {
+        // Match any single level
+        continue;
+      }
+
+      if (p !== t) {
+        return false;
+      }
+    }
+
+    // If pattern is fully consumed, topic must also be fully consumed
+    return i === topicLevels.length;
+  }
+
   connect() {
     const options = {
       clientId: config.mqtt.clientId,
@@ -102,16 +146,29 @@ class MQTTClient {
   }
 
   handleMessage(topic, message) {
-    const handler = this.subscriptions.get(topic);
-    if (handler) {
-      try {
-        const data = JSON.parse(message.toString());
-        handler(topic, data);
-      } catch (error) {
-        logger.error({ error, topic }, 'Failed to parse MQTT message');
+    // Try exact match first
+    let handler = this.subscriptions.get(topic);
+
+    // If no exact match, try wildcard patterns (e.g. tablet/+/status)
+    if (!handler) {
+      for (const [pattern, h] of this.subscriptions.entries()) {
+        if (this.topicMatches(pattern, topic)) {
+          handler = h;
+          break;
+        }
       }
-    } else {
+    }
+
+    if (!handler) {
       logger.warn({ topic }, 'No handler found for topic');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(message.toString());
+      handler(topic, data);
+    } catch (error) {
+      logger.error({ error, topic }, 'Failed to parse MQTT message');
     }
   }
 
