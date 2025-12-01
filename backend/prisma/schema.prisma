@@ -20,6 +20,16 @@ model Device {
   lastSeen      DateTime @default(now())
   battery       Int      @default(0)
   wifiStatus    Boolean  @default(false)
+  isCharging    Boolean  @default(false)
+  batteryHealth String?
+  chargingMethod String? // USB, AC, WIRELESS, NONE
+  mobileDataEnabled Boolean @default(false)
+  networkConnected Boolean @default(false)
+  screenOn         Boolean  @default(false)
+  volumeLevel      Int      @default(0)
+  bluetoothEnabled Boolean  @default(false)
+  installedAppsCount Int    @default(0)
+  bootTime         BigInt?  // Timestamp when device booted
   latitude      Float?
   longitude     Float?
   kioskMode     Boolean  @default(false)

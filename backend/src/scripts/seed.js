@@ -57,8 +57,8 @@ async function main() {
   // Create test devices
   const devices = [
     {
-      deviceCode: 'TAB-001',
-      name: 'Tablet 001 - Meeting Room A',
+      deviceCode: 'adffd4df3b37682a',
+      name: 'Tablet 001 - ทดสอบระบบ',
       serialNumber: 'SN123456789',
       model: 'Samsung Galaxy Tab A8',
       osVersion: 'Android 13',

@@ -39,6 +39,12 @@ enum class CommandAction {
     ENABLE_KIOSK,
     
     @SerializedName("DISABLE_KIOSK")
-    DISABLE_KIOSK
+    DISABLE_KIOSK,
+    
+    @SerializedName("OPEN_CAMERA")
+    OPEN_CAMERA,
+    
+    @SerializedName("TAKE_PHOTO")
+    TAKE_PHOTO
 }
 

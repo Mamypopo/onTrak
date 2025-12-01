@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, MessageSquare, Settings,
-  Play, Square, Bell
+  Play, Square, Bell, Camera, Zap, Signal
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -31,6 +31,16 @@ interface Device {
   name: string | null;
   battery: number;
   wifiStatus: boolean;
+  isCharging?: boolean;
+  batteryHealth?: string | null;
+  chargingMethod?: string | null;
+  mobileDataEnabled?: boolean;
+  networkConnected?: boolean;
+  screenOn?: boolean;
+  volumeLevel?: number;
+  bluetoothEnabled?: boolean;
+  installedAppsCount?: number;
+  bootTime?: string | null;
   latitude: number | null;
   longitude: number | null;
   status: string;
@@ -134,6 +144,14 @@ export default function DeviceDetailPage() {
           DISABLE_KIOSK: {
             title: "Kiosk Mode Disabled",
             text: "Device will exit kiosk mode",
+          },
+          OPEN_CAMERA: {
+            title: "Camera Command Sent",
+            text: "Camera app will open on device",
+          },
+          TAKE_PHOTO: {
+            title: "Photo Capture Sent",
+            text: "Camera will open for photo capture on device",
           },
         };
 
@@ -277,6 +295,27 @@ export default function DeviceDetailPage() {
                     <span>Battery: {device.battery}%</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {device.isCharging ? (
+                      <>
+                        <Zap className="w-5 h-5 text-yellow-500" />
+                        <span className="text-yellow-600">
+                          Charging ({device.chargingMethod || "Unknown"})
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Battery className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-600">Not Charging</span>
+                      </>
+                    )}
+                  </div>
+                  {device.batteryHealth && (
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5" />
+                      <span>Health: {device.batteryHealth}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
                     <Wifi
                       className={`w-5 h-5 ${
                         device.wifiStatus ? "text-green-500" : "text-gray-500"
@@ -284,6 +323,64 @@ export default function DeviceDetailPage() {
                     />
                     <span>WiFi: {device.wifiStatus ? "On" : "Off"}</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Signal
+                      className={`w-5 h-5 ${
+                        device.networkConnected ? "text-green-500" : "text-gray-500"
+                      }`}
+                    />
+                    <span>Network: {device.networkConnected ? "Connected" : "Disconnected"}</span>
+                  </div>
+                  {device.mobileDataEnabled && (
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-5 h-5 text-blue-500" />
+                      <span className="text-blue-600">Mobile Data: On</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {device.screenOn ? (
+                      <>
+                        <Activity className="w-5 h-5 text-green-500" />
+                        <span className="text-green-600">Screen: On</span>
+                      </>
+                    ) : (
+                      <>
+                        <Activity className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-600">Screen: Off</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    <span>Volume: {device.volumeLevel || 0}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {device.bluetoothEnabled ? (
+                      <>
+                        <Radio className="w-5 h-5 text-blue-500" />
+                        <span className="text-blue-600">Bluetooth: On</span>
+                      </>
+                    ) : (
+                      <>
+                        <Radio className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-600">Bluetooth: Off</span>
+                      </>
+                    )}
+                  </div>
+                  {device.installedAppsCount && (
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-5 h-5" />
+                      <span>Apps: {device.installedAppsCount}</span>
+                    </div>
+                  )}
+                  {device.bootTime && (
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5" />
+                      <span>
+                        Boot: {new Date(Number(device.bootTime)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5" />
                     <span>Status: {device.status}</span>
@@ -414,17 +511,47 @@ export default function DeviceDetailPage() {
                         <Square className="w-4 h-4 mr-2" />
                         Enable Kiosk
                       </Button>
-                      <Button
-                        onClick={() => sendCommand("DISABLE_KIOSK")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Square className="w-4 h-4 mr-2" />
-                        Disable Kiosk
-                      </Button>
-                    </div>
-                  </div>
+                  <Button
+                    onClick={() => sendCommand("DISABLE_KIOSK")}
+                    disabled={sendingCommand}
+                    variant="outline"
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    Disable Kiosk
+                  </Button>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+            {/* Camera Control */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Camera</CardTitle>
+                <CardDescription>
+                  Control camera on device
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  onClick={() => sendCommand("OPEN_CAMERA")}
+                  disabled={sendingCommand}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Open Camera
+                </Button>
+                <Button
+                  onClick={() => sendCommand("TAKE_PHOTO")}
+                  disabled={sendingCommand}
+                  variant="default"
+                  className="w-full"
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Take Photo
+                </Button>
               </CardContent>
             </Card>
 

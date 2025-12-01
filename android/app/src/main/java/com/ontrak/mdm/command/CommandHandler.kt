@@ -42,13 +42,14 @@ object CommandHandler {
             CommandAction.PLAY_SOUND -> playSound(context)
             CommandAction.ENABLE_KIOSK -> enableKioskMode(context)
             CommandAction.DISABLE_KIOSK -> disableKioskMode(context)
+            CommandAction.OPEN_CAMERA -> openCamera(context)
+            CommandAction.TAKE_PHOTO -> takePhoto(context)
         }
     }
     
     private fun lockDevice(context: Context) {
         try {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            val adminComponent = ComponentName(context, DeviceOwnerReceiver::class.java)
             
             if (dpm.isDeviceOwnerApp(context.packageName)) {
                 dpm.lockNow()
@@ -61,7 +62,7 @@ object CommandHandler {
         }
     }
     
-    private fun unlockDevice(context: Context) {
+    private fun unlockDevice(_context: Context) {
         try {
             // Note: Unlocking requires user interaction or biometric authentication
             // This is a limitation of Android security
@@ -83,7 +84,15 @@ object CommandHandler {
     private fun setWifiEnabled(context: Context, enabled: Boolean) {
         try {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            wifiManager.isWifiEnabled = enabled
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // Android 10+ requires different approach, but for now we'll use the deprecated method
+                // as it still works for device owner apps
+                @Suppress("DEPRECATION")
+                wifiManager.isWifiEnabled = enabled
+            } else {
+                @Suppress("DEPRECATION")
+                wifiManager.isWifiEnabled = enabled
+            }
             Log.d(TAG, "WiFi ${if (enabled) "enabled" else "disabled"}")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting WiFi state", e)
@@ -138,10 +147,26 @@ object CommandHandler {
             
             // 2. Vibrate if available
             try {
-                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
-                if (vibrator != null && vibrator.hasVibrator()) {
-                    val pattern = longArrayOf(0, 200, 100, 200)
-                    vibrator.vibrate(pattern, -1)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    // Android 12+ (API 31+)
+                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                    val vibrator = vibratorManager?.defaultVibrator
+                    if (vibrator != null) {
+                        val pattern = android.os.VibrationEffect.createWaveform(
+                            longArrayOf(0, 200, 100, 200),
+                            -1
+                        )
+                        vibrator.vibrate(pattern)
+                    }
+                } else {
+                    // Android 11 and below
+                    @Suppress("DEPRECATION")
+                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                    if (vibrator != null && vibrator.hasVibrator()) {
+                        val pattern = longArrayOf(0, 200, 100, 200)
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(pattern, -1)
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Vibration not available", e)
@@ -226,6 +251,63 @@ object CommandHandler {
         } catch (e: Exception) {
             Log.e(TAG, "Error disabling kiosk mode", e)
         }
+    }
+    
+    private fun openCamera(context: Context) {
+        try {
+            // Try to open camera app directly by package name (doesn't require CAMERA permission)
+            // This works because we're just launching the camera app, not using camera ourselves
+            val packageManager = context.packageManager
+            
+            // Try common camera package names
+            val cameraPackages = listOf(
+                "com.android.camera2",
+                "com.android.camera",
+                "com.google.android.GoogleCamera",
+                "com.samsung.android.camera",
+                "com.huawei.camera",
+                "com.miui.camera",
+                "com.oppo.camera",
+                "com.vivo.camera"
+            )
+            
+            for (packageName in cameraPackages) {
+                try {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (intent != null) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                        Log.d(TAG, "Camera app opened: $packageName")
+                        return
+                    }
+                } catch (e: Exception) {
+                    // Try next package
+                    continue
+                }
+            }
+            
+            // Fallback: Try ACTION_IMAGE_CAPTURE (requires permission on some devices)
+            try {
+                val cameraIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                cameraIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                
+                if (cameraIntent.resolveActivity(context.packageManager) != null) {
+                    context.startActivity(cameraIntent)
+                    Log.d(TAG, "Camera app opened via ACTION_IMAGE_CAPTURE")
+                } else {
+                    Log.w(TAG, "No camera app available on device")
+                }
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Camera permission denied. Please grant camera permission in app settings.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening camera", e)
+        }
+    }
+    
+    private fun takePhoto(context: Context) {
+        // Use same method as openCamera (opens camera app for user to take photo)
+        openCamera(context)
     }
 }
 
