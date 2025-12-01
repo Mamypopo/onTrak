@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, MessageSquare, Settings,
-  Play, Square
+  Play, Square, Bell
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -105,10 +105,47 @@ export default function DeviceDetailPage() {
       });
 
       if (response.data.success) {
-        Swal.fire({
-          icon: "success",
+        // Custom messages for better UX
+        const messages: Record<string, { title: string; text: string }> = {
+          PLAY_SOUND: {
+            title: "Alert Sent",
+            text: "Alert sound and vibration sent to device",
+          },
+          LOCK_DEVICE: {
+            title: "Device Locked",
+            text: "Lock command sent successfully",
+          },
+          RESTART_DEVICE: {
+            title: "Restart Command Sent",
+            text: "Device will restart shortly",
+          },
+          WIFI_ON: {
+            title: "WiFi Enabled",
+            text: "WiFi will be turned on",
+          },
+          WIFI_OFF: {
+            title: "WiFi Disabled",
+            text: "WiFi will be turned off",
+          },
+          ENABLE_KIOSK: {
+            title: "Kiosk Mode Enabled",
+            text: "Device will enter kiosk mode",
+          },
+          DISABLE_KIOSK: {
+            title: "Kiosk Mode Disabled",
+            text: "Device will exit kiosk mode",
+          },
+        };
+
+        const message = messages[action] || {
           title: "Command Sent",
           text: `Command "${action}" sent successfully`,
+        };
+
+        Swal.fire({
+          icon: "success",
+          title: message.title,
+          text: message.text,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -297,57 +334,96 @@ export default function DeviceDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Control Panel</CardTitle>
+                <CardDescription>
+                  Send commands to control the device remotely
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={() => sendCommand("LOCK_DEVICE")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Lock className="w-4 h-4 mr-2" />
-                    Lock
-                  </Button>
-                  <Button
-                    onClick={() => sendCommand("RESTART_DEVICE")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Power className="w-4 h-4 mr-2" />
-                    Restart
-                  </Button>
-                  <Button
-                    onClick={() => sendCommand("WIFI_ON")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Radio className="w-4 h-4 mr-2" />
-                    WiFi On
-                  </Button>
-                  <Button
-                    onClick={() => sendCommand("WIFI_OFF")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Radio className="w-4 h-4 mr-2" />
-                    WiFi Off
-                  </Button>
-                  <Button
-                    onClick={() => sendCommand("ENABLE_KIOSK")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Enable Kiosk
-                  </Button>
-                  <Button
-                    onClick={() => sendCommand("DISABLE_KIOSK")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Disable Kiosk
-                  </Button>
+                <div className="space-y-4">
+                  {/* Alert Section */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Alerts & Notifications</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button
+                        onClick={() => sendCommand("PLAY_SOUND")}
+                        disabled={sendingCommand}
+                        variant="default"
+                        className="w-full"
+                      >
+                        <Bell className="w-4 h-4 mr-2" />
+                        Send Alert Sound
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Device Control Section */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Device Control</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => sendCommand("LOCK_DEVICE")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        Lock
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("RESTART_DEVICE")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Power className="w-4 h-4 mr-2" />
+                        Restart
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Network Control Section */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Network</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => sendCommand("WIFI_ON")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Radio className="w-4 h-4 mr-2" />
+                        WiFi On
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("WIFI_OFF")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Radio className="w-4 h-4 mr-2" />
+                        WiFi Off
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Kiosk Mode Section */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Kiosk Mode</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => sendCommand("ENABLE_KIOSK")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Square className="w-4 h-4 mr-2" />
+                        Enable Kiosk
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("DISABLE_KIOSK")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Square className="w-4 h-4 mr-2" />
+                        Disable Kiosk
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

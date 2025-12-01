@@ -20,6 +20,8 @@
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <!-- Vibration for alert command -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     
     <!-- Device Owner Permissions -->
     <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />

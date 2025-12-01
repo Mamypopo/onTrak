@@ -1,6 +1,9 @@
 package com.ontrak.mdm.command
 
 import android.app.ActivityManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
@@ -9,11 +12,15 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.PowerManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.ontrak.mdm.R
 import com.ontrak.mdm.model.CommandAction
 import com.ontrak.mdm.model.MQTTCommand
 import com.ontrak.mdm.receiver.DeviceOwnerReceiver
+import com.ontrak.mdm.ui.MainActivity
 import com.ontrak.mdm.ui.MessageDialogActivity
 import com.ontrak.mdm.util.KioskModeManager
 
@@ -125,11 +132,81 @@ object CommandHandler {
     
     private fun playSound(context: Context) {
         try {
+            // 1. Play sound
             val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500)
-            Log.d(TAG, "Playing sound")
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 800)
+            
+            // 2. Vibrate if available
+            try {
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    val pattern = longArrayOf(0, 200, 100, 200)
+                    vibrator.vibrate(pattern, -1)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Vibration not available", e)
+            }
+            
+            // 3. Show notification (best practice: multi-modal feedback)
+            showAlertNotification(context)
+            
+            Log.d(TAG, "Playing alert sound, vibration, and notification")
         } catch (e: Exception) {
             Log.e(TAG, "Error playing sound", e)
+        }
+    }
+    
+    private fun showAlertNotification(context: Context) {
+        try {
+            val channelId = "alert_channel"
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            
+            // Create notification channel for Android 8.0+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Alert Notifications",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Remote alert notifications from OnTrak MDM"
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 200, 100, 200)
+                    enableLights(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            // Create intent to open app when notification is tapped
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            
+            // Build notification
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle("Alert from OnTrak MDM")
+                .setContentText("You have received an alert notification")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("You have received an alert notification from the OnTrak MDM system. Please check your device."))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL) // Sound + Vibration + Light
+                .setAutoCancel(true) // Auto-dismiss when tapped
+                .setContentIntent(pendingIntent)
+                .build()
+            
+            // Show notification with unique ID (use timestamp to avoid replacing)
+            val notificationId = System.currentTimeMillis().toInt()
+            notificationManager.notify(notificationId, notification)
+            
+            Log.d(TAG, "Alert notification shown")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing notification", e)
         }
     }
     
