@@ -431,7 +431,7 @@ export default function UsersPage() {
         </div>
 
         {/* Filters */}
-        <Card className="bg-secondary/30">
+        <Card className="">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">

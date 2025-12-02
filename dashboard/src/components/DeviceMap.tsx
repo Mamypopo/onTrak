@@ -48,10 +48,24 @@ export default function DeviceMap({
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapKeyRef = useRef<string>(`map-${deviceId || 'default'}-${Date.now()}-${Math.random()}`);
 
   // Ensure component is mounted on client side
   useEffect(() => {
     setIsMounted(true);
+    
+    // Cleanup on unmount
+    return () => {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+        mapInstanceRef.current = null;
+      }
+    };
   }, []);
 
   // Convert location history to coordinates
@@ -238,13 +252,16 @@ export default function DeviceMap({
     
     // Invalidate size on mount and when window resizes (for fullscreen)
     useEffect(() => {
-      if (map && map._container) {
+      if (map && mapInstanceRef.current === map) {
         const invalidateSize = () => {
           setTimeout(() => {
             try {
-              // Check if map is still valid before invalidating
-              if (map && map._container && !map._container._leaflet_id) {
-                map.invalidateSize();
+              // Check if map is still valid and matches our instance
+              if (mapInstanceRef.current === map && map) {
+                const container = map.getContainer();
+                if (container && !(container as any)._leaflet_id) {
+                  map.invalidateSize();
+                }
               }
             } catch (error) {
               // Silently ignore errors - map might be unmounted
@@ -310,13 +327,13 @@ export default function DeviceMap({
       </Tooltip>
 
       <MapContainer
-        key={`map-${deviceId || 'default'}-${latitude}-${longitude}`}
+        key={mapKeyRef.current}
         center={[latitude, longitude]}
         zoom={routePositions.length > 0 ? 13 : 15}
         style={{ height: "100%", width: "100%", zIndex: 0, minHeight: '256px' }}
         scrollWheelZoom={true}
         whenReady={() => {
-          // Map is ready - this prevents double initialization
+          // Map is ready - prevents double initialization
         }}
       >
         <MapUpdater center={[latitude, longitude]} routePositions={routePositions} />

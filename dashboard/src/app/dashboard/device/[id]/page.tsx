@@ -949,7 +949,7 @@ export default function DeviceDetailPage() {
                                     </p>
                                   </div>
                                 )}
-                                <div className="relative pl-4 pb-4 last:pb-0 group">
+                                <div className="relative  pl-4 pb-4 last:pb-0 group">
                                   {/* Timeline line */}
                                   {index < actionLogs.length - 1 && (
                                     <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/30 to-transparent" />
