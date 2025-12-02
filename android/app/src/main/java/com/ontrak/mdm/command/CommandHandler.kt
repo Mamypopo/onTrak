@@ -10,10 +10,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.media.RingtoneManager
 import android.media.ToneGenerator
-import android.net.wifi.WifiManager
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
+import android.bluetooth.BluetoothAdapter
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ontrak.mdm.R
@@ -35,8 +37,6 @@ object CommandHandler {
             CommandAction.LOCK_DEVICE -> lockDevice(context)
             CommandAction.UNLOCK_DEVICE -> unlockDevice(context)
             CommandAction.RESTART_DEVICE -> restartDevice(context)
-            CommandAction.WIFI_ON -> setWifiEnabled(context, true)
-            CommandAction.WIFI_OFF -> setWifiEnabled(context, false)
             CommandAction.OPEN_APP -> openApp(context, command.params)
             CommandAction.SHOW_MESSAGE -> showMessage(context, command.params)
             CommandAction.PLAY_SOUND -> playSound(context)
@@ -44,6 +44,9 @@ object CommandHandler {
             CommandAction.DISABLE_KIOSK -> disableKioskMode(context)
             CommandAction.OPEN_CAMERA -> openCamera(context)
             CommandAction.TAKE_PHOTO -> takePhoto(context)
+            CommandAction.BLUETOOTH_ON -> setBluetoothEnabled(context, true)
+            CommandAction.BLUETOOTH_OFF -> setBluetoothEnabled(context, false)
+            CommandAction.SHUTDOWN_DEVICE -> shutdownDevice(context)
         }
     }
     
@@ -81,24 +84,6 @@ object CommandHandler {
         }
     }
     
-    private fun setWifiEnabled(context: Context, enabled: Boolean) {
-        try {
-            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                // Android 10+ requires different approach, but for now we'll use the deprecated method
-                // as it still works for device owner apps
-                @Suppress("DEPRECATION")
-                wifiManager.isWifiEnabled = enabled
-            } else {
-                @Suppress("DEPRECATION")
-                wifiManager.isWifiEnabled = enabled
-            }
-            Log.d(TAG, "WiFi ${if (enabled) "enabled" else "disabled"}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting WiFi state", e)
-        }
-    }
-    
     private fun openApp(context: Context, params: Map<String, Any>?) {
         try {
             val packageName = params?.get("packageName") as? String
@@ -127,23 +112,103 @@ object CommandHandler {
             val message = params?.get("message") as? String ?: "No message"
             val title = params?.get("title") as? String ?: "Message"
             
-            val intent = Intent(context, MessageDialogActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                putExtra("title", title)
-                putExtra("message", message)
-            }
-            context.startActivity(intent)
-            Log.d(TAG, "Showing message: $title - $message")
+            // Use notification instead of Activity to avoid BAL (Background Activity Launch) restrictions
+            // This works even when app is in background
+            showMessageNotification(context, title, message)
+            Log.d(TAG, "Showing message via notification: $title - $message")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing message", e)
         }
     }
     
+    private fun showMessageNotification(context: Context, title: String, message: String) {
+        try {
+            val channelId = "message_channel"
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            
+            // Create notification channel for Android 8.0+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Messages",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Messages from OnTrak MDM Dashboard"
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 200, 100, 200)
+                    enableLights(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            // Create intent to open app when notification is tapped
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            
+            // Build notification with BigTextStyle for long messages
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText(message))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL) // Sound + Vibration + Light
+                .setAutoCancel(true) // Auto-dismiss when tapped
+                .setContentIntent(pendingIntent)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .build()
+            
+            // Show notification with unique ID (use timestamp to avoid replacing)
+            val notificationId = System.currentTimeMillis().toInt()
+            notificationManager.notify(notificationId, notification)
+            
+            Log.d(TAG, "Message notification shown")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing message notification", e)
+        }
+    }
+    
     private fun playSound(context: Context) {
         try {
-            // 1. Play sound
-            val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 800)
+            // 1. Play ringtone (incoming call sound)
+            try {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val originalRingerMode = audioManager.ringerMode
+                
+                // Get default ringtone
+                val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                val ringtone = RingtoneManager.getRingtone(context, ringtoneUri)
+                
+                if (ringtone != null) {
+                    // Set stream type to notification (works even in silent mode if needed)
+                    ringtone.setStreamType(AudioManager.STREAM_NOTIFICATION)
+                    // Play for 2 seconds
+                    ringtone.play()
+                    // Stop after 2 seconds
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        ringtone.stop()
+                    }, 2000)
+                    Log.d(TAG, "Playing ringtone")
+                } else {
+                    // Fallback to beep if ringtone not available
+                    val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 800)
+                    Log.d(TAG, "Ringtone not available, using beep fallback")
+                }
+            } catch (e: Exception) {
+                // Fallback to beep if ringtone fails
+                val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 800)
+                Log.w(TAG, "Error playing ringtone, using beep fallback: ${e.message}")
+            }
             
             // 2. Vibrate if available
             try {
@@ -308,6 +373,64 @@ object CommandHandler {
     private fun takePhoto(context: Context) {
         // Use same method as openCamera (opens camera app for user to take photo)
         openCamera(context)
+    }
+    
+    private fun setBluetoothEnabled(context: Context, enabled: Boolean) {
+        try {
+            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null) {
+                Log.w(TAG, "Bluetooth not supported on this device")
+                return
+            }
+            
+            if (enabled) {
+                if (!bluetoothAdapter.isEnabled) {
+                    bluetoothAdapter.enable()
+                    Log.d(TAG, "Bluetooth enabled")
+                } else {
+                    Log.d(TAG, "Bluetooth already enabled")
+                }
+            } else {
+                if (bluetoothAdapter.isEnabled) {
+                    bluetoothAdapter.disable()
+                    Log.d(TAG, "Bluetooth disabled")
+                } else {
+                    Log.d(TAG, "Bluetooth already disabled")
+                }
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Bluetooth permission denied: ${e.message}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting Bluetooth state", e)
+        }
+    }
+    
+    private fun shutdownDevice(context: Context) {
+        try {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            // Try to shutdown using PowerManager
+            // Note: This may require REBOOT permission and device owner privileges
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Android 8.0+ - use reboot with "shutdown" reason
+                powerManager.reboot("shutdown")
+                Log.d(TAG, "Shutdown command sent")
+            } else {
+                // Android 7.1 and below - try reboot with shutdown parameter
+                try {
+                    Runtime.getRuntime().exec("su -c 'reboot -p'")
+                    Log.d(TAG, "Shutdown command sent via shell (may require root)")
+                } catch (e: Exception) {
+                    // If shell command fails, try PowerManager.reboot
+                    powerManager.reboot(null)
+                    Log.d(TAG, "Reboot command sent as fallback")
+                }
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Shutdown permission denied: ${e.message}")
+            Log.w(TAG, "Shutdown requires REBOOT permission and device owner privileges")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error shutting down device: ${e.message}", e)
+        }
     }
 }
 

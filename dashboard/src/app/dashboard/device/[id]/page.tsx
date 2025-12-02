@@ -14,7 +14,8 @@ import {
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, Settings,
   Square, Bell, Camera, Zap, Signal,
-  User, Package, PackageCheck, Clock
+  User, Package, PackageCheck, Clock,
+  MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -22,6 +23,8 @@ import { getSwalConfig } from "@/lib/swal-config";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,7 @@ interface Device {
   screenOn?: boolean;
   volumeLevel?: number;
   bluetoothEnabled?: boolean;
+  locationEnabled?: boolean;
   installedAppsCount?: number;
   bootTime?: string | null;
   latitude: number | null;
@@ -78,6 +82,9 @@ export default function DeviceDetailPage() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [logsPage, setLogsPage] = useState(0);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [messageTitle, setMessageTitle] = useState("");
+  const [messageBody, setMessageBody] = useState("");
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -199,6 +206,10 @@ export default function DeviceDetailPage() {
             title: "Alert Sent",
             text: "Alert sound and vibration sent to device",
           },
+          SHOW_MESSAGE: {
+            title: "Message Sent",
+            text: "Message will be displayed on the device",
+          },
           LOCK_DEVICE: {
             title: "Device Locked",
             text: "Lock command sent successfully",
@@ -206,14 +217,6 @@ export default function DeviceDetailPage() {
           RESTART_DEVICE: {
             title: "Restart Command Sent",
             text: "Device will restart shortly",
-          },
-          WIFI_ON: {
-            title: "WiFi Enabled",
-            text: "WiFi will be turned on",
-          },
-          WIFI_OFF: {
-            title: "WiFi Disabled",
-            text: "WiFi will be turned off",
           },
           ENABLE_KIOSK: {
             title: "Kiosk Mode Enabled",
@@ -231,6 +234,18 @@ export default function DeviceDetailPage() {
             title: "Photo Capture Sent",
             text: "Camera will open for photo capture on device",
           },
+          BLUETOOTH_ON: {
+            title: "Bluetooth Enabled",
+            text: "Bluetooth will be turned on",
+          },
+          BLUETOOTH_OFF: {
+            title: "Bluetooth Disabled",
+            text: "Bluetooth will be turned off",
+          },
+          SHUTDOWN_DEVICE: {
+            title: "Shutdown Command Sent",
+            text: "Device will shutdown shortly",
+          },
         };
 
         const message = messages[action] || {
@@ -242,8 +257,11 @@ export default function DeviceDetailPage() {
           icon: "success",
           title: message.title,
           text: message.text,
-          timer: 2000,
+          toast: true,
+          position: "top-end",
+          timer: 2500,
           showConfirmButton: false,
+          timerProgressBar: true,
         }));
       }
     } catch (error: any) {
@@ -278,8 +296,11 @@ export default function DeviceDetailPage() {
           Swal.fire(getSwalConfig({
             icon: "success",
             title: "ยืมอุปกรณ์สำเร็จ",
-            timer: 2000,
+            toast: true,
+            position: "top-end",
+            timer: 2500,
             showConfirmButton: false,
+            timerProgressBar: true,
           }));
           fetchDevice();
         }
@@ -301,8 +322,11 @@ export default function DeviceDetailPage() {
         Swal.fire(getSwalConfig({
           icon: "success",
           title: "คืนอุปกรณ์สำเร็จ",
-          timer: 2000,
+          toast: true,
+          position: "top-end",
+          timer: 2500,
           showConfirmButton: false,
+          timerProgressBar: true,
         }));
         fetchDevice();
       }
@@ -312,6 +336,33 @@ export default function DeviceDetailPage() {
         title: "เกิดข้อผิดพลาด",
         text: error.response?.data?.error || "ไม่สามารถคืนอุปกรณ์ได้",
       }));
+    }
+  };
+
+  const handleShowMessage = () => {
+    setIsMessageDialogOpen(true);
+  };
+
+  const handleConfirmMessage = async () => {
+    if (!messageBody.trim()) {
+      Swal.fire(getSwalConfig({
+        icon: "warning",
+        title: "กรุณากรอกข้อความ",
+        text: "ต้องมีข้อความอย่างน้อย 1 บรรทัด",
+      }));
+      return;
+    }
+
+    try {
+      await sendCommand("SHOW_MESSAGE", {
+        title: messageTitle.trim() || "ข้อความจาก Dashboard",
+        message: messageBody.trim(),
+      });
+      setIsMessageDialogOpen(false);
+      setMessageTitle("");
+      setMessageBody("");
+    } catch (error) {
+      // error ถูก handle แล้วใน sendCommand
     }
   };
 
@@ -753,15 +804,26 @@ export default function DeviceDetailPage() {
                   {/* Alert Section */}
                   <div>
                     <h4 className="text-sm font-semibold mb-3 text-foreground">การแจ้งเตือน</h4>
-                    <Button
-                      onClick={() => sendCommand("PLAY_SOUND")}
-                      disabled={sendingCommand}
-                      variant="default"
-                      className="w-full"
-                    >
-                      <Bell className="w-4 h-4 mr-2" />
-                      ส่งเสียงแจ้งเตือน
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => sendCommand("PLAY_SOUND")}
+                        disabled={sendingCommand}
+                        variant="default"
+                        className="w-full"
+                      >
+                        <Bell className="w-4 h-4 mr-2" />
+                        ส่งเสียงแจ้งเตือน (เสียง + สั่น)
+                      </Button>
+                      <Button
+                        onClick={handleShowMessage}
+                        disabled={sendingCommand}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        ส่งข้อความขึ้นหน้าจอ
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Device Control Section */}
@@ -792,21 +854,21 @@ export default function DeviceDetailPage() {
                     <h4 className="text-sm font-semibold mb-3 text-foreground">เครือข่าย</h4>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
-                        <Wifi className={cn(
+                        <Radio className={cn(
                           "w-4 h-4",
-                          device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                          device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
                         )} />
-                        <Label htmlFor="wifi-toggle" className="text-sm font-medium cursor-pointer">
-                          WiFi
+                        <Label htmlFor="bluetooth-toggle" className="text-sm font-medium cursor-pointer">
+                          Bluetooth
                         </Label>
                       </div>
                       <Switch
-                        id="wifi-toggle"
-                        checked={device.wifiStatus}
+                        id="bluetooth-toggle"
+                        checked={device.bluetoothEnabled || false}
                         onCheckedChange={async (checked) => {
                           // Optimistic update
-                          setDevice((prev) => prev ? { ...prev, wifiStatus: checked } : null);
-                          await sendCommand(checked ? "WIFI_ON" : "WIFI_OFF");
+                          setDevice((prev) => prev ? { ...prev, bluetoothEnabled: checked } : null);
+                          await sendCommand(checked ? "BLUETOOTH_ON" : "BLUETOOTH_OFF");
                         }}
                         disabled={sendingCommand}
                       />
@@ -907,9 +969,11 @@ export default function DeviceDetailPage() {
                               if (action.includes("COMMAND_")) {
                                 const cmd = action.replace("COMMAND_", "");
                                 if (cmd.includes("WIFI")) return <Wifi className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("BLUETOOTH")) return <Radio className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("LOCATION")) return <MapPin className="w-3.5 h-3.5 text-primary" />;
                                 if (cmd.includes("KIOSK")) return <Square className="w-3.5 h-3.5 text-primary" />;
                                 if (cmd.includes("LOCK")) return <Lock className="w-3.5 h-3.5 text-primary" />;
-                                if (cmd.includes("RESTART") || cmd.includes("POWER")) return <Power className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("RESTART") || cmd.includes("POWER") || cmd.includes("SHUTDOWN")) return <Power className="w-3.5 h-3.5 text-primary" />;
                                 if (cmd.includes("CAMERA")) return <Camera className="w-3.5 h-3.5 text-primary" />;
                                 if (cmd.includes("SOUND") || cmd.includes("BELL")) return <Bell className="w-3.5 h-3.5 text-primary" />;
                               }
@@ -1309,6 +1373,62 @@ export default function DeviceDetailPage() {
             </Card>
           </div>
         </div>
+
+        {/* Send Message Dialog */}
+        <Dialog open={isMessageDialogOpen} onOpenChange={(open) => {
+          setIsMessageDialogOpen(open);
+          if (!open) {
+            setMessageTitle("");
+            setMessageBody("");
+          }
+        }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>ส่งข้อความไปที่อุปกรณ์</DialogTitle>
+              <DialogDescription>
+                พิมพ์ข้อความที่ต้องการให้แสดงบนอุปกรณ์เครื่องนี้
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="message-title">หัวข้อ (ไม่บังคับ)</Label>
+                <Input
+                  id="message-title"
+                  placeholder="เช่น แจ้งเตือนสำคัญ"
+                  value={messageTitle}
+                  onChange={(e) => setMessageTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="message-body">ข้อความ</Label>
+                <textarea
+                  id="message-body"
+                  placeholder="พิมพ์ข้อความที่ต้องการส่งไปยังอุปกรณ์..."
+                  rows={4}
+                  value={messageBody}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessageBody(e.target.value)}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsMessageDialogOpen(false)}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmMessage}
+                disabled={sendingCommand}
+              >
+                ส่งข้อความ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

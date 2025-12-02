@@ -20,12 +20,6 @@ enum class CommandAction {
     @SerializedName("RESTART_DEVICE")
     RESTART_DEVICE,
     
-    @SerializedName("WIFI_ON")
-    WIFI_ON,
-    
-    @SerializedName("WIFI_OFF")
-    WIFI_OFF,
-    
     @SerializedName("OPEN_APP")
     OPEN_APP,
     
@@ -45,6 +39,15 @@ enum class CommandAction {
     OPEN_CAMERA,
     
     @SerializedName("TAKE_PHOTO")
-    TAKE_PHOTO
+    TAKE_PHOTO,
+    
+    @SerializedName("BLUETOOTH_ON")
+    BLUETOOTH_ON,
+    
+    @SerializedName("BLUETOOTH_OFF")
+    BLUETOOTH_OFF,
+    
+    @SerializedName("SHUTDOWN_DEVICE")
+    SHUTDOWN_DEVICE
 }
 

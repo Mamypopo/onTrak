@@ -84,6 +84,12 @@
             android:name="org.eclipse.paho.android.service.MqttService"
             android:exported="false" />
 
+        <!-- Message Dialog Activity for SHOW_MESSAGE command -->
+        <activity
+            android:name=".ui.MessageDialogActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Dialog.Alert" />
+
         <!-- Boot Receiver -->
         <receiver
             android:name=".receiver.BootReceiver"
