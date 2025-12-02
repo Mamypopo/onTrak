@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Shield, User, Eye } from "lucide-react";
 import Swal from "sweetalert2";
+import { getSwalConfig } from "@/lib/swal-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -60,11 +61,11 @@ export default function UsersPage() {
       }
     } catch (error: any) {
       if (error.response?.status === 403) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Access Denied",
-          text: "You don't have permission to view users",
-        });
+          title: "ไม่มีสิทธิ์เข้าถึง",
+          text: "คุณไม่มีสิทธิ์ในการดูรายชื่อผู้ใช้",
+        }));
         router.push("/dashboard");
       }
     } finally {
@@ -73,8 +74,8 @@ export default function UsersPage() {
   };
 
   const handleAddUser = async () => {
-    const { value: formValues } = await Swal.fire({
-      title: "Add New User",
+    const { value: formValues } = await Swal.fire(getSwalConfig({
+      title: "เพิ่มผู้ใช้ใหม่",
       html: `
         <input id="swal-username" class="swal2-input" placeholder="Username" required>
         <input id="swal-email" class="swal2-input" placeholder="Email (optional)" type="email">
@@ -89,8 +90,8 @@ export default function UsersPage() {
       `,
       focusConfirm: false,
       showCancelButton: true,
-      confirmButtonText: "Create",
-      cancelButtonText: "Cancel",
+      confirmButtonText: "สร้าง",
+      cancelButtonText: "ยกเลิก",
       preConfirm: () => {
         const username = (document.getElementById('swal-username') as HTMLInputElement)?.value;
         const email = (document.getElementById('swal-email') as HTMLInputElement)?.value;
@@ -99,37 +100,37 @@ export default function UsersPage() {
         const role = (document.getElementById('swal-role') as HTMLSelectElement)?.value;
 
         if (!username || !password) {
-          Swal.showValidationMessage('Username and password are required');
+          Swal.showValidationMessage('กรุณากรอก Username และ Password');
           return false;
         }
 
         return { username, email, fullName, password, role };
       },
-    });
+    }));
 
     if (formValues) {
       try {
         await api.post("/api/user", formValues);
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
-          title: "User Created",
+          title: "สร้างผู้ใช้สำเร็จ",
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
         fetchUsers();
       } catch (error: any) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Error",
-          text: error.response?.data?.error || "Failed to create user",
-        });
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถสร้างผู้ใช้ได้",
+        }));
       }
     }
   };
 
   const handleEditUser = async (user: User) => {
-    const { value: formValues } = await Swal.fire({
-      title: "Edit User",
+    const { value: formValues } = await Swal.fire(getSwalConfig({
+      title: "แก้ไขผู้ใช้",
       html: `
         <input id="swal-email" class="swal2-input" placeholder="Email" value="${user.email || ''}" type="email">
         <input id="swal-fullName" class="swal2-input" placeholder="Full Name" value="${user.fullName || ''}">
@@ -146,8 +147,8 @@ export default function UsersPage() {
       `,
       focusConfirm: false,
       showCancelButton: true,
-      confirmButtonText: "Update",
-      cancelButtonText: "Cancel",
+      confirmButtonText: "อัปเดต",
+      cancelButtonText: "ยกเลิก",
       preConfirm: () => {
         const email = (document.getElementById('swal-email') as HTMLInputElement)?.value;
         const fullName = (document.getElementById('swal-fullName') as HTMLInputElement)?.value;
@@ -156,54 +157,55 @@ export default function UsersPage() {
 
         return { email, fullName, role, isActive };
       },
-    });
+    }));
 
     if (formValues) {
       try {
         await api.put(`/api/user/${user.id}`, formValues);
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
-          title: "User Updated",
+          title: "อัปเดตผู้ใช้สำเร็จ",
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
         fetchUsers();
       } catch (error: any) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Error",
-          text: error.response?.data?.error || "Failed to update user",
-        });
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถอัปเดตผู้ใช้ได้",
+        }));
       }
     }
   };
 
   const handleDelete = async (userId: string, username: string) => {
-    const result = await Swal.fire({
-      title: "Delete User?",
-      text: `Are you sure you want to delete ${username}?`,
+    const result = await Swal.fire(getSwalConfig({
+      title: "ลบผู้ใช้?",
+      text: `คุณแน่ใจหรือไม่ว่าต้องการลบ ${username}?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Delete",
-      cancelButtonText: "Cancel",
-    });
+      confirmButtonText: "ลบ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444",
+    }));
 
     if (result.isConfirmed) {
       try {
         await api.delete(`/api/user/${userId}`);
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
-          title: "User Deleted",
+          title: "ลบผู้ใช้สำเร็จ",
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
         fetchUsers();
       } catch (error: any) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Error",
-          text: error.response?.data?.error || "Failed to delete user",
-        });
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถลบผู้ใช้ได้",
+        }));
       }
     }
   };

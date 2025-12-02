@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import Swal from "sweetalert2";
+import { getSwalConfig } from "@/lib/swal-config";
 
 interface AddTabletDialogProps {
   open: boolean;
@@ -39,11 +40,11 @@ export function AddTabletDialog({
     e.preventDefault();
 
     if (!formData.deviceCode.trim()) {
-      Swal.fire({
+      Swal.fire(getSwalConfig({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
         text: "กรุณากรอก Device Code",
-      });
+      }));
       return;
     }
 
@@ -52,13 +53,13 @@ export function AddTabletDialog({
       const response = await api.post("/api/device", formData);
 
       if (response.data.success) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
           title: "สำเร็จ",
           text: "เพิ่ม Tablet สำเร็จแล้ว",
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
 
         // Reset form
         setFormData({
@@ -73,11 +74,11 @@ export function AddTabletDialog({
       }
     } catch (error: any) {
       console.error("Error creating device:", error);
-      Swal.fire({
+      Swal.fire(getSwalConfig({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
         text: error.response?.data?.error || "ไม่สามารถเพิ่ม Tablet ได้",
-      });
+      }));
     } finally {
       setLoading(false);
     }

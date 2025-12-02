@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Swal from "sweetalert2";
+import { getSwalConfig } from "@/lib/swal-config";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,13 +23,13 @@ export default function SettingsPage() {
     localStorage.setItem("apiUrl", apiUrl);
     localStorage.setItem("wsUrl", wsUrl);
     
-    Swal.fire({
+    Swal.fire(getSwalConfig({
       icon: "success",
-      title: "Settings Saved",
-      text: "Settings have been saved successfully",
+      title: "บันทึกการตั้งค่า",
+      text: "บันทึกการตั้งค่าสำเร็จแล้ว",
       timer: 2000,
       showConfirmButton: false,
-    });
+    }));
   };
 
   return (

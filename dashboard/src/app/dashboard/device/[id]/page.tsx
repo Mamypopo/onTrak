@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
+import { getSwalConfig } from "@/lib/swal-config";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // Dynamic import for Map component to avoid SSR issues
@@ -33,6 +37,9 @@ interface Device {
   id: string;
   deviceCode: string;
   name: string | null;
+  serialNumber?: string | null;
+  model?: string | null;
+  osVersion?: string | null;
   battery: number;
   wifiStatus: boolean;
   isCharging?: boolean;
@@ -90,11 +97,11 @@ export default function DeviceDetailPage() {
       if (error.response?.status === 404) {
         setDevice(null);
       } else {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Error",
-          text: error.response?.data?.error || "Failed to load device",
-        });
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถโหลดข้อมูลอุปกรณ์ได้",
+        }));
       }
     } finally {
       setLoading(false);
@@ -182,34 +189,35 @@ export default function DeviceDetailPage() {
           text: `Command "${action}" sent successfully`,
         };
 
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
           title: message.title,
           text: message.text,
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
       }
     } catch (error: any) {
-      Swal.fire({
+      Swal.fire(getSwalConfig({
         icon: "error",
         title: "Error",
         text: error.response?.data?.error || "Failed to send command",
-      });
+      }));
     } finally {
       setSendingCommand(false);
     }
   };
 
   const handleBorrow = async () => {
-    const { value: reason } = await Swal.fire({
-      title: "Borrow Device",
+    const { value: reason } = await Swal.fire(getSwalConfig({
+      title: "ยืมอุปกรณ์",
       input: "text",
-      inputLabel: "Reason (optional)",
-      inputPlaceholder: "Enter reason for borrowing...",
+      inputLabel: "เหตุผล (ไม่บังคับ)",
+      inputPlaceholder: "กรอกเหตุผลในการยืม...",
       showCancelButton: true,
-      confirmButtonText: "Borrow",
-    });
+      confirmButtonText: "ยืม",
+      cancelButtonText: "ยกเลิก",
+    }));
 
     if (reason !== undefined) {
       try {
@@ -218,20 +226,20 @@ export default function DeviceDetailPage() {
         });
 
         if (response.data.success) {
-          Swal.fire({
+          Swal.fire(getSwalConfig({
             icon: "success",
-            title: "Device Borrowed",
+            title: "ยืมอุปกรณ์สำเร็จ",
             timer: 2000,
             showConfirmButton: false,
-          });
+          }));
           fetchDevice();
         }
       } catch (error: any) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "error",
-          title: "Error",
-          text: error.response?.data?.error || "Failed to borrow device",
-        });
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถยืมอุปกรณ์ได้",
+        }));
       }
     }
   };
@@ -241,20 +249,20 @@ export default function DeviceDetailPage() {
       const response = await api.post(`/api/device/${deviceId}/return`);
 
       if (response.data.success) {
-        Swal.fire({
+        Swal.fire(getSwalConfig({
           icon: "success",
-          title: "Device Returned",
+          title: "คืนอุปกรณ์สำเร็จ",
           timer: 2000,
           showConfirmButton: false,
-        });
+        }));
         fetchDevice();
       }
     } catch (error: any) {
-      Swal.fire({
+      Swal.fire(getSwalConfig({
         icon: "error",
-        title: "Error",
-        text: error.response?.data?.error || "Failed to return device",
-      });
+        title: "เกิดข้อผิดพลาด",
+        text: error.response?.data?.error || "ไม่สามารถคืนอุปกรณ์ได้",
+      }));
     }
   };
 
@@ -359,7 +367,7 @@ export default function DeviceDetailPage() {
             </Button>
           </Link>
           <div className="flex-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-bold">
                 {device.name || device.deviceCode}
               </h1>
@@ -370,140 +378,107 @@ export default function DeviceDetailPage() {
             <p className="text-muted-foreground mt-1">{device.deviceCode}</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Device Info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Status Card */}
-            <Card className="card-hover">
-              <CardHeader>
-                <CardTitle>Device Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Battery className="w-5 h-5" />
-                    <span>Battery: {device.battery}%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {device.isCharging ? (
-                      <>
-                        <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                        <span className="text-yellow-600 dark:text-yellow-400">
-                          Charging ({device.chargingMethod || "Unknown"})
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Battery className="w-5 h-5 text-muted-foreground" />
-                        <span className="text-muted-foreground">Not Charging</span>
-                      </>
-                    )}
-                  </div>
-                  {device.batteryHealth && (
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-5 h-5" />
-                      <span>Health: {device.batteryHealth}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Wifi
-                      className={`w-5 h-5 transition-colors ${
-                        device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                      }`}
-                    />
-                    <span>WiFi: {device.wifiStatus ? "On" : "Off"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Signal
-                      className={`w-5 h-5 transition-colors ${
-                        device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                      }`}
-                    />
-                    <span>Network: {device.networkConnected ? "Connected" : "Disconnected"}</span>
-                  </div>
-                  {device.mobileDataEnabled && (
-                    <div className="flex items-center gap-2">
-                      <Radio className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-blue-600 dark:text-blue-400">Mobile Data: On</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    {device.screenOn ? (
-                      <>
-                        <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        <span className="text-green-600 dark:text-green-400">Screen: On</span>
-                      </>
-                    ) : (
-                      <>
-                        <Activity className="w-5 h-5 text-muted-foreground" />
-                        <span className="text-muted-foreground">Screen: Off</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-muted-foreground" />
-                    <span>Volume: {device.volumeLevel || 0}%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {device.bluetoothEnabled ? (
-                      <>
-                        <Radio className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <span className="text-blue-600 dark:text-blue-400">Bluetooth: On</span>
-                      </>
-                    ) : (
-                      <>
-                        <Radio className="w-5 h-5 text-muted-foreground" />
-                        <span className="text-muted-foreground">Bluetooth: Off</span>
-                      </>
-                    )}
-                  </div>
-                  {device.installedAppsCount && (
-                    <div className="flex items-center gap-2">
-                      <Settings className="w-5 h-5" />
-                      <span>Apps: {device.installedAppsCount}</span>
-                    </div>
-                  )}
-                  {device.bootTime && (
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-5 h-5" />
-                      <span>
-                        Boot: {new Date(Number(device.bootTime)).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Status:</span>
-                    <Badge variant={getStatusVariant(device.status)} className="ml-1">
-                      {device.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Kiosk Mode:</span>
-                    {device.kioskMode ? (
-                      <Badge variant="outline" className="ml-1 border-primary/30">On</Badge>
-                    ) : (
-                      <Badge variant="muted" className="ml-1">Off</Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Location Card */}
+        {/* Quick Stats - Top Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Battery className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Battery</p>
+                  <p className="text-lg font-bold">{device.battery}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  device.wifiStatus ? "bg-green-500/10" : "bg-muted"
+                )}>
+                  <Wifi className={cn(
+                    "h-5 w-5",
+                    device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                  )} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">WiFi</p>
+                  <p className={cn(
+                    "text-lg font-bold",
+                    device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                  )}>
+                    {device.wifiStatus ? "เชื่อมต่อ" : "ไม่เชื่อมต่อ"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  device.networkConnected ? "bg-green-500/10" : "bg-muted"
+                )}>
+                  <Signal className={cn(
+                    "h-5 w-5",
+                    device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                  )} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Network</p>
+                  <p className={cn(
+                    "text-lg font-bold",
+                    device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                  )}>
+                    {device.networkConnected ? "เชื่อมต่อ" : "ไม่เชื่อมต่อ"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="card-hover">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Last Seen</p>
+                  <p className="text-sm font-medium line-clamp-1">
+                    {formatDistanceToNow(new Date(device.lastSeen), {
+                      addSuffix: true,
+                    })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Location Card - Priority: Show first */}
             {device.latitude && device.longitude ? (
               <Card className="card-hover">
                 <CardHeader>
-                  <CardTitle>Location</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>ตำแหน่งอุปกรณ์</CardTitle>
+                      <CardDescription className="mt-1">
+                        {device.latitude.toFixed(6)}, {device.longitude.toFixed(6)}
+                      </CardDescription>
+                    </div>
+                    <MapPin className="h-5 w-5 text-muted-foreground" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {device.latitude.toFixed(6)}, {device.longitude.toFixed(6)}
-                    </span>
-                  </div>
                   <DeviceMap
                     latitude={device.latitude}
                     longitude={device.longitude}
@@ -517,7 +492,7 @@ export default function DeviceDetailPage() {
             ) : (
               <Card className="card-hover">
                 <CardHeader>
-                  <CardTitle>Location</CardTitle>
+                  <CardTitle>ตำแหน่งอุปกรณ์</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="w-full h-64 bg-muted rounded-lg flex flex-col items-center justify-center">
@@ -528,35 +503,190 @@ export default function DeviceDetailPage() {
               </Card>
             )}
 
-            {/* Control Panel */}
+            {/* Device Status - Organized by Categories */}
             <Card className="card-hover">
               <CardHeader>
-                <CardTitle>Control Panel</CardTitle>
+                <CardTitle>สถานะอุปกรณ์</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Battery Section */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-foreground">แบตเตอรี่</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Battery className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">ระดับแบตเตอรี่</span>
+                      </div>
+                      <span className="font-semibold">{device.battery}%</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {device.isCharging ? (
+                          <Zap className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                        ) : (
+                          <Battery className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm">สถานะการชาร์จ</span>
+                      </div>
+                      {device.isCharging ? (
+                        <Badge variant="warning" className="text-xs">
+                          กำลังชาร์จ ({device.chargingMethod || "Unknown"})
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">ไม่ชาร์จ</span>
+                      )}
+                    </div>
+                    {device.batteryHealth && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">สุขภาพแบตเตอรี่</span>
+                        </div>
+                        <span className="font-semibold">{device.batteryHealth}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Network Section */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-foreground">เครือข่าย</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Wifi className={cn(
+                          "w-4 h-4",
+                          device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )} />
+                        <span className="text-sm">WiFi</span>
+                      </div>
+                      <Badge variant={device.wifiStatus ? "success" : "muted"} className="text-xs">
+                        {device.wifiStatus ? "เปิด" : "ปิด"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Signal className={cn(
+                          "w-4 h-4",
+                          device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )} />
+                        <span className="text-sm">เครือข่าย</span>
+                      </div>
+                      <Badge variant={device.networkConnected ? "success" : "muted"} className="text-xs">
+                        {device.networkConnected ? "เชื่อมต่อ" : "ไม่เชื่อมต่อ"}
+                      </Badge>
+                    </div>
+                    {device.mobileDataEnabled && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-sm">Mobile Data</span>
+                        </div>
+                        <Badge variant="info" className="text-xs">เปิด</Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* System Section */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-foreground">ระบบ</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Activity className={cn(
+                          "w-4 h-4",
+                          device.screenOn ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )} />
+                        <span className="text-sm">หน้าจอ</span>
+                      </div>
+                      <Badge variant={device.screenOn ? "success" : "muted"} className="text-xs">
+                        {device.screenOn ? "เปิด" : "ปิด"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">ระดับเสียง</span>
+                      </div>
+                      <span className="font-semibold">{device.volumeLevel || 0}%</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Radio className={cn(
+                          "w-4 h-4",
+                          device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                        )} />
+                        <span className="text-sm">Bluetooth</span>
+                      </div>
+                      <Badge variant={device.bluetoothEnabled ? "info" : "muted"} className="text-xs">
+                        {device.bluetoothEnabled ? "เปิด" : "ปิด"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">Kiosk Mode</span>
+                      </div>
+                      {device.kioskMode ? (
+                        <Badge variant="outline" className="text-xs border-primary/30">เปิด</Badge>
+                      ) : (
+                        <Badge variant="muted" className="text-xs">ปิด</Badge>
+                      )}
+                    </div>
+                    {device.installedAppsCount && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">แอปที่ติดตั้ง</span>
+                        </div>
+                        <span className="font-semibold">{device.installedAppsCount}</span>
+                      </div>
+                    )}
+                    {device.bootTime && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">เวลาบูต</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(Number(device.bootTime)).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Control Panel - All Controls Together */}
+            <Card className="card-hover">
+              <CardHeader>
+                <CardTitle>แผงควบคุม</CardTitle>
                 <CardDescription>
-                  Send commands to control the device remotely
+                  ส่งคำสั่งควบคุมอุปกรณ์จากระยะไกล
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {/* Alert Section */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Alerts & Notifications</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button
-                        onClick={() => sendCommand("PLAY_SOUND")}
-                        disabled={sendingCommand}
-                        variant="default"
-                        className="w-full"
-                      >
-                        <Bell className="w-4 h-4 mr-2" />
-                        Send Alert Sound
-                      </Button>
-                    </div>
+                    <h4 className="text-sm font-semibold mb-3 text-foreground">การแจ้งเตือน</h4>
+                    <Button
+                      onClick={() => sendCommand("PLAY_SOUND")}
+                      disabled={sendingCommand}
+                      variant="default"
+                      className="w-full"
+                    >
+                      <Bell className="w-4 h-4 mr-2" />
+                      ส่งเสียงแจ้งเตือน
+                    </Button>
                   </div>
 
                   {/* Device Control Section */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Device Control</h4>
+                    <h4 className="text-sm font-semibold mb-3 text-foreground">ควบคุมอุปกรณ์</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         onClick={() => sendCommand("LOCK_DEVICE")}
@@ -564,7 +694,7 @@ export default function DeviceDetailPage() {
                         variant="outline"
                       >
                         <Lock className="w-4 h-4 mr-2" />
-                        Lock
+                        ล็อค
                       </Button>
                       <Button
                         onClick={() => sendCommand("RESTART_DEVICE")}
@@ -572,94 +702,92 @@ export default function DeviceDetailPage() {
                         variant="outline"
                       >
                         <Power className="w-4 h-4 mr-2" />
-                        Restart
+                        รีสตาร์ท
                       </Button>
                     </div>
                   </div>
 
                   {/* Network Control Section */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Network</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        onClick={() => sendCommand("WIFI_ON")}
+                    <h4 className="text-sm font-semibold mb-3 text-foreground">เครือข่าย</h4>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Wifi className={cn(
+                          "w-4 h-4",
+                          device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )} />
+                        <Label htmlFor="wifi-toggle" className="text-sm font-medium cursor-pointer">
+                          WiFi
+                        </Label>
+                      </div>
+                      <Switch
+                        id="wifi-toggle"
+                        checked={device.wifiStatus}
+                        onCheckedChange={(checked) => {
+                          sendCommand(checked ? "WIFI_ON" : "WIFI_OFF");
+                        }}
                         disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Radio className="w-4 h-4 mr-2" />
-                        WiFi On
-                      </Button>
-                      <Button
-                        onClick={() => sendCommand("WIFI_OFF")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Radio className="w-4 h-4 mr-2" />
-                        WiFi Off
-                      </Button>
+                      />
                     </div>
                   </div>
 
                   {/* Kiosk Mode Section */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Kiosk Mode</h4>
+                    <h4 className="text-sm font-semibold mb-3 text-foreground">โหมด Kiosk</h4>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Square className={cn(
+                          "w-4 h-4",
+                          device.kioskMode ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        <Label htmlFor="kiosk-toggle" className="text-sm font-medium cursor-pointer">
+                          Kiosk Mode
+                        </Label>
+                      </div>
+                      <Switch
+                        id="kiosk-toggle"
+                        checked={device.kioskMode}
+                        onCheckedChange={(checked) => {
+                          sendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK");
+                        }}
+                        disabled={sendingCommand}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Camera Control Section */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3 text-foreground">กล้อง</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        onClick={() => sendCommand("ENABLE_KIOSK")}
+                        onClick={() => sendCommand("OPEN_CAMERA")}
                         disabled={sendingCommand}
                         variant="outline"
                       >
-                        <Square className="w-4 h-4 mr-2" />
-                        Enable Kiosk
+                        <Camera className="w-4 h-4 mr-2" />
+                        เปิดกล้อง
                       </Button>
-                  <Button
-                    onClick={() => sendCommand("DISABLE_KIOSK")}
-                    disabled={sendingCommand}
-                    variant="outline"
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Disable Kiosk
-                  </Button>
+                      <Button
+                        onClick={() => sendCommand("TAKE_PHOTO")}
+                        disabled={sendingCommand}
+                        variant="default"
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        ถ่ายรูป
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-            {/* Camera Control */}
-            <Card className="card-hover">
-              <CardHeader>
-                <CardTitle>Camera</CardTitle>
-                <CardDescription>
-                  Control camera on device
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  onClick={() => sendCommand("OPEN_CAMERA")}
-                  disabled={sendingCommand}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Open Camera
-                </Button>
-                <Button
-                  onClick={() => sendCommand("TAKE_PHOTO")}
-                  disabled={sendingCommand}
-                  variant="default"
-                  className="w-full"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Take Photo
-                </Button>
               </CardContent>
             </Card>
 
-            {/* History */}
+            {/* Action History */}
             <Card className="card-hover">
               <CardHeader>
-                <CardTitle>Action History</CardTitle>
+                <CardTitle>ประวัติการทำงาน</CardTitle>
+                <CardDescription>
+                  รายการคำสั่งและกิจกรรมล่าสุด
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -669,14 +797,14 @@ export default function DeviceDetailPage() {
                         key={index}
                         className="flex items-center justify-between p-3 border rounded-lg transition-all duration-200 hover:border-primary/30 hover:bg-accent/50"
                       >
-                        <div>
-                          <p className="font-medium text-sm">{log.action}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{log.action}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(log.createdAt).toLocaleString()}
                           </p>
                         </div>
                         {log.user && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs ml-2 shrink-0">
                             {log.user}
                           </Badge>
                         )}
@@ -695,75 +823,172 @@ export default function DeviceDetailPage() {
             </Card>
           </div>
 
-          {/* Right Column - Actions */}
+          {/* Right Column - Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
             <Card className="card-hover">
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>การดำเนินการด่วน</CardTitle>
+                <CardDescription>
+                  ยืม/คืนอุปกรณ์
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button
                   onClick={handleBorrow}
                   className="w-full"
-                  variant="outline"
+                  variant="default"
                 >
-                  Borrow Device
+                  ยืมอุปกรณ์
                 </Button>
                 <Button
                   onClick={handleReturn}
                   className="w-full"
                   variant="outline"
                 >
-                  Return Device
+                  คืนอุปกรณ์
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Metrics */}
+            {/* System Metrics */}
             {device.metrics && device.metrics.length > 0 && (
               <Card className="card-hover">
                 <CardHeader>
-                  <CardTitle>Latest Metrics</CardTitle>
+                  <CardTitle>ประสิทธิภาพระบบ</CardTitle>
+                  <CardDescription>
+                    ข้อมูลล่าสุด
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">CPU</p>
-                      <p className="text-lg font-bold">
-                        {device.metrics[0]?.cpu?.toFixed(1) || 0}%
-                      </p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">CPU</span>
+                        <span className="text-sm font-semibold">
+                          {device.metrics[0]?.cpu?.toFixed(1) || 0}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${device.metrics[0]?.cpu || 0}%` }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Memory</p>
-                      <p className="text-lg font-bold">
-                        {device.metrics[0]?.memoryUsed
-                          ? (
-                              (Number(device.metrics[0].memoryUsed) /
-                                Number(device.metrics[0].memoryTotal)) *
-                              100
-                            ).toFixed(1)
-                          : 0}
-                        %
-                      </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Memory</span>
+                        <span className="text-sm font-semibold">
+                          {device.metrics[0]?.memoryUsed
+                            ? (
+                                (Number(device.metrics[0].memoryUsed) /
+                                  Number(device.metrics[0].memoryTotal)) *
+                                100
+                              ).toFixed(1)
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all"
+                          style={{
+                            width: `${device.metrics[0]?.memoryUsed
+                              ? (
+                                  (Number(device.metrics[0].memoryUsed) /
+                                    Number(device.metrics[0].memoryTotal)) *
+                                  100
+                                )
+                              : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Storage</p>
-                      <p className="text-lg font-bold">
-                        {device.metrics[0]?.storageUsed
-                          ? (
-                              (Number(device.metrics[0].storageUsed) /
-                                Number(device.metrics[0].storageTotal)) *
-                              100
-                            ).toFixed(1)
-                          : 0}
-                        %
-                      </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Storage</span>
+                        <span className="text-sm font-semibold">
+                          {device.metrics[0]?.storageUsed
+                            ? (
+                                (Number(device.metrics[0].storageUsed) /
+                                  Number(device.metrics[0].storageTotal)) *
+                                100
+                              ).toFixed(1)
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-500 transition-all"
+                          style={{
+                            width: `${device.metrics[0]?.storageUsed
+                              ? (
+                                  (Number(device.metrics[0].storageUsed) /
+                                    Number(device.metrics[0].storageTotal)) *
+                                  100
+                                )
+                              : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Device Info Summary */}
+            <Card className="card-hover">
+              <CardHeader>
+                <CardTitle>ข้อมูลอุปกรณ์</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Device Code</span>
+                  <span className="text-sm font-medium">{device.deviceCode}</span>
+                </div>
+                {device.name && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">ชื่อ</span>
+                    <span className="text-sm font-medium">{device.name}</span>
+                  </div>
+                )}
+                {device.serialNumber && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Serial Number</span>
+                    <span className="text-sm font-medium">{device.serialNumber}</span>
+                  </div>
+                )}
+                {device.model && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">รุ่น</span>
+                    <span className="text-sm font-medium">{device.model}</span>
+                  </div>
+                )}
+                {device.osVersion && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">OS Version</span>
+                    <span className="text-sm font-medium">{device.osVersion}</span>
+                  </div>
+                )}
+                <div className="pt-2 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">สถานะ</span>
+                    <Badge variant={getStatusVariant(device.status)} className="text-xs">
+                      {device.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Last Seen</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(device.lastSeen), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
