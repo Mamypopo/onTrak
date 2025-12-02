@@ -481,7 +481,7 @@ export default function DeviceDetailPage() {
 
         {/* Quick Stats - Top Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-hover bg-secondary/20">
+          <Card className="card-hover ">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={cn(

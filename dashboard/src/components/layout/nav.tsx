@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { LogOut, Menu, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useState } from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { LogOut, Menu, X, LayoutDashboard, Users, Settings2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function Nav() {
   const pathname = usePathname()
@@ -13,59 +13,90 @@ export function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    router.push('/login')
+    localStorage.removeItem("token")
+    router.push("/login")
     router.refresh()
   }
 
-  const isDashboard = pathname === '/dashboard'
-  const isDeviceDetail = pathname?.startsWith('/dashboard/device/')
-  const isUsers = pathname === '/dashboard/users'
-  const isSettings = pathname === '/dashboard/settings'
+  const isDashboard = pathname === "/dashboard"
+  const isDeviceDetail = pathname?.startsWith("/dashboard/device/")
+  const isUsers = pathname === "/dashboard/users"
+  const isSettings = pathname === "/dashboard/settings"
+
+  const getDashboardLabel = () => {
+    if (isDeviceDetail) return "Device Detail"
+    return "Dashboard"
+  }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <span className="text-xl font-bold">OnTrak MDM</span>
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between px-4 gap-4">
+        {/* Left: Brand */}
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-sm">
+              <span className="text-sm font-bold">ON</span>
+            </div>
+            <div className="hidden sm:flex flex-col leading-tight">
+              <span className="text-sm font-semibold tracking-tight">OnTrak MDM</span>
+              <span className="text-[11px] text-muted-foreground">Tablet Fleet Console</span>
+            </div>
           </Link>
-          
-          <div className="hidden md:flex items-center gap-4">
+        </div>
+
+        {/* Center: Main nav (desktop) */}
+        <div className="hidden md:flex flex-1 justify-center">
+          <div className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-1 py-1 shadow-sm">
             <Link
               href="/dashboard"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isDashboard ? 'text-primary' : 'text-muted-foreground'
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                isDashboard || isDeviceDetail
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Dashboard
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span>{getDashboardLabel()}</span>
             </Link>
             <Link
               href="/dashboard/users"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isUsers ? 'text-primary' : 'text-muted-foreground'
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                isUsers
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Users
+              <Users className="h-3.5 w-3.5" />
+              <span>Users</span>
             </Link>
             <Link
               href="/dashboard/settings"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isSettings ? 'text-primary' : 'text-muted-foreground'
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                isSettings
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Settings
+              <Settings2 className="h-3.5 w-3.5" />
+              <span>Settings</span>
             </Link>
           </div>
         </div>
 
+        {/* Right: actions */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:flex">
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            className="hidden md:inline-flex"
+          >
             <LogOut className="h-5 w-5" />
           </Button>
 
+          {/* Mobile menu toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -77,32 +108,41 @@ export function Nav() {
         </div>
       </div>
 
+      {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t">
-          <div className="container px-4 py-2 space-y-2">
+        <div className="md:hidden border-t bg-background/95 backdrop-blur">
+          <div className="container px-4 py-3 space-y-1">
             <Link
               href="/dashboard"
-              className="block py-2 text-sm font-medium"
+              className="flex items-center gap-2 py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Dashboard
+              <LayoutDashboard className="h-4 w-4" />
+              <span>{getDashboardLabel()}</span>
             </Link>
             <Link
               href="/dashboard/users"
-              className="block py-2 text-sm font-medium"
+              className="flex items-center gap-2 py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Users
+              <Users className="h-4 w-4" />
+              <span>Users</span>
             </Link>
             <Link
               href="/dashboard/settings"
-              className="block py-2 text-sm font-medium"
+              className="flex items-center gap-2 py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Settings
+              <Settings2 className="h-4 w-4" />
+              <span>Settings</span>
             </Link>
-            <div className="pt-2 border-t">
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full justify-start">
+            <div className="pt-2 mt-1 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start"
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
