@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -412,9 +412,18 @@ export default function UsersPage() {
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full">
-                    {editingUser ? "อัปเดต" : "สร้าง"}
-                  </Button>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      ยกเลิก
+                    </Button>
+                    <Button type="submit">
+                      {editingUser ? "อัปเดต" : "สร้าง"}
+                    </Button>
+                  </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
@@ -422,7 +431,7 @@ export default function UsersPage() {
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="bg-secondary/30">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">

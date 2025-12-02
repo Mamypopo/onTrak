@@ -378,7 +378,7 @@ export default function DeviceDetailPage() {
                 อุปกรณ์ที่คุณกำลังมองหาไม่มีอยู่ในระบบ
               </p>
               <Link href="/dashboard">
-                <Button>
+                <Button variant="secondary">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   กลับไป Dashboard
                 </Button>
@@ -411,7 +411,7 @@ export default function DeviceDetailPage() {
         {/* Header */}
         <div className="flex items-center gap-4">
           <Link href="/dashboard">
-            <Button variant="ghost" size="icon">
+            <Button variant="secondary" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -430,7 +430,7 @@ export default function DeviceDetailPage() {
 
         {/* Quick Stats - Top Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-hover">
+          <Card className="card-hover bg-secondary/20">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -929,7 +929,7 @@ export default function DeviceDetailPage() {
                                   </div>
                                   {/* Content */}
                                   <div className="pl-4">
-                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-primary/20 transition-all duration-200">
+                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-all duration-200">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-1">
@@ -1048,7 +1048,7 @@ export default function DeviceDetailPage() {
                                   </div>
                                   {/* Content */}
                                   <div className="pl-4">
-                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-primary/20 transition-all duration-200">
+                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-all duration-200">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-1">
