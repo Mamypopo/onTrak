@@ -5,7 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { calculateSimplifiedRoute } from "@/lib/routing";
-import { Maximize2, Minimize2, Navigation } from "lucide-react";
+import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
@@ -156,6 +157,50 @@ export default function DeviceMap({
     return `https://www.google.com/maps?q=${lat},${lng}${labelParam}`;
   };
 
+  // Helper function to generate Google Maps navigation link
+  const getGoogleMapsNavigationLink = (lat: number, lng: number, label?: string) => {
+    const labelParam = label ? `&destination=${encodeURIComponent(label)}` : '';
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${labelParam}`;
+  };
+
+  // Helper function to generate Google Street View link
+  const getGoogleStreetViewLink = (lat: number, lng: number) => {
+    return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+  };
+
+  // Copy coordinates to clipboard
+  const copyCoordinates = async (lat: number, lng: number) => {
+    try {
+      await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      // You can add a toast notification here
+      alert('คัดลอกพิกัดแล้ว!');
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
+  // Share location
+  const shareLocation = async (lat: number, lng: number, label?: string) => {
+    const url = getGoogleMapsLink(lat, lng, label);
+    const text = label ? `ตำแหน่ง: ${label}` : 'ตำแหน่ง';
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: text,
+          text: `พิกัด: ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+          url: url,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      await copyCoordinates(lat, lng);
+    }
+  };
+
+
   // Component to handle map updates
   function MapUpdater({ 
     center, 
@@ -284,24 +329,55 @@ export default function DeviceMap({
         {/* จุดเริ่มต้น (ถ้ามี history) */}
         {routePositions.length > 0 && (
           <Marker position={routePositions[0]}>
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold">Start Point</p>
-                <p className="text-muted-foreground text-xs">
-                  {new Date(locationHistory[0].createdAt).toLocaleString('th-TH')}
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  {routePositions[0][0].toFixed(6)}, {routePositions[0][1].toFixed(6)}
-                </p>
-                <a
-                  href={getGoogleMapsLink(routePositions[0][0], routePositions[0][1], "Start Point")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs underline"
-                >
-                  <Navigation className="h-3 w-3" />
-                  เปิดใน Google Maps
-                </a>
+            <Popup className="custom-popup">
+              <div className="text-sm space-y-2 min-w-[200px]">
+                <div>
+                  <p className="font-semibold text-base">จุดเริ่มต้น</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    {new Date(locationHistory[0].createdAt).toLocaleString('th-TH')}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span className="font-mono">{routePositions[0][0].toFixed(6)}, {routePositions[0][1].toFixed(6)}</span>
+                  <button
+                    onClick={() => copyCoordinates(routePositions[0][0], routePositions[0][1])}
+                    className="ml-auto p-1 hover:bg-gray-100 rounded"
+                    title="คัดลอกพิกัด"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t">
+                  <div className="flex gap-1">
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                    >
+                      <a
+                        href={getGoogleMapsLink(routePositions[0][0], routePositions[0][1], "Start Point")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>ดูใน Maps</span>
+                      </a>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => shareLocation(routePositions[0][0], routePositions[0][1], "Start Point")}
+                    >
+                      <Share2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -309,26 +385,75 @@ export default function DeviceMap({
 
         {/* จุดปัจจุบัน */}
         <Marker position={[latitude, longitude]}>
-          <Popup>
-            <div className="text-sm">
-              <p className="font-semibold">{deviceName || deviceCode || "Device"}</p>
-              <p className="text-muted-foreground">
-                {latitude.toFixed(6)}, {longitude.toFixed(6)}
-              </p>
-              {locationHistory.length > 0 && (
-                <p className="text-muted-foreground text-xs mt-1">
-                  Route points: {locationHistory.length}
-                </p>
-              )}
-              <a
-                href={getGoogleMapsLink(latitude, longitude, deviceName || deviceCode || "Device")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs underline"
-              >
-                <Navigation className="h-3 w-3" />
-                เปิดใน Google Maps
-              </a>
+          <Popup className="custom-popup">
+            <div className="text-sm space-y-2 min-w-[200px]">
+              <div>
+                <p className="font-semibold text-base">{deviceName || deviceCode || "Device"}</p>
+                {locationHistory.length > 0 && (
+                  <p className="text-muted-foreground text-xs mt-1">
+                    <Route className="h-3 w-3 inline mr-1" />
+                    {locationHistory.length} จุดในเส้นทาง
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                <span className="font-mono">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
+                <button
+                  onClick={() => copyCoordinates(latitude, longitude)}
+                  className="ml-auto p-1 hover:bg-gray-100 rounded"
+                  title="คัดลอกพิกัด"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="pt-2 border-t">
+                <div className="flex gap-1 mb-1.5">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                  >
+                    <a
+                      href={getGoogleMapsLink(latitude, longitude, deviceName || deviceCode || "Device")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span>ดูใน Maps</span>
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => shareLocation(latitude, longitude, deviceName || deviceCode || "Device")}
+                  >
+                    <Share2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                >
+                  <a
+                    href={getGoogleStreetViewLink(latitude, longitude)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    <span>Street View</span>
+                  </a>
+                </Button>
+              </div>
             </div>
           </Popup>
         </Marker>

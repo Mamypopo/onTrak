@@ -69,3 +69,9 @@
   border-radius: 0.5rem;
 }
 
+/* Custom Popup Styles */
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 12px;
+}
+
