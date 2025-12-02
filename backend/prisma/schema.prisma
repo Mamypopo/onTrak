@@ -107,6 +107,7 @@ model DeviceActionLog {
   @@index([action])
   @@index([createdAt])
   @@index([userId])
+  @@index([deviceId, action, createdAt]) // Composite index สำหรับ query BOOT event ในวันนี้
   @@map("device_action_logs")
 }
 

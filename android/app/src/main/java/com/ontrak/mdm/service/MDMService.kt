@@ -206,13 +206,9 @@ class MDMService : Service() {
     }
     
     private fun publishHeartbeat() {
-        // Heartbeat is included in status, but we can send a simple event
-        val event = DeviceEvent(
-            deviceId = deviceId,
-            eventType = EventType.BOOT,
-            message = "Heartbeat"
-        )
-        mqttManager?.publishEvent(event)
+        // Heartbeat ไม่จำเป็นต้องส่ง event
+        // Status update (publishStatus) ก็เพียงพอแล้วสำหรับการตรวจสอบว่า device ยัง online อยู่
+        // ไม่ส่ง BOOT event เพราะจะทำให้ log เยอะเกินไป
     }
     
     private fun publishStatus() {

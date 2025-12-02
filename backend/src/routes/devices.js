@@ -81,6 +81,15 @@ async function deviceRoutes(fastify, options) {
     },
     deviceController.getDeviceHistory
   );
+
+  // Get all borrow records
+  fastify.get(
+    "/borrows",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.getAllBorrowRecords
+  );
 }
 
 export default deviceRoutes;

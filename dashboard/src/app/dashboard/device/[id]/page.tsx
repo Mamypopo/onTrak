@@ -13,14 +13,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, Settings,
-  Square, Bell, Camera, Zap, Signal
+  Square, Bell, Camera, Zap, Signal,
+  User, Package, PackageCheck, Clock
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { getSwalConfig } from "@/lib/swal-config";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { formatDistanceToNow } from "date-fns";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from "date-fns";
+import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 // Dynamic import for Map component to avoid SSR issues
@@ -70,6 +73,11 @@ export default function DeviceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sendingCommand, setSendingCommand] = useState(false);
   const [locationHistory, setLocationHistory] = useState<any[]>([]);
+  const [actionLogs, setActionLogs] = useState<any[]>([]);
+  const [borrowRecords, setBorrowRecords] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [hasMoreLogs, setHasMoreLogs] = useState(true);
+  const [logsPage, setLogsPage] = useState(0);
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -124,6 +132,46 @@ export default function DeviceDetailPage() {
     }
   }, [deviceId]);
 
+  const fetchActionLogs = useCallback(async (page: number = 0, append: boolean = false) => {
+    try {
+      setLoadingLogs(true);
+      const limit = 20;
+      const offset = page * limit;
+      
+      const response = await api.get(`/api/device/${deviceId}/history?limit=${limit}&offset=${offset}`);
+      if (response.data.success) {
+        const newLogs = response.data.data?.logs || [];
+        const borrows = response.data.data?.borrows || [];
+        
+        if (append) {
+          setActionLogs((prev) => [...prev, ...newLogs]);
+        } else {
+          setActionLogs(newLogs);
+          setBorrowRecords(borrows);
+        }
+        
+        // ถ้าได้น้อยกว่า limit แสดงว่าไม่มีข้อมูลเพิ่มแล้ว
+        setHasMoreLogs(newLogs.length === limit);
+      }
+    } catch (error: any) {
+      console.error("Error fetching action logs:", error);
+      if (!append) {
+        setActionLogs([]);
+        setBorrowRecords([]);
+      }
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, [deviceId]);
+
+  const loadMoreLogs = useCallback(() => {
+    if (!loadingLogs && hasMoreLogs) {
+      const nextPage = logsPage + 1;
+      setLogsPage(nextPage);
+      fetchActionLogs(nextPage, true);
+    }
+  }, [loadingLogs, hasMoreLogs, logsPage, fetchActionLogs]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -133,7 +181,8 @@ export default function DeviceDetailPage() {
 
     fetchDevice();
     fetchLocationHistory();
-  }, [deviceId, router, fetchDevice, fetchLocationHistory]);
+    fetchActionLogs(0, false);
+  }, [deviceId, router, fetchDevice, fetchLocationHistory, fetchActionLogs]);
 
   const sendCommand = async (action: string, params?: any) => {
     setSendingCommand(true);
@@ -723,8 +772,10 @@ export default function DeviceDetailPage() {
                       <Switch
                         id="wifi-toggle"
                         checked={device.wifiStatus}
-                        onCheckedChange={(checked) => {
-                          sendCommand(checked ? "WIFI_ON" : "WIFI_OFF");
+                        onCheckedChange={async (checked) => {
+                          // Optimistic update
+                          setDevice((prev) => prev ? { ...prev, wifiStatus: checked } : null);
+                          await sendCommand(checked ? "WIFI_ON" : "WIFI_OFF");
                         }}
                         disabled={sendingCommand}
                       />
@@ -747,8 +798,10 @@ export default function DeviceDetailPage() {
                       <Switch
                         id="kiosk-toggle"
                         checked={device.kioskMode}
-                        onCheckedChange={(checked) => {
-                          sendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK");
+                        onCheckedChange={async (checked) => {
+                          // Optimistic update
+                          setDevice((prev) => prev ? { ...prev, kioskMode: checked } : null);
+                          await sendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK");
                         }}
                         disabled={sendingCommand}
                       />
@@ -781,44 +834,278 @@ export default function DeviceDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Action History */}
+            {/* Action History - Timeline with Tabs */}
             <Card className="card-hover">
               <CardHeader>
                 <CardTitle>ประวัติการทำงาน</CardTitle>
                 <CardDescription>
-                  รายการคำสั่งและกิจกรรมล่าสุด
+                  รายการคำสั่ง กิจกรรม และการเบิก/คืนอุปกรณ์
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {device.actionLogs && device.actionLogs.length > 0 ? (
-                    device.actionLogs.map((log: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 border rounded-lg transition-all duration-200 hover:border-primary/30 hover:bg-accent/50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{log.action}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(log.createdAt).toLocaleString()}
-                          </p>
+                <Tabs defaultValue="activity" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="activity">
+                      <Activity className="w-4 h-4 mr-2" />
+                      กิจกรรม
+                    </TabsTrigger>
+                    <TabsTrigger value="borrow">
+                      <Package className="w-4 h-4 mr-2" />
+                      การเบิก/คืน
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Activity Logs Tab */}
+                  <TabsContent value="activity" className="mt-4">
+                    {loadingLogs && actionLogs.length === 0 ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))}
+                      </div>
+                    ) : actionLogs.length > 0 ? (
+                      <div className="relative">
+                        {/* Timeline */}
+                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+                          {actionLogs.map((log: any, index: number) => {
+                            const logDate = new Date(log.createdAt);
+                            const prevLogDate = index > 0 ? new Date(actionLogs[index - 1].createdAt) : null;
+                            const showDateSeparator = !prevLogDate || !isSameDay(logDate, prevLogDate);
+                            
+                            const getActionIcon = (action: string) => {
+                              if (action.includes("COMMAND_")) {
+                                const cmd = action.replace("COMMAND_", "");
+                                if (cmd.includes("WIFI")) return <Wifi className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("KIOSK")) return <Square className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("LOCK")) return <Lock className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("RESTART") || cmd.includes("POWER")) return <Power className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("CAMERA")) return <Camera className="w-3.5 h-3.5 text-primary" />;
+                                if (cmd.includes("SOUND") || cmd.includes("BELL")) return <Bell className="w-3.5 h-3.5 text-primary" />;
+                              }
+                              // Event icons
+                              if (action === 'BOOT') return <Power className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />;
+                              if (action === 'SHUTDOWN') return <Power className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />;
+                              if (action === 'LOCK') return <Lock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />;
+                              if (action === 'UNLOCK') return <Lock className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />;
+                              if (action === 'KIOSK_ENABLED') return <Square className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />;
+                              if (action === 'KIOSK_DISABLED') return <Square className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />;
+                              if (action === 'ERROR') return <Activity className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />;
+                              return <Activity className="w-3.5 h-3.5 text-primary" />;
+                            };
+
+                            const formatTime = (date: Date) => {
+                              if (isToday(date)) {
+                                return format(date, "HH:mm", { locale: th });
+                              } else if (isYesterday(date)) {
+                                return `เมื่อวาน ${format(date, "HH:mm", { locale: th })}`;
+                              } else {
+                                return format(date, "d MMM HH:mm", { locale: th });
+                              }
+                            };
+
+                            const formatDateHeader = (date: Date) => {
+                              if (isToday(date)) return "วันนี้";
+                              if (isYesterday(date)) return "เมื่อวาน";
+                              return format(date, "d MMMM yyyy", { locale: th });
+                            };
+
+                            return (
+                              <div key={log.id || `log-${index}`}>
+                                {showDateSeparator && (
+                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 mb-2 border-b">
+                                    <p className="text-xs font-semibold text-muted-foreground">
+                                      {formatDateHeader(logDate)}
+                                    </p>
+                                  </div>
+                                )}
+                                <div className="relative pl-4 pb-4 last:pb-0 group">
+                                  {/* Timeline line */}
+                                  {index < actionLogs.length - 1 && (
+                                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/30 to-transparent" />
+                                  )}
+                                  {/* Timeline dot */}
+                                  <div className="absolute left-0 top-1.5 -translate-x-1/2">
+                                    <div className="h-3 w-3 rounded-full bg-primary border-2 border-background shadow-sm group-hover:scale-125 transition-transform" />
+                                  </div>
+                                  {/* Content */}
+                                  <div className="pl-4">
+                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-primary/20 transition-all duration-200">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <div className="mt-0.5 shrink-0">
+                                              {getActionIcon(log.action)}
+                                            </div>
+                                            <p className="font-medium text-sm">
+                                              {log.action.replace("COMMAND_", "").replace(/_/g, " ")}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            {log.user && (
+                                              <div className="flex items-center gap-1.5">
+                                                <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                  <User className="h-2.5 w-2.5 text-primary" />
+                                                </div>
+                                                <span className="text-xs font-medium text-foreground">{log.user}</span>
+                                              </div>
+                                            )}
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {formatTime(logDate)}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        {log.user && (
-                          <Badge variant="outline" className="text-xs ml-2 shrink-0">
-                            {log.user}
-                          </Badge>
+
+                        {/* Load More Button */}
+                        {hasMoreLogs && (
+                          <div className="mt-4 pt-4 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full"
+                              onClick={loadMoreLogs}
+                              disabled={loadingLogs}
+                            >
+                              {loadingLogs ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                                  กำลังโหลด...
+                                </>
+                              ) : (
+                                <>
+                                  <Activity className="w-4 h-4 mr-2" />
+                                  โหลดเพิ่มเติม
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Activity className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        ยังไม่มีประวัติการทำงาน
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                          <Activity className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">ยังไม่มี activity log</p>
+                        <p className="text-xs text-muted-foreground/80">กิจกรรมจะแสดงที่นี่เมื่อมีการดำเนินการ</p>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Borrow Records Tab */}
+                  <TabsContent value="borrow" className="mt-4">
+                    {borrowRecords.length > 0 ? (
+                      <div className="relative">
+                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+                          {borrowRecords.map((borrow: any, index: number) => {
+                            const borrowDate = new Date(borrow.borrowTime);
+                            const prevBorrowDate = index > 0 ? new Date(borrowRecords[index - 1].borrowTime) : null;
+                            const showDateSeparator = !prevBorrowDate || !isSameDay(borrowDate, prevBorrowDate);
+
+                            const formatTime = (date: Date) => {
+                              if (isToday(date)) {
+                                return format(date, "HH:mm", { locale: th });
+                              } else if (isYesterday(date)) {
+                                return `เมื่อวาน ${format(date, "HH:mm", { locale: th })}`;
+                              } else {
+                                return format(date, "d MMM HH:mm", { locale: th });
+                              }
+                            };
+
+                            const formatDateHeader = (date: Date) => {
+                              if (isToday(date)) return "วันนี้";
+                              if (isYesterday(date)) return "เมื่อวาน";
+                              return format(date, "d MMMM yyyy", { locale: th });
+                            };
+
+                            return (
+                              <div key={borrow.id || `borrow-${index}`}>
+                                {showDateSeparator && (
+                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 mb-2 border-b">
+                                    <p className="text-xs font-semibold text-muted-foreground">
+                                      {formatDateHeader(borrowDate)}
+                                    </p>
+                                  </div>
+                                )}
+                                <div className="relative pl-4 pb-4 last:pb-0 group">
+                                  {/* Timeline line */}
+                                  {index < borrowRecords.length - 1 && (
+                                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/30 to-transparent" />
+                                  )}
+                                  {/* Timeline dot */}
+                                  <div className="absolute left-0 top-1.5 -translate-x-1/2">
+                                    <div className={cn(
+                                      "h-3 w-3 rounded-full border-2 border-background shadow-sm group-hover:scale-125 transition-transform",
+                                      borrow.returnTime ? "bg-green-500" : "bg-blue-500"
+                                    )} />
+                                  </div>
+                                  {/* Content */}
+                                  <div className="pl-4">
+                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-primary/20 transition-all duration-200">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            {borrow.returnTime ? (
+                                              <PackageCheck className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                            ) : (
+                                              <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                            )}
+                                            <p className="font-medium text-sm">
+                                              {borrow.returnTime ? "คืนอุปกรณ์" : "ยืมอุปกรณ์"}
+                                            </p>
+                                          </div>
+                                          {borrow.reason && (
+                                            <p className="text-xs text-muted-foreground mb-1">
+                                              เหตุผล: {borrow.reason}
+                                            </p>
+                                          )}
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <div className="flex items-center gap-1.5">
+                                              <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                <User className="h-2.5 w-2.5 text-primary" />
+                                              </div>
+                                              <span className="text-xs font-medium text-foreground">{borrow.user}</span>
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {formatTime(borrowDate)}
+                                            </span>
+                                            {borrow.returnTime && (
+                                              <span className="text-[10px] text-muted-foreground">
+                                                • คืน: {formatTime(new Date(borrow.returnTime))}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <Badge variant={borrow.returnTime ? "success" : "info"} className="text-xs shrink-0">
+                                          {borrow.returnTime ? "คืนแล้ว" : "กำลังยืม"}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                          <Package className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">ยังไม่มีประวัติการเบิก/คืน</p>
+                        <p className="text-xs text-muted-foreground/80">ประวัติการเบิก/คืนจะแสดงที่นี่</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>

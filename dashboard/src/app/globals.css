@@ -11,14 +11,14 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262.1 83.3% 57.8%; /* Purple */
+    --primary: 262.1 83.3% 57.8%; /* Purple - สีหลักสำหรับ CTA, links, important actions */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%; /* Slate - สีรองสำหรับ secondary buttons, backgrounds (ต่างจาก background) */
+    --secondary-foreground: 210 40% 98%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 280 70% 70%; /* Lighter Purple - สีเน้นสำหรับ hover, highlights, special elements (ต่างจาก primary) */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
@@ -49,12 +49,12 @@
     /* --primary: 24.6 95% 53.1%; */
 
     --primary-foreground: 0 0% 11%;
-    --secondary: 0 0% 18%; /* Dark gray for secondary elements */
+    --secondary: 217.2 32.6% 25%; /* Slate - สีรองสำหรับ secondary buttons, backgrounds (ต่างจาก background 11%) */
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 63%; /* Softer gray for muted text */
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 280 70% 75%; /* Lighter Purple - สีเน้นสำหรับ hover, highlights, special elements (ต่างจาก primary) */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 18%; /* Subtle border */

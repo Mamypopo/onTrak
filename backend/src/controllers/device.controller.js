@@ -459,3 +459,71 @@ export async function getDeviceHistory(request, reply) {
   }
 }
 
+/**
+ * Get all borrow records
+ */
+export async function getAllBorrowRecords(request, reply) {
+  try {
+    const { 
+      limit = 50, 
+      offset = 0, 
+      status, 
+      userId,
+      deviceId 
+    } = request.query;
+
+    const where = {};
+    
+    if (status) {
+      where.status = status;
+    }
+    
+    if (userId) {
+      where.userId = userId;
+    }
+    
+    if (deviceId) {
+      where.deviceId = deviceId;
+    }
+
+    const [borrowRecords, total] = await Promise.all([
+      prisma.borrowRecord.findMany({
+        where,
+        orderBy: { borrowTime: 'desc' },
+        take: parseInt(limit),
+        skip: parseInt(offset),
+        include: {
+          device: {
+            select: {
+              id: true,
+              deviceCode: true,
+              name: true,
+            },
+          },
+          userRef: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+            },
+          },
+        },
+      }),
+      prisma.borrowRecord.count({ where }),
+    ]);
+
+    return {
+      success: true,
+      data: borrowRecords,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error fetching borrow records');
+    return reply.code(500).send({
+      error: 'Internal server error',
+    });
+  }
+}
+

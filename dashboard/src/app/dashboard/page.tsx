@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { AddTabletDialog } from "@/components/tablets/add-tablet-dialog";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -146,7 +147,6 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
-        {/* Search Bar */}
         <Card>
           <CardContent className="p-4">
             <div className="relative">
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                   <Tablet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-lg font-medium">ยังไม่มี Tablet</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    คลิกปุ่ม "เพิ่ม Tablet" เพื่อเพิ่มอุปกรณ์ใหม่
+                    คลิกปุ่ม &quot;เพิ่ม Tablet&quot; เพื่อเพิ่มอุปกรณ์ใหม่
                   </p>
                   <Button
                     className="mt-4"

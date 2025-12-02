@@ -3,6 +3,7 @@ import prisma from '../db/client.js';
 import logger from '../utils/logger.js';
 import { broadcastToDashboard } from '../websocket/server.js';
 import * as deviceService from '../services/device.service.js';
+import { shouldLogEvent, shouldLogBootEvent } from '../config/event-filter.js';
 
 // Topic patterns
 const STATUS_TOPIC_PATTERN = /^tablet\/(.+)\/status$/;
@@ -211,14 +212,33 @@ async function handleDeviceEvent(topic, data) {
       return;
     }
 
-    // Create action log
-    const log = await prisma.deviceActionLog.create({
+    const eventType = data.eventType || 'UNKNOWN';
+    
+    // กรอง Event ที่ไม่สำคัญ
+    if (!shouldLogEvent(eventType)) {
+      logger.debug({ deviceId, eventType }, 'Event filtered out (not important)');
+      return;
+    }
+    
+    // สำหรับ BOOT event - เก็บแค่ครั้งแรกของวัน (กรอง Heartbeat)
+    if (eventType === 'BOOT') {
+      const shouldLog = await shouldLogBootEvent(device.id, new Date(), data);
+      if (!shouldLog) {
+        logger.debug({ deviceId, eventType, message: data.message }, 'BOOT event filtered (Heartbeat or already logged today)');
+        return;
+      }
+    }
+    
+    // สร้าง action log สำหรับ event ที่สำคัญ
+    await prisma.deviceActionLog.create({
       data: {
         deviceId: device.id,
-        action: data.eventType || 'UNKNOWN',
+        action: eventType,
         payload: data,
       },
     });
+    
+    logger.debug({ deviceId, eventType }, 'Important device event logged');
 
     // Broadcast to dashboard
     broadcastToDashboard({
