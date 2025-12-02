@@ -28,9 +28,10 @@
     "@fastify/jwt": "^9.0.0",
     "@fastify/websocket": "^11.0.0",
     "@prisma/client": "^5.19.1",
+    "dotenv": "^16.4.5",
     "fastify": "^5.0.0",
     "mqtt": "^5.10.1",
-    "dotenv": "^16.4.5",
+    "node-cron": "^4.2.1",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2"
   },
@@ -38,4 +39,3 @@
     "prisma": "^5.19.1"
   }
 }
-

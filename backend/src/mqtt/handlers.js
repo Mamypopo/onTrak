@@ -2,6 +2,7 @@ import mqttClient from './client.js';
 import prisma from '../db/client.js';
 import logger from '../utils/logger.js';
 import { broadcastToDashboard } from '../websocket/server.js';
+import * as deviceService from '../services/device.service.js';
 
 // Topic patterns
 const STATUS_TOPIC_PATTERN = /^tablet\/(.+)\/status$/;
@@ -93,34 +94,30 @@ async function handleDeviceLocation(topic, data) {
     const deviceId = match[1];
     logger.debug({ deviceId, data }, 'Received device location');
 
-    // Update device location
-    const device = await prisma.device.updateMany({
-      where: { deviceCode: deviceId },
-      data: {
-        latitude: data.latitude,
-        longitude: data.longitude,
-        lastSeen: new Date(),
-        status: 'ONLINE',
-      },
+    // Use service to update location and save history
+    const updatedDevice = await deviceService.updateDeviceLocation(deviceId, {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      accuracy: data.accuracy,
+      speed: data.speed,
+      heading: data.heading,
     });
 
-    if (device.count > 0) {
-      const updatedDevice = await prisma.device.findUnique({
-        where: { deviceCode: deviceId },
-      });
-
-      // Broadcast to dashboard
-      broadcastToDashboard({
-        type: 'device_location',
-        deviceId: updatedDevice.id,
-        deviceCode: deviceId,
-        data: {
-          latitude: updatedDevice.latitude,
-          longitude: updatedDevice.longitude,
-          lastSeen: updatedDevice.lastSeen,
-        },
-      });
+    if (!updatedDevice) {
+      return; // Device not found, already logged in service
     }
+
+    // Broadcast to dashboard
+    broadcastToDashboard({
+      type: 'device_location',
+      deviceId: updatedDevice.id,
+      deviceCode: deviceId,
+      data: {
+        latitude: updatedDevice.latitude,
+        longitude: updatedDevice.longitude,
+        lastSeen: updatedDevice.lastSeen,
+      },
+    });
 
     logger.debug({ deviceId }, 'Device location updated');
   } catch (error) {

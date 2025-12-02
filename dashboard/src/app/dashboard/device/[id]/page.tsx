@@ -58,6 +58,7 @@ export default function DeviceDetailPage() {
   const [device, setDevice] = useState<Device | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendingCommand, setSendingCommand] = useState(false);
+  const [locationHistory, setLocationHistory] = useState<any[]>([]);
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -96,6 +97,22 @@ export default function DeviceDetailPage() {
     }
   }, [deviceId]);
 
+  const fetchLocationHistory = useCallback(async () => {
+    try {
+      // ดึง location history 7 วันล่าสุด
+      const response = await api.get(`/api/device/${deviceId}/location-history?days=7`);
+      if (response.data.success) {
+        const history = response.data.data || [];
+        setLocationHistory(history);
+        console.log("Location history loaded:", history.length, "points");
+      }
+    } catch (error: any) {
+      console.error("Error fetching location history:", error);
+      // ไม่แสดง error ถ้าไม่มีข้อมูล (อาจจะยังไม่มี history)
+      setLocationHistory([]);
+    }
+  }, [deviceId]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -104,7 +121,8 @@ export default function DeviceDetailPage() {
     }
 
     fetchDevice();
-  }, [deviceId, router, fetchDevice]);
+    fetchLocationHistory();
+  }, [deviceId, router, fetchDevice, fetchLocationHistory]);
 
   const sendCommand = async (action: string, params?: any) => {
     setSendingCommand(true);
@@ -411,6 +429,8 @@ export default function DeviceDetailPage() {
                     longitude={device.longitude}
                     deviceName={device.name || undefined}
                     deviceCode={device.deviceCode}
+                    deviceId={device.id}
+                    locationHistory={locationHistory}
                   />
                 </CardContent>
               </Card>

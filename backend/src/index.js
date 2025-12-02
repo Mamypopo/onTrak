@@ -7,6 +7,7 @@ import logger from './utils/logger.js';
 import mqttClient from './mqtt/client.js';
 import { setupMQTTHandlers } from './mqtt/handlers.js';
 import { addClient } from './websocket/server.js';
+import { startLocationHistoryCleanup } from './jobs/cleanup.js';
 import { authenticate } from './middleware/auth.js';
 import { requireRole } from './middleware/rbac.js';
 import authRoutes from './routes/auth.js';
@@ -122,6 +123,9 @@ const start = async () => {
     // Connect MQTT
     mqttClient.connect();
     setupMQTTHandlers();
+
+    // Start cron jobs
+    startLocationHistoryCleanup();
 
     // Start server
     await fastify.listen({ port: config.port, host: '0.0.0.0' });

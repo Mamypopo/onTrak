@@ -1,344 +1,77 @@
-import prisma from '../db/client.js';
-import logger from '../utils/logger.js';
-import { publishCommand } from '../mqtt/handlers.js';
-import { createAuditLog } from '../utils/audit.js';
+import * as deviceController from "../controllers/device.controller.js";
 
 async function deviceRoutes(fastify, options) {
   // Get all devices
-  fastify.get('/', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const devices = await prisma.device.findMany({
-        orderBy: { lastSeen: 'desc' },
-        include: {
-          _count: {
-            select: {
-              metrics: true,
-              actionLogs: true,
-            },
-          },
-        },
-      });
-
-      return {
-        success: true,
-        data: devices,
-        count: devices.length,
-      };
-    } catch (error) {
-      logger.error({ error }, 'Error fetching devices');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
-    }
-  });
+  fastify.get(
+    "/",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.getAllDevices
+  );
 
   // Get device by ID
-  fastify.get('/:id', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params;
+  fastify.get(
+    "/:id",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.getDeviceById
+  );
 
-      const device = await prisma.device.findUnique({
-        where: { id },
-        include: {
-          metrics: {
-            take: 10,
-            orderBy: { createdAt: 'desc' },
-          },
-          actionLogs: {
-            take: 20,
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-      });
+  // Get device location history
+  fastify.get(
+    "/:id/location-history",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.getDeviceLocationHistory
+  );
 
-      if (!device) {
-        return reply.code(404).send({
-          error: 'Device not found',
-        });
-      }
-
-      // Convert BigInt to String for JSON serialization
-      const serializedDevice = {
-        ...device,
-        metrics: device.metrics.map(metric => ({
-          ...metric,
-          memoryTotal: metric.memoryTotal.toString(),
-          memoryUsed: metric.memoryUsed.toString(),
-          memoryAvailable: metric.memoryAvailable.toString(),
-          storageTotal: metric.storageTotal.toString(),
-          storageUsed: metric.storageUsed.toString(),
-          storageAvailable: metric.storageAvailable.toString(),
-        })),
-      };
-
-      return {
-        success: true,
-        data: serializedDevice,
-      };
-    } catch (error) {
-      logger.error({ 
-        error: error.message,
-        stack: error.stack,
-        deviceId: request.params.id 
-      }, 'Error fetching device');
-      return reply.code(500).send({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      });
-    }
-  });
+  // Calculate route for device location history
+  fastify.get(
+    "/:id/route",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.calculateDeviceRoute
+  );
 
   // Send command to device
-  fastify.post('/:id/command', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params;
-      const { action, params } = request.body;
-
-      if (!action) {
-        return reply.code(400).send({
-          error: 'Action is required',
-        });
-      }
-
-      const device = await prisma.device.findUnique({
-        where: { id },
-      });
-
-      if (!device) {
-        return reply.code(404).send({
-          error: 'Device not found',
-        });
-      }
-
-      // Publish command via MQTT
-      const command = {
-        action,
-        params: params || {},
-      };
-
-      const published = publishCommand(device.deviceCode, command);
-
-      if (!published) {
-        return reply.code(503).send({
-          error: 'MQTT broker not available',
-        });
-      }
-
-      // Log the action
-      await prisma.deviceActionLog.create({
-        data: {
-          deviceId: device.id,
-          userId: request.user?.id || null,
-          user: request.user?.username || 'system',
-          action: `COMMAND_${action}`,
-          payload: command,
-        },
-      });
-      
-      // Create audit log
-      await createAuditLog(request, `COMMAND_${action}`, 'DEVICE', device.id, command);
-
-      logger.info({ deviceId: device.deviceCode, action }, 'Command sent to device');
-
-      return {
-        success: true,
-        message: 'Command sent successfully',
-        command,
-      };
-    } catch (error) {
-      logger.error({ error }, 'Error sending command');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
-    }
-  });
+  fastify.post(
+    "/:id/command",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.sendCommand
+  );
 
   // Borrow device
-  fastify.post('/:id/borrow', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params;
-      const { reason } = request.body;
-
-      const device = await prisma.device.findUnique({
-        where: { id },
-      });
-
-      if (!device) {
-        return reply.code(404).send({
-          error: 'Device not found',
-        });
-      }
-
-      // Check if device is already borrowed
-      const activeBorrow = await prisma.borrowRecord.findFirst({
-        where: {
-          deviceId: id,
-          status: 'BORROWED',
-        },
-      });
-
-      if (activeBorrow) {
-        return reply.code(400).send({
-          error: 'Device is already borrowed',
-        });
-      }
-
-      // Create borrow record
-      const borrowRecord = await prisma.borrowRecord.create({
-        data: {
-          deviceId: id,
-          userId: request.user?.id || null,
-          user: request.user?.username || 'unknown',
-          reason: reason || null,
-          status: 'BORROWED',
-        },
-      });
-      
-      // Create audit log
-      await createAuditLog(request, 'BORROW_DEVICE', 'DEVICE', id, { reason });
-
-      // Update device status
-      await prisma.device.update({
-        where: { id },
-        data: {
-          status: 'IN_USE',
-        },
-      });
-
-      logger.info({ deviceId: id, user: borrowRecord.user }, 'Device borrowed');
-
-      return {
-        success: true,
-        data: borrowRecord,
-      };
-    } catch (error) {
-      logger.error({ error }, 'Error borrowing device');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
-    }
-  });
+  fastify.post(
+    "/:id/borrow",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.borrowDevice
+  );
 
   // Return device
-  fastify.post('/:id/return', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params;
-
-      const device = await prisma.device.findUnique({
-        where: { id },
-      });
-
-      if (!device) {
-        return reply.code(404).send({
-          error: 'Device not found',
-        });
-      }
-
-      // Find active borrow record
-      const borrowRecord = await prisma.borrowRecord.findFirst({
-        where: {
-          deviceId: id,
-          status: 'BORROWED',
-        },
-      });
-
-      if (!borrowRecord) {
-        return reply.code(400).send({
-          error: 'Device is not currently borrowed',
-        });
-      }
-
-      // Update borrow record
-      const updated = await prisma.borrowRecord.update({
-        where: { id: borrowRecord.id },
-        data: {
-          returnTime: new Date(),
-          status: 'RETURNED',
-        },
-      });
-
-      // Update device status
-      await prisma.device.update({
-        where: { id },
-        data: {
-          status: 'AVAILABLE',
-        },
-      });
-
-      logger.info({ deviceId: id }, 'Device returned');
-      
-      // Create audit log
-      await createAuditLog(request, 'RETURN_DEVICE', 'DEVICE', id);
-
-      return {
-        success: true,
-        data: updated,
-      };
-    } catch (error) {
-      logger.error({ error }, 'Error returning device');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
-    }
-  });
+  fastify.post(
+    "/:id/return",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.returnDevice
+  );
 
   // Get device history
-  fastify.get('/:id/history', {
-    preHandler: [fastify.authenticate],
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params;
-      const { limit = 50, offset = 0 } = request.query;
-
-      const device = await prisma.device.findUnique({
-        where: { id },
-      });
-
-      if (!device) {
-        return reply.code(404).send({
-          error: 'Device not found',
-        });
-      }
-
-      // Get action logs
-      const logs = await prisma.deviceActionLog.findMany({
-        where: { deviceId: id },
-        orderBy: { createdAt: 'desc' },
-        take: parseInt(limit),
-        skip: parseInt(offset),
-      });
-
-      // Get borrow records
-      const borrows = await prisma.borrowRecord.findMany({
-        where: { deviceId: id },
-        orderBy: { borrowTime: 'desc' },
-      });
-
-      return {
-        success: true,
-        data: {
-          logs,
-          borrows,
-        },
-      };
-    } catch (error) {
-      logger.error({ error }, 'Error fetching device history');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
-    }
-  });
+  fastify.get(
+    "/:id/history",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deviceController.getDeviceHistory
+  );
 }
 
 export default deviceRoutes;
-
