@@ -433,12 +433,43 @@ export default function DeviceDetailPage() {
           <Card className="card-hover bg-secondary/20">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Battery className="h-5 w-5 text-primary" />
+                <div className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  device.battery > 50 ? "bg-green-500/10" :
+                  device.battery > 20 ? "bg-yellow-500/10" :
+                  "bg-red-500/10"
+                )}>
+                  <Battery className={cn(
+                    "h-5 w-5",
+                    device.battery > 50 ? "text-green-600 dark:text-green-400" :
+                    device.battery > 20 ? "text-yellow-600 dark:text-yellow-400" :
+                    "text-red-600 dark:text-red-400"
+                  )} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Battery</p>
-                  <p className="text-lg font-bold">{device.battery}%</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className={cn(
+                      "text-lg font-bold",
+                      device.battery > 50 ? "text-green-600 dark:text-green-400" :
+                      device.battery > 20 ? "text-yellow-600 dark:text-yellow-400" :
+                      "text-red-600 dark:text-red-400"
+                    )}>
+                      {device.battery}%
+                    </p>
+                    {/* Simple Battery Bar */}
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          device.battery > 50 ? "bg-green-500" :
+                          device.battery > 20 ? "bg-yellow-500" :
+                          "bg-red-500"
+                        )}
+                        style={{ width: `${device.battery}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -864,9 +895,9 @@ export default function DeviceDetailPage() {
                         ))}
                       </div>
                     ) : actionLogs.length > 0 ? (
-                      <div className="relative">
+                      <div className="relative ">
                         {/* Timeline */}
-                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2 ">
                           {actionLogs.map((log: any, index: number) => {
                             const logDate = new Date(log.createdAt);
                             const prevLogDate = index > 0 ? new Date(actionLogs[index - 1].createdAt) : null;

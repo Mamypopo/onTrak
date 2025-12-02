@@ -238,13 +238,17 @@ export default function DeviceMap({
     
     // Invalidate size on mount and when window resizes (for fullscreen)
     useEffect(() => {
-      if (map) {
+      if (map && map._container) {
         const invalidateSize = () => {
           setTimeout(() => {
             try {
-              map.invalidateSize();
+              // Check if map is still valid before invalidating
+              if (map && map._container && !map._container._leaflet_id) {
+                map.invalidateSize();
+              }
             } catch (error) {
-              console.error("Error invalidating map size:", error);
+              // Silently ignore errors - map might be unmounted
+              console.debug("Map size invalidation skipped:", error);
             }
           }, 100);
         };
@@ -306,11 +310,14 @@ export default function DeviceMap({
       </Tooltip>
 
       <MapContainer
-        key={`map-${latitude}-${longitude}`}
+        key={`map-${deviceId || 'default'}-${latitude}-${longitude}`}
         center={[latitude, longitude]}
         zoom={routePositions.length > 0 ? 13 : 15}
         style={{ height: "100%", width: "100%", zIndex: 0, minHeight: '256px' }}
         scrollWheelZoom={true}
+        whenReady={() => {
+          // Map is ready - this prevents double initialization
+        }}
       >
         <MapUpdater center={[latitude, longitude]} routePositions={routePositions} />
         <TileLayer
