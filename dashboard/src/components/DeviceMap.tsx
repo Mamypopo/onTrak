@@ -9,6 +9,8 @@ import { calculateSimplifiedRoute } from "@/lib/routing";
 import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tippy";
+import Swal from "sweetalert2";
+import { getSwalConfig } from "@/lib/swal-config";
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
@@ -188,8 +190,16 @@ export default function DeviceMap({
   const copyCoordinates = async (lat: number, lng: number) => {
     try {
       await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-      // You can add a toast notification here
-      alert('คัดลอกพิกัดแล้ว!');
+      Swal.fire(getSwalConfig({
+        icon: "success",
+        title: "คัดลอกพิกัดแล้ว",
+        text: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        toast: true,
+        position: "top-end",
+        timer: 2000,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      }));
     } catch (error) {
       console.error('Failed to copy:', error);
     }
@@ -308,7 +318,7 @@ export default function DeviceMap({
   return (
     <div 
       ref={mapContainerRef}
-      className="w-full h-64 rounded-lg overflow-hidden relative" 
+      className="w-full h-72 rounded-lg overflow-hidden relative" 
       style={{ minHeight: '256px' }}
     >
       {/* Fullscreen Toggle Button */}
@@ -384,7 +394,7 @@ export default function DeviceMap({
                       asChild
                       variant="outline"
                       size="sm"
-                      className="flex-1 text-xs"
+                      className="flex-1 text-xs bg-white text-slate-900 border-slate-200 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:border-slate-200 dark:hover:bg-slate-100 shadow-sm"
                     >
                       <a
                         href={getGoogleMapsLink(routePositions[0][0], routePositions[0][1], "Start Point")}
@@ -399,7 +409,7 @@ export default function DeviceMap({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 text-xs"
+                      className="flex-1 text-xs bg-white text-slate-900 border-slate-200 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:border-slate-200 dark:hover:bg-slate-100 shadow-sm"
                       onClick={() => shareLocation(routePositions[0][0], routePositions[0][1], "Start Point")}
                     >
                       <Share2 className="h-3 w-3" />
@@ -444,7 +454,7 @@ export default function DeviceMap({
                     asChild
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs bg-white text-slate-900 border-slate-200 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:border-slate-200 dark:hover:bg-slate-100 shadow-sm"
                   >
                     <a
                       href={getGoogleMapsLink(latitude, longitude, deviceName || deviceCode || "Device")}
@@ -459,7 +469,7 @@ export default function DeviceMap({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs bg-white text-slate-900 border-slate-200 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:border-slate-200 dark:hover:bg-slate-100 shadow-sm"
                     onClick={() => shareLocation(latitude, longitude, deviceName || deviceCode || "Device")}
                   >
                     <Share2 className="h-3 w-3" />
@@ -470,7 +480,7 @@ export default function DeviceMap({
                   asChild
                   variant="outline"
                   size="sm"
-                  className="w-full text-xs"
+                  className="w-full text-xs bg-white text-slate-900 border-slate-200 hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:border-slate-200 dark:hover:bg-slate-100 shadow-sm"
                 >
                   <a
                     href={getGoogleStreetViewLink(latitude, longitude)}

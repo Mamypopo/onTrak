@@ -23,11 +23,6 @@ export function Nav() {
   const isUsers = pathname === "/dashboard/users"
   const isSettings = pathname === "/dashboard/settings"
 
-  const getDashboardLabel = () => {
-    if (isDeviceDetail) return "Device Detail"
-    return "Dashboard"
-  }
-
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 gap-4">
@@ -39,31 +34,31 @@ export function Nav() {
             </div>
             <div className="hidden sm:flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">OnTrak MDM</span>
-              <span className="text-[11px] text-muted-foreground">Tablet Fleet Console</span>
+              <span className="text-[11px] text-muted-foreground">Tablet Management</span>
             </div>
           </Link>
         </div>
 
         {/* Center: Main nav (desktop) */}
         <div className="hidden md:flex flex-1 justify-center">
-          <div className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-1 py-1 shadow-sm">
+          <div className="inline-flex items-center gap-6 border border-border/60 rounded-xl px-4 py-1 bg-background/80 shadow-sm">
             <Link
               href="/dashboard"
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-1 py-1 text-sm font-medium transition-colors border-b-2 ${
                 isDashboard || isDeviceDetail
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
               }`}
             >
               <LayoutDashboard className="h-3.5 w-3.5" />
-              <span>{getDashboardLabel()}</span>
+              <span>Dashboard</span>
             </Link>
             <Link
               href="/dashboard/users"
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-1 py-1 text-sm font-medium transition-colors border-b-2 ${
                 isUsers
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
               }`}
             >
               <Users className="h-3.5 w-3.5" />
@@ -71,10 +66,10 @@ export function Nav() {
             </Link>
             <Link
               href="/dashboard/settings"
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-1 py-1 text-sm font-medium transition-colors border-b-2 ${
                 isSettings
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
               }`}
             >
               <Settings2 className="h-3.5 w-3.5" />
@@ -118,7 +113,7 @@ export function Nav() {
               onClick={() => setMobileMenuOpen(false)}
             >
               <LayoutDashboard className="h-4 w-4" />
-              <span>{getDashboardLabel()}</span>
+              <span>Dashboard</span>
             </Link>
             <Link
               href="/dashboard/users"
