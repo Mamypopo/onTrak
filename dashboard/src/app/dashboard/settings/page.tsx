@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import Swal from "sweetalert2";
 
 export default function SettingsPage() {
@@ -34,26 +32,15 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              <h1 className="text-2xl font-bold">Settings</h1>
-            </div>
-            <ThemeToggle />
-          </div>
+    <AppLayout>
+      <div className="flex-1 container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-muted-foreground mt-1">ตั้งค่าการเชื่อมต่อ API และ WebSocket</p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+        {/* Settings Card */}
         <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle>Configuration</CardTitle>
@@ -91,8 +78,8 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

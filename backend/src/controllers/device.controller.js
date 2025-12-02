@@ -6,6 +6,54 @@ import { createAuditLog } from '../utils/audit.js';
 import prisma from '../db/client.js';
 
 /**
+ * Create a new device
+ */
+export async function createDevice(request, reply) {
+  try {
+    const { deviceCode, name, serialNumber, model, osVersion } = request.body;
+
+    if (!deviceCode) {
+      return reply.code(400).send({
+        error: 'Device code is required',
+      });
+    }
+
+    const device = await deviceService.createDevice({
+      deviceCode,
+      name,
+      serialNumber,
+      model,
+      osVersion,
+    });
+
+    // Create audit log
+    await createAuditLog(request, 'CREATE_DEVICE', 'DEVICE', device.id, {
+      deviceCode,
+      name,
+    });
+
+    return {
+      success: true,
+      data: device,
+      message: 'Device created successfully',
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error creating device');
+    
+    if (error.message === 'Device code already exists') {
+      return reply.code(409).send({
+        error: error.message,
+      });
+    }
+
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+/**
  * Get all devices
  */
 export async function getAllDevices(request, reply) {

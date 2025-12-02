@@ -1,6 +1,15 @@
 import * as deviceController from "../controllers/device.controller.js";
 
 async function deviceRoutes(fastify, options) {
+  // Create a new device
+  fastify.post(
+    "/",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'MANAGER'])],
+    },
+    deviceController.createDevice
+  );
+
   // Get all devices
   fastify.get(
     "/",

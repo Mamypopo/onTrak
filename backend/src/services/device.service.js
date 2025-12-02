@@ -199,6 +199,39 @@ export async function getDeviceById(id) {
 }
 
 /**
+ * Create a new device
+ */
+export async function createDevice(deviceData) {
+  try {
+    // Check if deviceCode already exists
+    const existingDevice = await prisma.device.findUnique({
+      where: { deviceCode: deviceData.deviceCode },
+    });
+
+    if (existingDevice) {
+      throw new Error('Device code already exists');
+    }
+
+    const device = await prisma.device.create({
+      data: {
+        deviceCode: deviceData.deviceCode,
+        name: deviceData.name || null,
+        serialNumber: deviceData.serialNumber || null,
+        model: deviceData.model || null,
+        osVersion: deviceData.osVersion || null,
+        status: 'OFFLINE',
+      },
+    });
+
+    logger.info({ deviceId: device.id, deviceCode: device.deviceCode }, 'Device created');
+    return device;
+  } catch (error) {
+    logger.error({ error, deviceData }, 'Error creating device');
+    throw error;
+  }
+}
+
+/**
  * Get all devices
  */
 export async function getAllDevices() {

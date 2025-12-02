@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { ArrowLeft, Plus, Edit, Trash2, Shield, User, Eye } from "lucide-react";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Shield, User, Eye } from "lucide-react";
 import Swal from "sweetalert2";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -220,79 +221,72 @@ export default function UsersPage() {
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "ADMIN":
-        return "bg-red-100 text-red-800";
-      case "MANAGER":
-        return "bg-blue-100 text-blue-800";
-      case "VIEWER":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-green-100 text-green-800";
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <AppLayout>
+        <div className="flex-1 container mx-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </div>
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-6 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
     );
   }
 
   // Check if user has permission
   if (currentUser && currentUser.role !== "ADMIN" && currentUser.role !== "MANAGER") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
-          <p className="text-muted-foreground mb-4">
-            You don&apos;t have permission to view users
-          </p>
-          <Link href="/dashboard">
-            <Button>Back to Dashboard</Button>
-          </Link>
+      <AppLayout>
+        <div className="flex-1 container mx-auto p-6">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
+              <p className="text-muted-foreground mb-4">
+                You don&apos;t have permission to view users
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              <h1 className="text-2xl font-bold">User Management</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              {currentUser?.role === "ADMIN" && (
-                <Button onClick={() => handleAddUser()}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add User
-                </Button>
-              )}
-              <ThemeToggle />
-            </div>
+    <AppLayout>
+      <div className="flex-1 container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">User Management</h1>
+            <p className="text-muted-foreground mt-1">จัดการผู้ใช้งานในระบบ</p>
           </div>
+          {currentUser?.role === "ADMIN" && (
+            <Button onClick={() => handleAddUser()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add User
+            </Button>
+          )}
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+        {/* Users List */}
         <div className="grid gap-4">
           {users.map((user) => (
-            <Card key={user.id}>
+            <Card key={user.id} className="card-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <div className="flex items-center gap-2">
                       {getRoleIcon(user.role)}
                       <div>
@@ -303,17 +297,24 @@ export default function UsersPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-1 text-xs rounded ${getRoleColor(
-                          user.role
-                        )}`}
+                      <Badge
+                        variant={
+                          user.role === "ADMIN"
+                            ? "destructive"
+                            : user.role === "MANAGER"
+                            ? "info"
+                            : user.role === "VIEWER"
+                            ? "muted"
+                            : "success"
+                        }
+                        className="text-xs"
                       >
                         {user.role}
-                      </span>
+                      </Badge>
                       {!user.isActive && (
-                        <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">
+                        <Badge variant="outline" className="text-xs">
                           Inactive
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -351,12 +352,18 @@ export default function UsersPage() {
         </div>
 
         {users.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            No users found
-          </div>
+          <Card>
+            <CardContent className="p-12 text-center">
+              <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">ไม่พบผู้ใช้งาน</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                ยังไม่มีผู้ใช้งานในระบบ
+              </p>
+            </CardContent>
+          </Card>
         )}
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

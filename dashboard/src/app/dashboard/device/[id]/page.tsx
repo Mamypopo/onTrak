@@ -5,17 +5,19 @@ import dynamic from "next/dynamic";
 import { useRouter, useParams } from "next/navigation";
 import { useWebSocket, WebSocketMessage } from "@/lib/websocket";
 import api from "@/lib/api";
+import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
-  Lock, Power, Radio, MessageSquare, Settings,
-  Play, Square, Bell, Camera, Zap, Signal
+  Lock, Power, Radio, Settings,
+  Square, Bell, Camera, Zap, Signal
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
+import { cn } from "@/lib/utils";
 
 // Dynamic import for Map component to avoid SSR issues
 const DeviceMap = dynamic(() => import("@/components/DeviceMap"), {
@@ -258,56 +260,121 @@ export default function DeviceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <AppLayout>
+        <div className="flex-1 container mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 rounded-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <Skeleton key={i} className="h-6 w-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-10 w-full mb-2" />
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
     );
   }
 
   if (!device) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Device not found</h2>
-          <Link href="/dashboard">
-            <Button>Back to Dashboard</Button>
-          </Link>
+      <AppLayout>
+        <div className="flex-1 container mx-auto p-6">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-bold mb-4">ไม่พบอุปกรณ์</h2>
+              <p className="text-muted-foreground mb-4">
+                อุปกรณ์ที่คุณกำลังมองหาไม่มีอยู่ในระบบ
+              </p>
+              <Link href="/dashboard">
+                <Button>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  กลับไป Dashboard
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
+  const getStatusVariant = (status: string): "success" | "muted" | "warning" | "info" => {
+    switch (status) {
+      case "ONLINE":
+        return "success";
+      case "OFFLINE":
+        return "muted";
+      case "IN_USE":
+        return "warning";
+      case "AVAILABLE":
+        return "info";
+      default:
+        return "muted";
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold">
-                  {device.name || device.deviceCode}
-                </h1>
-                <p className="text-sm text-muted-foreground">{device.deviceCode}</p>
-              </div>
+    <AppLayout>
+      <div className="flex-1 container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">
+                {device.name || device.deviceCode}
+              </h1>
+              <Badge variant={getStatusVariant(device.status)}>
+                {device.status}
+              </Badge>
             </div>
-            <ThemeToggle />
+            <p className="text-muted-foreground mt-1">{device.deviceCode}</p>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Device Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Status Card */}
-            <Card className="card-hover rounded-lg border-border/50">
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Device Status</CardTitle>
               </CardHeader>
@@ -406,15 +473,19 @@ export default function DeviceDetailPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-muted-foreground" />
-                    <span>Status: <Badge variant="outline" className="ml-2">{device.status}</Badge></span>
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge variant={getStatusVariant(device.status)} className="ml-1">
+                      {device.status}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Settings className="w-5 h-5 text-muted-foreground" />
-                    <span>Kiosk: {device.kioskMode ? (
-                      <Badge variant="outline" className="ml-2 border-primary/30">On</Badge>
+                    <span className="text-muted-foreground">Kiosk Mode:</span>
+                    {device.kioskMode ? (
+                      <Badge variant="outline" className="ml-1 border-primary/30">On</Badge>
                     ) : (
-                      <Badge variant="muted" className="ml-2">Off</Badge>
-                    )}</span>
+                      <Badge variant="muted" className="ml-1">Off</Badge>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -422,7 +493,7 @@ export default function DeviceDetailPage() {
 
             {/* Location Card */}
             {device.latitude && device.longitude ? (
-              <Card className="card-hover rounded-lg border-border/50">
+              <Card className="card-hover">
                 <CardHeader>
                   <CardTitle>Location</CardTitle>
                 </CardHeader>
@@ -444,20 +515,21 @@ export default function DeviceDetailPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="card-hover rounded-lg border-border/50">
+              <Card className="card-hover">
                 <CardHeader>
                   <CardTitle>Location</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="w-full h-64 bg-muted rounded-lg flex items-center justify-center">
-                    <p className="text-muted-foreground">No GPS location available</p>
+                  <div className="w-full h-64 bg-muted rounded-lg flex flex-col items-center justify-center">
+                    <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">ไม่มีข้อมูล GPS</p>
                   </div>
                 </CardContent>
               </Card>
             )}
 
             {/* Control Panel */}
-            <Card className="card-hover rounded-lg border-border/50">
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Control Panel</CardTitle>
                 <CardDescription>
@@ -555,7 +627,7 @@ export default function DeviceDetailPage() {
         </Card>
 
             {/* Camera Control */}
-            <Card className="card-hover rounded-lg border-border/50">
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Camera</CardTitle>
                 <CardDescription>
@@ -585,7 +657,7 @@ export default function DeviceDetailPage() {
             </Card>
 
             {/* History */}
-            <Card className="card-hover rounded-lg border-border/50">
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Action History</CardTitle>
               </CardHeader>
@@ -595,25 +667,28 @@ export default function DeviceDetailPage() {
                     device.actionLogs.map((log: any, index: number) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 border border-border/50 rounded-lg transition-all duration-300 hover:border-primary/30"
+                        className="flex items-center justify-between p-3 border rounded-lg transition-all duration-200 hover:border-primary/30 hover:bg-accent/50"
                       >
                         <div>
-                          <p className="font-medium">{log.action}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-sm">{log.action}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
                             {new Date(log.createdAt).toLocaleString()}
                           </p>
                         </div>
                         {log.user && (
-                          <span className="text-sm text-muted-foreground">
+                          <Badge variant="outline" className="text-xs">
                             {log.user}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">
-                      No action history
-                    </p>
+                    <div className="text-center py-8">
+                      <Activity className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        ยังไม่มีประวัติการทำงาน
+                      </p>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -623,7 +698,7 @@ export default function DeviceDetailPage() {
           {/* Right Column - Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <Card className="card-hover rounded-lg border-border/50">
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
@@ -647,7 +722,7 @@ export default function DeviceDetailPage() {
 
             {/* Metrics */}
             {device.metrics && device.metrics.length > 0 && (
-              <Card className="card-hover rounded-lg border-border/50">
+              <Card className="card-hover">
                 <CardHeader>
                   <CardTitle>Latest Metrics</CardTitle>
                 </CardHeader>
@@ -691,8 +766,8 @@ export default function DeviceDetailPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

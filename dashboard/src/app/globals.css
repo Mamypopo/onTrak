@@ -116,10 +116,10 @@
     @apply transition-all duration-300;
   }
 
-  /* Card-based layout with subtle shadows */
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-md hover:border-primary/30;
-  }
+       /* Card-based layout with subtle shadows */
+       .card-hover {
+         @apply transition-all duration-200 hover:shadow-lg hover:border-primary/50;
+       }
 
   /* Pulse animation for processing states */
   @keyframes pulse-subtle {
