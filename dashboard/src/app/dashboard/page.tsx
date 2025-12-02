@@ -6,6 +6,8 @@ import { useWebSocket, WebSocketMessage } from "@/lib/websocket";
 import api from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Battery, Wifi, MapPin, Activity, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -89,18 +91,33 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
+  const getStatusVariant = (status: string): "success" | "muted" | "warning" | "info" => {
+    switch (status) {
+      case "ONLINE":
+        return "success";
+      case "OFFLINE":
+        return "muted";
+      case "IN_USE":
+        return "warning";
+      case "AVAILABLE":
+        return "info";
+      default:
+        return "muted";
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ONLINE":
         return "bg-green-500";
       case "OFFLINE":
-        return "bg-gray-500";
+        return "bg-muted";
       case "IN_USE":
         return "bg-yellow-500";
       case "AVAILABLE":
         return "bg-blue-500";
       default:
-        return "bg-gray-500";
+        return "bg-muted";
     }
   };
 
@@ -121,8 +138,8 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? "bg-green-500" : "bg-red-500"
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  isConnected ? "bg-green-500" : "bg-destructive"
                 }`}
               />
               <span className="text-sm text-muted-foreground">
@@ -135,6 +152,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/settings">
               <Button variant="ghost">Settings</Button>
             </Link>
+            <ThemeToggle />
             <Button variant="outline" onClick={handleLogout}>
               Logout
             </Button>
@@ -159,40 +177,40 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <Card>
+          <Card className="card-hover rounded-lg border-border/50">
             <CardHeader className="pb-2">
               <CardDescription>Total Devices</CardDescription>
               <CardTitle className="text-3xl">{devices.length}</CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="card-hover rounded-lg border-border/50">
             <CardHeader className="pb-2">
               <CardDescription>Online</CardDescription>
-              <CardTitle className="text-3xl text-green-500">
+              <CardTitle className="text-3xl text-green-600 dark:text-green-400">
                 {devices.filter((d) => d.status === "ONLINE").length}
               </CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="card-hover rounded-lg border-border/50">
             <CardHeader className="pb-2">
               <CardDescription>Available</CardDescription>
-              <CardTitle className="text-3xl text-blue-500">
+              <CardTitle className="text-3xl text-blue-600 dark:text-blue-400">
                 {devices.filter((d) => d.status === "AVAILABLE").length}
               </CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="card-hover rounded-lg border-border/50">
             <CardHeader className="pb-2">
               <CardDescription>In Use</CardDescription>
-              <CardTitle className="text-3xl text-yellow-500">
+              <CardTitle className="text-3xl text-yellow-600 dark:text-yellow-400">
                 {devices.filter((d) => d.status === "IN_USE").length}
               </CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="card-hover rounded-lg border-border/50">
             <CardHeader className="pb-2">
               <CardDescription>Offline</CardDescription>
-              <CardTitle className="text-3xl text-gray-500">
+              <CardTitle className="text-3xl text-muted-foreground">
                 {devices.filter((d) => d.status === "OFFLINE").length}
               </CardTitle>
             </CardHeader>
@@ -203,37 +221,35 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDevices.map((device) => (
             <Link key={device.id} href={`/dashboard/device/${device.id}`}>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card className="card-hover rounded-lg border-border/50 cursor-pointer">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-lg font-semibold">
                       {device.name || device.deviceCode}
                     </CardTitle>
-                    <div
-                      className={`w-3 h-3 rounded-full ${getStatusColor(
-                        device.status
-                      )}`}
-                    />
+                    <Badge variant={getStatusVariant(device.status)} className="text-xs">
+                      {device.status}
+                    </Badge>
                   </div>
-                  <CardDescription>{device.deviceCode}</CardDescription>
+                  <CardDescription className="text-muted-foreground">{device.deviceCode}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Battery className="w-4 h-4" />
+                    <Battery className="w-4 h-4 text-muted-foreground" />
                     <span>{device.battery}%</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Wifi
-                      className={`w-4 h-4 ${
-                        device.wifiStatus ? "text-green-500" : "text-gray-500"
+                      className={`w-4 h-4 transition-colors ${
+                        device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                       }`}
                     />
                     <span>{device.wifiStatus ? "Connected" : "Disconnected"}</span>
                   </div>
                   {device.latitude && device.longitude && (
                     <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4" />
-                      <span>
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
                         {device.latitude.toFixed(4)}, {device.longitude.toFixed(4)}
                       </span>
                     </div>
@@ -248,9 +264,9 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   {device.kioskMode && (
-                    <div className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                    <Badge variant="outline" className="text-xs border-primary/30">
                       Kiosk Mode
-                    </div>
+                    </Badge>
                   )}
                 </CardContent>
               </Card>

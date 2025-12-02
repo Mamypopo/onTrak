@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ArrowLeft, Plus, Edit, Trash2, Shield, User, Eye } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -271,12 +272,15 @@ export default function UsersPage() {
               </Link>
               <h1 className="text-2xl font-bold">User Management</h1>
             </div>
-            {currentUser?.role === "ADMIN" && (
-              <Button onClick={() => handleAddUser()}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add User
-              </Button>
-            )}
+            <div className="flex items-center gap-4">
+              {currentUser?.role === "ADMIN" && (
+                <Button onClick={() => handleAddUser()}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add User
+                </Button>
+              )}
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>

@@ -4,9 +4,11 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "tippy.js/dist/tippy.css";
 import { calculateSimplifiedRoute } from "@/lib/routing";
 import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tippy";
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
@@ -289,18 +291,19 @@ export default function DeviceMap({
       style={{ minHeight: '256px' }}
     >
       {/* Fullscreen Toggle Button */}
-      <button
-        onClick={toggleFullscreen}
-        className="absolute top-2 right-2 z-[1000] bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
-        title={isFullscreen ? "ย่อ" : "ขยาย"}
-        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-      >
-        {isFullscreen ? (
-          <Minimize2 className="h-4 w-4 text-gray-700" />
-        ) : (
-          <Maximize2 className="h-4 w-4 text-gray-700" />
-        )}
-      </button>
+      <Tooltip content={isFullscreen ? "ย่อ" : "ขยาย"}>
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-2 right-2 z-[1000] bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4 text-gray-700" />
+          ) : (
+            <Maximize2 className="h-4 w-4 text-gray-700" />
+          )}
+        </button>
+      </Tooltip>
 
       <MapContainer
         key={`map-${latitude}-${longitude}`}
@@ -341,13 +344,14 @@ export default function DeviceMap({
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />
                   <span className="font-mono">{routePositions[0][0].toFixed(6)}, {routePositions[0][1].toFixed(6)}</span>
-                  <button
-                    onClick={() => copyCoordinates(routePositions[0][0], routePositions[0][1])}
-                    className="ml-auto p-1 hover:bg-gray-100 rounded"
-                    title="คัดลอกพิกัด"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </button>
+                  <Tooltip content="คัดลอกพิกัด">
+                    <button
+                      onClick={() => copyCoordinates(routePositions[0][0], routePositions[0][1])}
+                      className="ml-auto p-1 hover:bg-gray-100 rounded"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <div className="pt-2 border-t">
@@ -400,13 +404,14 @@ export default function DeviceMap({
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3" />
                 <span className="font-mono">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
-                <button
-                  onClick={() => copyCoordinates(latitude, longitude)}
-                  className="ml-auto p-1 hover:bg-gray-100 rounded"
-                  title="คัดลอกพิกัด"
-                >
-                  <Copy className="h-3 w-3" />
-                </button>
+                <Tooltip content="คัดลอกพิกัด">
+                  <button
+                    onClick={() => copyCoordinates(latitude, longitude)}
+                    className="ml-auto p-1 hover:bg-gray-100 rounded"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="pt-2 border-t">

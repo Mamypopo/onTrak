@@ -7,6 +7,8 @@ import { useWebSocket, WebSocketMessage } from "@/lib/websocket";
 import api from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, MessageSquare, Settings,
@@ -280,18 +282,21 @@ export default function DeviceDetailPage() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">
-                {device.name || device.deviceCode}
-              </h1>
-              <p className="text-sm text-muted-foreground">{device.deviceCode}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {device.name || device.deviceCode}
+                </h1>
+                <p className="text-sm text-muted-foreground">{device.deviceCode}</p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -302,7 +307,7 @@ export default function DeviceDetailPage() {
           {/* Left Column - Device Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Status Card */}
-            <Card>
+            <Card className="card-hover rounded-lg border-border/50">
               <CardHeader>
                 <CardTitle>Device Status</CardTitle>
               </CardHeader>
@@ -315,15 +320,15 @@ export default function DeviceDetailPage() {
                   <div className="flex items-center gap-2">
                     {device.isCharging ? (
                       <>
-                        <Zap className="w-5 h-5 text-yellow-500" />
-                        <span className="text-yellow-600">
+                        <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                        <span className="text-yellow-600 dark:text-yellow-400">
                           Charging ({device.chargingMethod || "Unknown"})
                         </span>
                       </>
                     ) : (
                       <>
-                        <Battery className="w-5 h-5 text-gray-500" />
-                        <span className="text-gray-600">Not Charging</span>
+                        <Battery className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Not Charging</span>
                       </>
                     )}
                   </div>
@@ -335,53 +340,53 @@ export default function DeviceDetailPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <Wifi
-                      className={`w-5 h-5 ${
-                        device.wifiStatus ? "text-green-500" : "text-gray-500"
+                      className={`w-5 h-5 transition-colors ${
+                        device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                       }`}
                     />
                     <span>WiFi: {device.wifiStatus ? "On" : "Off"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Signal
-                      className={`w-5 h-5 ${
-                        device.networkConnected ? "text-green-500" : "text-gray-500"
+                      className={`w-5 h-5 transition-colors ${
+                        device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                       }`}
                     />
                     <span>Network: {device.networkConnected ? "Connected" : "Disconnected"}</span>
                   </div>
                   {device.mobileDataEnabled && (
                     <div className="flex items-center gap-2">
-                      <Radio className="w-5 h-5 text-blue-500" />
-                      <span className="text-blue-600">Mobile Data: On</span>
+                      <Radio className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-blue-600 dark:text-blue-400">Mobile Data: On</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
                     {device.screenOn ? (
                       <>
-                        <Activity className="w-5 h-5 text-green-500" />
-                        <span className="text-green-600">Screen: On</span>
+                        <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <span className="text-green-600 dark:text-green-400">Screen: On</span>
                       </>
                     ) : (
                       <>
-                        <Activity className="w-5 h-5 text-gray-500" />
-                        <span className="text-gray-600">Screen: Off</span>
+                        <Activity className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Screen: Off</span>
                       </>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
+                    <Settings className="w-5 h-5 text-muted-foreground" />
                     <span>Volume: {device.volumeLevel || 0}%</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {device.bluetoothEnabled ? (
                       <>
-                        <Radio className="w-5 h-5 text-blue-500" />
-                        <span className="text-blue-600">Bluetooth: On</span>
+                        <Radio className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-blue-600 dark:text-blue-400">Bluetooth: On</span>
                       </>
                     ) : (
                       <>
-                        <Radio className="w-5 h-5 text-gray-500" />
-                        <span className="text-gray-600">Bluetooth: Off</span>
+                        <Radio className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Bluetooth: Off</span>
                       </>
                     )}
                   </div>
@@ -400,12 +405,16 @@ export default function DeviceDetailPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    <span>Status: {device.status}</span>
+                    <Activity className="w-5 h-5 text-muted-foreground" />
+                    <span>Status: <Badge variant="outline" className="ml-2">{device.status}</Badge></span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    <span>Kiosk: {device.kioskMode ? "On" : "Off"}</span>
+                    <Settings className="w-5 h-5 text-muted-foreground" />
+                    <span>Kiosk: {device.kioskMode ? (
+                      <Badge variant="outline" className="ml-2 border-primary/30">On</Badge>
+                    ) : (
+                      <Badge variant="muted" className="ml-2">Off</Badge>
+                    )}</span>
                   </div>
                 </div>
               </CardContent>
@@ -413,14 +422,14 @@ export default function DeviceDetailPage() {
 
             {/* Location Card */}
             {device.latitude && device.longitude ? (
-              <Card>
+              <Card className="card-hover rounded-lg border-border/50">
                 <CardHeader>
                   <CardTitle>Location</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-5 h-5" />
-                    <span>
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-muted-foreground">
                       {device.latitude.toFixed(6)}, {device.longitude.toFixed(6)}
                     </span>
                   </div>
@@ -435,7 +444,7 @@ export default function DeviceDetailPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
+              <Card className="card-hover rounded-lg border-border/50">
                 <CardHeader>
                   <CardTitle>Location</CardTitle>
                 </CardHeader>
@@ -448,7 +457,7 @@ export default function DeviceDetailPage() {
             )}
 
             {/* Control Panel */}
-            <Card>
+            <Card className="card-hover rounded-lg border-border/50">
               <CardHeader>
                 <CardTitle>Control Panel</CardTitle>
                 <CardDescription>
@@ -546,7 +555,7 @@ export default function DeviceDetailPage() {
         </Card>
 
             {/* Camera Control */}
-            <Card>
+            <Card className="card-hover rounded-lg border-border/50">
               <CardHeader>
                 <CardTitle>Camera</CardTitle>
                 <CardDescription>
@@ -576,7 +585,7 @@ export default function DeviceDetailPage() {
             </Card>
 
             {/* History */}
-            <Card>
+            <Card className="card-hover rounded-lg border-border/50">
               <CardHeader>
                 <CardTitle>Action History</CardTitle>
               </CardHeader>
@@ -586,7 +595,7 @@ export default function DeviceDetailPage() {
                     device.actionLogs.map((log: any, index: number) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 border rounded"
+                        className="flex items-center justify-between p-2 border border-border/50 rounded-lg transition-all duration-300 hover:border-primary/30"
                       >
                         <div>
                           <p className="font-medium">{log.action}</p>
@@ -614,7 +623,7 @@ export default function DeviceDetailPage() {
           {/* Right Column - Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <Card>
+            <Card className="card-hover rounded-lg border-border/50">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
@@ -638,7 +647,7 @@ export default function DeviceDetailPage() {
 
             {/* Metrics */}
             {device.metrics && device.metrics.length > 0 && (
-              <Card>
+              <Card className="card-hover rounded-lg border-border/50">
                 <CardHeader>
                   <CardTitle>Latest Metrics</CardTitle>
                 </CardHeader>
