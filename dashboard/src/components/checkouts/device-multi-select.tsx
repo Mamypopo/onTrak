@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Battery } from "lucide-react";
 
 export interface CheckoutDevice {
   id: string;
   deviceCode: string;
   name: string | null;
   model?: string | null;
+  battery?: number;
   status: "ONLINE" | "OFFLINE";
   borrowStatus?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE";
 }
@@ -44,6 +46,13 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
     } else {
       onChange([...selectedIds, id]);
     }
+  };
+
+  const getBatteryColor = (level?: number) => {
+    if (level == null) return "text-muted-foreground";
+    if (level <= 20) return "text-red-500";
+    if (level <= 50) return "text-amber-500";
+    return "text-emerald-500";
   };
 
   const getBorrowBadge = (status?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE") => {
@@ -83,7 +92,7 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
             ไม่มีอุปกรณ์ที่ว่างสำหรับการเบิก
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {devices.map((device) => {
               const selected = selectedIds.includes(device.id);
               return (
@@ -123,8 +132,17 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
                     <div className="text-[11px] md:text-xs text-muted-foreground truncate">
                       {device.model || "ไม่ทราบรุ่น"}
                     </div>
-                    <div className="pt-1">
-                      {getBorrowBadge(device.borrowStatus)}
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-1 text-[11px] md:text-xs">
+                        <Battery
+                          className={cn("h-3 w-3", getBatteryColor(device.battery))}
+                          strokeWidth={2}
+                        />
+                        <span className={cn("font-medium", getBatteryColor(device.battery))}>
+                          {device.battery != null ? `${device.battery}%` : "-"}
+                        </span>
+                      </div>
+                      <div>{getBorrowBadge(device.borrowStatus)}</div>
                     </div>
                   </div>
                 </button>

@@ -21,6 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface CreateCheckoutForm {
   company: string;
@@ -47,6 +55,7 @@ export default function CreateCheckoutPage() {
   const [users, setUsers] = useState<CheckoutUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [form, setForm] = useState<CreateCheckoutForm>({
     company: "",
     borrowerId: "",
@@ -76,6 +85,7 @@ export default function CreateCheckoutPage() {
           deviceCode: d.deviceCode,
           name: d.name,
           model: d.model,
+          battery: d.battery,
           status: d.status,
           borrowStatus: d.borrowStatus,
         }));
@@ -297,26 +307,104 @@ export default function CreateCheckoutPage() {
               </Card>
             </div>
 
-            {/* Right: device selector */}
-            <div className="lg:col-span-2">
-              {loadingDevices ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>เลือกอุปกรณ์ที่จะเบิก</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </CardContent>
-                </Card>
-              ) : (
-                <DeviceMultiSelect
-                  devices={devices}
-                  selectedIds={selectedIds}
-                  onChange={setSelectedIds}
-                />
-              )}
+            {/* Right: device selector (summary + modal) */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <CardTitle>อุปกรณ์ที่เลือก</CardTitle>
+                  <Dialog open={deviceDialogOpen} onOpenChange={setDeviceDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={loadingDevices}>
+                        เลือกอุปกรณ์
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw]">
+                      <DialogHeader>
+                        <DialogTitle>เลือกอุปกรณ์ที่จะเบิก</DialogTitle>
+                      </DialogHeader>
+                      {loadingDevices ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ) : (
+                        <DeviceMultiSelect
+                          devices={devices}
+                          selectedIds={selectedIds}
+                          onChange={setSelectedIds}
+                        />
+                      )}
+                      <DialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="text-sm text-muted-foreground">
+                          เลือกแล้ว {selectedIds.length} / {devices.length} เครื่อง
+                        </div>
+                        <div className="flex gap-2 sm:justify-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeviceDialogOpen(false)}
+                          >
+                            ปิด
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => setDeviceDialogOpen(false)}
+                            disabled={selectedIds.length === 0}
+                          >
+                            ยืนยันการเลือก
+                          </Button>
+                        </div>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent>
+                  {selectedIds.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      ยังไม่ได้เลือกอุปกรณ์ คลิกปุ่ม &quot;เลือกอุปกรณ์&quot; เพื่อเริ่มเลือก
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        เลือกแล้ว {selectedIds.length} เครื่อง:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {devices
+                          .filter((d) => selectedIds.includes(d.id))
+                          .map((device) => (
+                            <div
+                              key={device.id}
+                              className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                            >
+                              <div className="space-y-0.5">
+                                <div className="font-mono text-xs truncate">
+                                  {device.deviceCode}
+                                </div>
+                                <div className="text-xs truncate">
+                                  {device.name || "-"}
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive"
+                                onClick={() =>
+                                  setSelectedIds((prev) =>
+                                    prev.filter((id) => id !== device.id)
+                                  )
+                                }
+                              >
+                                ลบ
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 
