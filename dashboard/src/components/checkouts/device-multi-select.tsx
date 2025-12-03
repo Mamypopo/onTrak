@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -64,9 +63,18 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span>เลือกอุปกรณ์ที่จะเบิก</span>
-          <span className="text-sm font-normal text-muted-foreground">
-            เลือกแล้ว {selectedIds.length} / {devices.length} เครื่อง
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="text-xs text-primary hover:underline"
+            >
+              {allSelected ? "ยกเลิกการเลือกทั้งหมด" : "เลือกทั้งหมด"}
+            </button>
+            <span className="text-sm font-normal text-muted-foreground">
+              เลือกแล้ว {selectedIds.length} / {devices.length} เครื่อง
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
@@ -75,67 +83,53 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
             ไม่มีอุปกรณ์ที่ว่างสำหรับการเบิก
           </div>
         ) : (
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {devices.map((device) => {
+              const selected = selectedIds.includes(device.id);
+              return (
+                <button
+                  key={device.id}
+                  type="button"
+                  onClick={() => toggleOne(device.id)}
+                  className={cn(
+                    "relative text-left rounded-lg border p-4 transition-all",
+                    "hover:border-primary hover:bg-primary/5",
+                    selected && "border-primary bg-primary/5 shadow-sm"
+                  )}
+                >
+                  <div className="absolute top-3 right-3">
                     <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={toggleAll}
-                      indeterminate={isIndeterminate}
-                      aria-label="เลือกทั้งหมด"
+                      checked={selected}
+                      indeterminate={false}
+                      onCheckedChange={() => toggleOne(device.id)}
+                      aria-label={`เลือก ${device.deviceCode}`}
+                      onClick={(e) => e.stopPropagation()}
                     />
-                  </TableHead>
-                  <TableHead>รหัสเครื่อง</TableHead>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead>รุ่น</TableHead>
-                  <TableHead>การเชื่อมต่อ</TableHead>
-                  <TableHead>สถานะการยืม</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {devices.map((device) => {
-                  const selected = selectedIds.includes(device.id);
-                  return (
-                    <TableRow
-                      key={device.id}
-                      className={cn(
-                        "cursor-pointer hover:bg-muted/50",
-                        selected && "bg-primary/5"
-                      )}
-                      onClick={() => toggleOne(device.id)}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selected}
-                          onCheckedChange={() => toggleOne(device.id)}
-                          aria-label={`เลือก ${device.deviceCode}`}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs md:text-sm">
+                  </div>
+                  <div className="space-y-2 pr-6">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-mono text-xs md:text-sm truncate">
                         {device.deviceCode}
-                      </TableCell>
-                      <TableCell className="text-xs md:text-sm">
-                        {device.name || "-"}
-                      </TableCell>
-                      <TableCell className="text-xs md:text-sm">
-                        {device.model || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {device.status === "ONLINE" ? (
-                          <Badge variant="success">ออนไลน์</Badge>
-                        ) : (
-                          <Badge variant="outline">ออฟไลน์</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{getBorrowBadge(device.borrowStatus)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      </div>
+                      {device.status === "ONLINE" ? (
+                        <Badge variant="success">ออนไลน์</Badge>
+                      ) : (
+                        <Badge variant="outline">ออฟไลน์</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs md:text-sm font-medium truncate">
+                      {device.name || "-"}
+                    </div>
+                    <div className="text-[11px] md:text-xs text-muted-foreground truncate">
+                      {device.model || "ไม่ทราบรุ่น"}
+                    </div>
+                    <div className="pt-1">
+                      {getBorrowBadge(device.borrowStatus)}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </CardContent>
