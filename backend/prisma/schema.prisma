@@ -29,7 +29,7 @@ model Device {
   volumeLevel      Int      @default(0)
   bluetoothEnabled Boolean  @default(false)
   installedAppsCount Int    @default(0)
-  bootTime         BigInt?  // Timestamp when device booted
+  bootTime         BigInt?  
   latitude      Float?
   longitude     Float?
   kioskMode     Boolean  @default(false)

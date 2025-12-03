@@ -13,8 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AddTabletDialog } from "@/components/tablets/add-tablet-dialog";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { safeFormatDistanceToNow } from "@/lib/date-utils";
 
 interface Device {
   id: string;
@@ -25,7 +25,7 @@ interface Device {
   latitude: number | null;
   longitude: number | null;
   status: "ONLINE" | "OFFLINE" | "IN_USE" | "AVAILABLE";
-  lastSeen: string;
+  lastSeen: string | null;
   kioskMode: boolean;
 }
 
@@ -279,7 +279,8 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* Calculate grid: 6 columns, first item is "Add" button */}
-            {(() => {
+            {/* แสดง Card "เพิ่ม Tablet" เฉพาะเมื่อมี device แล้ว */}
+            {filteredDevices.length > 0 && (() => {
               const allItems = [
                 { type: "add" as const },
                 ...filteredDevices.map((device) => ({ type: "device" as const, device })),
@@ -359,9 +360,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Activity className="h-3 w-3" />
                               <span className="line-clamp-1">
-                                {formatDistanceToNow(new Date(device.lastSeen), {
-                                  addSuffix: true,
-                                })}
+                                {safeFormatDistanceToNow(device.lastSeen, { addSuffix: true })}
                               </span>
                             </div>
                           </div>

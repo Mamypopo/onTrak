@@ -22,6 +22,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tippy";
 
 const userSchema = z.object({
   username: z.string().min(1, "กรุณากรอกชื่อผู้ใช้"),
@@ -265,6 +266,21 @@ export default function UsersPage() {
     }
   };
 
+  const getRoleDescription = (role: string) => {
+    switch (role) {
+      case "ADMIN":
+        return "ผู้ดูแลระบบ - มีสิทธิ์เข้าถึงทุกฟีเจอร์และจัดการผู้ใช้ได้";
+      case "MANAGER":
+        return "ผู้จัดการ - สามารถจัดการอุปกรณ์และดูรายงานได้";
+      case "USER":
+        return "ผู้ใช้ - สามารถใช้งานระบบพื้นฐานได้";
+      case "VIEWER":
+        return "ผู้ดู - สามารถดูข้อมูลได้อย่างเดียว ไม่สามารถแก้ไขได้";
+      default:
+        return "";
+    }
+  };
+
   // Check permission
   if (currentUser && currentUser.role !== "ADMIN" && currentUser.role !== "MANAGER") {
     return (
@@ -415,7 +431,7 @@ export default function UsersPage() {
                   <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                     >
                       ยกเลิก
@@ -536,14 +552,22 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.username}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn("border", roleColors[user.role])}>
-                            {roleLabels[user.role]}
-                          </Badge>
+                          <Tooltip content={getRoleDescription(user.role)}>
+                            <span>
+                              <Badge variant="outline" className={cn("border", roleColors[user.role])}>
+                                {roleLabels[user.role]}
+                              </Badge>
+                            </span>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.isActive ? "success" : "muted"} className="text-xs">
-                            {user.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          <Tooltip content={user.isActive ? "ผู้ใช้สามารถเข้าสู่ระบบได้" : "ผู้ใช้ไม่สามารถเข้าสู่ระบบได้"}>
+                            <span>
+                              <Badge variant={user.isActive ? "success" : "muted"} className="text-xs">
+                                {user.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </span>
+                          </Tooltip>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(user.createdAt), "dd MMM yyyy", { locale: th })}
@@ -552,26 +576,30 @@ export default function UsersPage() {
                           <div className="flex items-center justify-end gap-2">
                             {currentUser?.role === "ADMIN" && (
                               <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingUser(user);
-                                    setIsDialogOpen(true);
-                                  }}
-                                  className="h-8 w-8"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                {user.id !== currentUser.id && (
+                                <Tooltip content="แก้ไขผู้ใช้">
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleDelete(user.id, user.username)}
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      setEditingUser(user);
+                                      setIsDialogOpen(true);
+                                    }}
+                                    className="h-8 w-8"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Edit className="h-4 w-4" />
                                   </Button>
+                                </Tooltip>
+                                {user.id !== currentUser.id && (
+                                  <Tooltip content="ลบผู้ใช้">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDelete(user.id, user.username)}
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </Tooltip>
                                 )}
                               </>
                             )}

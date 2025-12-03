@@ -218,9 +218,11 @@ export async function getDeviceById(id) {
       return null;
     }
 
-    // Convert BigInt to String for JSON serialization
+    // Serialize BigInt fields to strings for JSON
+    // Note: DateTime fields (like lastSeen) are automatically serialized to ISO strings by Prisma
     return {
       ...device,
+      bootTime: device.bootTime ? device.bootTime.toString() : null,
       metrics: device.metrics.map(metric => ({
         ...metric,
         memoryTotal: metric.memoryTotal.toString(),
@@ -288,7 +290,12 @@ export async function getAllDevices() {
       },
     });
 
-    return devices;
+    // Serialize BigInt fields to strings for JSON
+    // DateTime fields (like lastSeen) are automatically serialized to ISO strings by Prisma
+    return devices.map(device => ({
+      ...device,
+      bootTime: device.bootTime ? device.bootTime.toString() : null,
+    }));
   } catch (error) {
     logger.error({ error }, 'Error fetching devices');
     throw error;

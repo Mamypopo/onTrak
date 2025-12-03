@@ -25,9 +25,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from "date-fns";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { safeFormatDistanceToNow, safeParseDate } from "@/lib/date-utils";
 
 // Dynamic import for Map component to avoid SSR issues
 const DeviceMap = dynamic(() => import("@/components/DeviceMap"), {
@@ -103,7 +104,10 @@ export default function DeviceDetailPage() {
     try {
       const response = await api.get(`/api/device/${deviceId}`);
       if (response.data.success) {
-        setDevice(response.data.data);
+        const deviceData = response.data.data;
+        // Debug: Check lastSeen value
+        console.log("Device lastSeen:", deviceData.lastSeen, typeof deviceData.lastSeen);
+        setDevice(deviceData);
       } else {
         console.error("Failed to fetch device:", response.data);
         setDevice(null);
@@ -576,10 +580,9 @@ export default function DeviceDetailPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Last Seen</p>
                   <p className="text-sm font-medium line-clamp-1">
-                    {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), {
+                    {safeFormatDistanceToNow(device.lastSeen, {
                       addSuffix: true,
-                      locale: th,
-                    }) : "ไม่ทราบเวลา"}
+                    }, "ไม่ทราบเวลา")}
                   </p>
                 </div>
               </div>
@@ -771,23 +774,23 @@ export default function DeviceDetailPage() {
                       </div>
                     )}
                     {device.bootTime && (() => {
-                      try {
-                        const bootDate = new Date(Number(device.bootTime));
-                        if (isNaN(bootDate.getTime())) return null;
-                        return (
-                          <div className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <Activity className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">เวลาบูต</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {bootDate.toLocaleString('th-TH')}
-                            </span>
+                      // bootTime is BigInt string (timestamp in milliseconds)
+                      const bootTimeNum = typeof device.bootTime === 'string' 
+                        ? Number(device.bootTime) 
+                        : device.bootTime;
+                      const bootDate = new Date(bootTimeNum);
+                      if (isNaN(bootDate.getTime())) return null;
+                      return (
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">เวลาบูต</span>
                           </div>
-                        );
-                      } catch {
-                        return null;
-                      }
+                          <span className="text-xs text-muted-foreground">
+                            {bootDate.toLocaleString('th-TH')}
+                          </span>
+                        </div>
+                      );
                     })()}
                   </div>
                 </div>
@@ -1407,10 +1410,9 @@ export default function DeviceDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Last Seen</span>
                     <span className="text-xs text-muted-foreground">
-                      {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), {
+                      {safeFormatDistanceToNow(device.lastSeen, {
                         addSuffix: true,
-                        locale: th,
-                      }) : "ไม่ทราบเวลา"}
+                      }, "ไม่ทราบเวลา")}
                     </span>
                   </div>
                 </div>

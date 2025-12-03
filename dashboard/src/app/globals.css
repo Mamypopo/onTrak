@@ -48,7 +48,7 @@
     /* Option 5: Orange/Amber (uncomment to use) */
     /* --primary: 24.6 95% 53.1%; */
 
-    --primary-foreground: 0 0% 11%;
+    --primary-foreground: 0 0% 98%; /* สีขาวสำหรับข้อความบนปุ่ม primary ใน dark mode */
     --secondary: 217.2 32.6% 25%; /* Slate - สีรองสำหรับ secondary buttons, backgrounds (ต่างจาก background 11%) */
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 18%;
@@ -195,9 +195,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 1px solid hsl(var(--border));
   border-radius: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {
@@ -223,9 +223,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   border: 1px solid hsl(var(--border));
   border-radius: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 .dark .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {

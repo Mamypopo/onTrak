@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -51,24 +51,68 @@ export default function DeviceMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const mapKeyRef = useRef<string>(`map-${deviceId || 'default'}-${Date.now()}-${Math.random()}`);
+  
+  // Generate unique key that changes when deviceId changes to force remount
+  // This prevents "Map container is being reused" errors
+  const mapKey = useMemo(() => {
+    return `map-${deviceId || 'default'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }, [deviceId]);
+
+  /**
+   * Cleanup function to properly remove Leaflet map instance
+   */
+  const cleanupMap = useCallback((map: L.Map | null, container: HTMLDivElement | null) => {
+    if (!map) return;
+    
+    try {
+      const mapContainer = map.getContainer();
+      
+      // Remove all event listeners
+      map.off();
+      
+      // Remove all layers
+      map.eachLayer((layer) => {
+        map.removeLayer(layer);
+      });
+      
+      // Remove map instance
+      map.remove();
+      
+      // Clean up container
+      if (mapContainer) {
+        // Remove Leaflet ID to allow re-initialization
+        delete (mapContainer as any)._leaflet_id;
+        // Clear container content
+        mapContainer.innerHTML = '';
+      }
+    } catch (error) {
+      // Ignore cleanup errors - map might already be removed
+      console.debug('Map cleanup error (ignored):', error);
+    }
+    
+    // Also clean up container ref if it exists
+    if (container) {
+      // Remove any Leaflet ID from container
+      if ((container as any)._leaflet_id) {
+        delete (container as any)._leaflet_id;
+      }
+    }
+  }, []);
 
   // Ensure component is mounted on client side
   useEffect(() => {
     setIsMounted(true);
     
+    // Store ref values for cleanup
+    const mapInstance = mapInstanceRef.current;
+    const containerRef = mapContainerRef.current;
+    
     // Cleanup on unmount
     return () => {
-      if (mapInstanceRef.current) {
-        try {
-          mapInstanceRef.current.remove();
-        } catch (error) {
-          // Ignore cleanup errors
-        }
-        mapInstanceRef.current = null;
-      }
+      cleanupMap(mapInstance, containerRef);
+      mapInstanceRef.current = null;
     };
-  }, []);
+  }, [cleanupMap]);
 
   // Convert location history to coordinates
   const rawCoordinates = useMemo(() => {
@@ -221,7 +265,9 @@ export default function DeviceMap({
   };
 
 
-  // Component to handle map updates
+  /**
+   * Component to handle map updates and store map instance reference
+   */
   function MapUpdater({ 
     center, 
     routePositions: positions 
@@ -231,58 +277,62 @@ export default function DeviceMap({
   }) {
     const map = useMap();
     
-    // Update map view when location changes
+    // Store map instance reference when map is ready
     useEffect(() => {
       if (map) {
-        try {
-          map.setView(center, 15);
-        } catch (error) {
-          console.error("Error setting map view:", error);
-        }
+        mapInstanceRef.current = map;
+      }
+    }, [map]);
+    
+    // Update map view when location changes
+    useEffect(() => {
+      if (!map) return;
+      
+      try {
+        map.setView(center, 15);
+      } catch (error) {
+        console.error("Error setting map view:", error);
       }
     }, [center, map]);
     
     // Auto-fit map bounds to show entire route if history exists
     useEffect(() => {
-      if (map && positions.length > 0) {
-        try {
-          const bounds = L.latLngBounds(positions);
-          map.fitBounds(bounds, { padding: [20, 20] });
-        } catch (error) {
-          console.error("Error fitting bounds:", error);
-        }
+      if (!map || positions.length === 0) return;
+      
+      try {
+        const bounds = L.latLngBounds(positions);
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } catch (error) {
+        console.error("Error fitting bounds:", error);
       }
     }, [positions, map]);
     
     // Invalidate size on mount and when window resizes (for fullscreen)
     useEffect(() => {
-      if (map && mapInstanceRef.current === map) {
-        const invalidateSize = () => {
-          setTimeout(() => {
-            try {
-              // Check if map is still valid and matches our instance
-              if (mapInstanceRef.current === map && map) {
-                const container = map.getContainer();
-                if (container && !(container as any)._leaflet_id) {
-                  map.invalidateSize();
-                }
-              }
-            } catch (error) {
-              // Silently ignore errors - map might be unmounted
-              console.debug("Map size invalidation skipped:", error);
+      if (!map) return;
+      
+      const invalidateSize = () => {
+        setTimeout(() => {
+          try {
+            // Check if map is still valid
+            if (map && mapInstanceRef.current === map) {
+              map.invalidateSize();
             }
-          }, 100);
-        };
-        
-        invalidateSize();
-        
-        // Listen for resize events (including fullscreen changes)
-        window.addEventListener('resize', invalidateSize);
-        
-        return () => {
-          window.removeEventListener('resize', invalidateSize);
-        };
-      }
+          } catch (error) {
+            // Silently ignore errors - map might be unmounted
+            console.debug("Map size invalidation skipped:", error);
+          }
+        }, 100);
+      };
+      
+      invalidateSize();
+      
+      // Listen for resize events (including fullscreen changes)
+      window.addEventListener('resize', invalidateSize);
+      
+      return () => {
+        window.removeEventListener('resize', invalidateSize);
+      };
     }, [map]);
     
     return null;
@@ -314,6 +364,7 @@ export default function DeviceMap({
       ref={mapContainerRef}
       className="w-full h-72 rounded-lg overflow-hidden relative" 
       style={{ minHeight: '256px' }}
+      key={`wrapper-${mapKey}`}
     >
       {/* Fullscreen Toggle Button */}
       <Tooltip content={isFullscreen ? "ย่อ" : "ขยาย"}>
@@ -331,14 +382,11 @@ export default function DeviceMap({
       </Tooltip>
 
       <MapContainer
-        key={mapKeyRef.current}
+        key={mapKey}
         center={[latitude, longitude]}
         zoom={routePositions.length > 0 ? 13 : 15}
         style={{ height: "100%", width: "100%", zIndex: 0, minHeight: '256px' }}
         scrollWheelZoom={true}
-        whenReady={() => {
-          // Map is ready - prevents double initialization
-        }}
       >
         <MapUpdater center={[latitude, longitude]} routePositions={routePositions} />
         <TileLayer
