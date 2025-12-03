@@ -30,6 +30,7 @@ class MDMService : Service() {
     private var mqttManager: MQTTManager? = null
     private lateinit var locationManager: LocationManager
     private var locationListener: LocationListener? = null
+    private var wakeLock: PowerManager.WakeLock? = null
     private val deviceId: String by lazy {
         try {
             DeviceInfo.getDeviceId(this)
@@ -55,14 +56,16 @@ class MDMService : Service() {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     // Android 13+ requires foreground service type
-                    // Using DATA_SYNC type to avoid location permission issues
+                    // Use LOCATION type for location tracking (required for background location)
                     startForeground(
                         NOTIFICATION_ID,
                         createNotification(),
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
                     )
+                    Log.d(TAG, "Foreground service started with LOCATION type")
                 } else {
                     startForeground(NOTIFICATION_ID, createNotification())
+                    Log.d(TAG, "Foreground service started (pre-Android 13)")
                 }
             } catch (e: Exception) {
                 // บนอีมูเลเตอร์ / Android 14 อาจบล็อค startForeground ถ้ามองว่าเริ่มจาก background
@@ -77,6 +80,20 @@ class MDMService : Service() {
             Log.d(TAG, "Getting LocationManager...")
             locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
             Log.d(TAG, "LocationManager obtained")
+            
+            // Acquire wake lock to prevent service from being killed
+            try {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "OnTrakMDM::LocationWakeLock"
+                ).apply {
+                    acquire(10 * 60 * 60 * 1000L /*10 hours*/)
+                    Log.d(TAG, "WakeLock acquired")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error acquiring wake lock", e)
+            }
             
             Log.d(TAG, "Setting up location listener...")
             setupLocationListener()
@@ -351,10 +368,31 @@ class MDMService : Service() {
         try {
             if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == 
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                val lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                if (lastLocation != null) {
-                    publishLocation(lastLocation)
+                Log.d(TAG, "Requesting location update...")
+                
+                // Try GPS first
+                var location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                
+                // Fallback to Network Provider if GPS is not available
+                if (location == null) {
+                    Log.d(TAG, "GPS location not available, trying Network...")
+                    location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 }
+                
+                // Fallback to Passive Provider as last resort
+                if (location == null) {
+                    Log.d(TAG, "Network location not available, trying Passive...")
+                    location = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
+                }
+                
+                if (location != null) {
+                    Log.d(TAG, "Location obtained: lat=${location.latitude}, lng=${location.longitude}, accuracy=${location.accuracy}")
+                    publishLocation(location)
+                } else {
+                    Log.w(TAG, "No location available from any provider")
+                }
+            } else {
+                Log.w(TAG, "Location permission not granted")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error requesting location update", e)
@@ -370,7 +408,9 @@ class MDMService : Service() {
                 accuracy = location.accuracy
             )
             
+            Log.d(TAG, "Publishing location: lat=${location.latitude}, lng=${location.longitude}")
             mqttManager?.publishLocation(deviceLocation)
+            Log.d(TAG, "Location published successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error publishing location", e)
         }
@@ -417,8 +457,23 @@ class MDMService : Service() {
             locationListener?.let {
                 try {
                     locationManager.removeUpdates(it)
+                    Log.d(TAG, "Location updates removed")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error removing location updates", e)
+                }
+            }
+            
+            // Release wake lock (avoid using if as expression)
+            wakeLock?.let { wl ->
+                try {
+                    if (wl.isHeld) {
+                        wl.release()
+                        Log.d(TAG, "WakeLock released")
+                    } else {
+                        Log.d(TAG, "WakeLock not held, no need to release")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error releasing wake lock", e)
                 }
             }
             

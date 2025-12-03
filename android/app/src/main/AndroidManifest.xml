@@ -77,7 +77,7 @@
             android:name=".service.MDMService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="location" />
 
         <!-- MQTT Service -->
         <service
