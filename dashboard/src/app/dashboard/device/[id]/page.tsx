@@ -97,6 +97,28 @@ export default function DeviceDetailPage() {
         message.type === "device_metrics")
     ) {
       setDevice((prev) => (prev ? { ...prev, ...message.data } : null));
+      
+      // เมื่อได้รับ location update ให้เพิ่มเข้าไปใน locationHistory เพื่อให้ route ถูกคำนวณใหม่
+      if (message.type === "device_location" && message.data?.latitude && message.data?.longitude) {
+        setLocationHistory((prev) => {
+          const newLocation = {
+            latitude: message.data.latitude,
+            longitude: message.data.longitude,
+            createdAt: new Date().toISOString(),
+          };
+          
+          // เพิ่ม location ใหม่เข้าไป (ไม่ให้ซ้ำกับอันสุดท้าย)
+          const lastLocation = prev[prev.length - 1];
+          if (
+            !lastLocation ||
+            lastLocation.latitude !== newLocation.latitude ||
+            lastLocation.longitude !== newLocation.longitude
+          ) {
+            return [...prev, newLocation];
+          }
+          return prev;
+        });
+      }
     }
   });
 
