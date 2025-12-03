@@ -30,11 +30,11 @@ export function Nav() {
       localStorage.removeItem("theme")
       
       // แสดง toast success ก่อน redirect
-      Swal.fire({
+      await Swal.fire({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 1500, // 1.5 วินาที
         timerProgressBar: true,
         icon: "success",
         title: "ออกจากระบบสำเร็จ",
@@ -42,11 +42,9 @@ export function Nav() {
         background: '#ffffff',
       })
       
-      // รอให้ toast แสดงก่อน redirect
-      setTimeout(() => {
-        router.push("/login")
-        router.refresh()
-      }, 200)
+      // Redirect หลังจาก toast แสดงเสร็จ
+      router.push("/login")
+      router.refresh()
     }
   }
 

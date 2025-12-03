@@ -37,12 +37,14 @@ export default function LoginPage() {
       const response = await api.post("/api/auth/login", data);
       
       if (response.data.success && response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        
         // แสดง success toast (ใช้ light mode สำหรับ login page)
-        Swal.fire({
+        await Swal.fire({
           toast: true,
           position: 'top-end',
           showConfirmButton: false,
-          timer: 2000,
+          timer: 1500, // ลดเป็น 1.5 วินาที
           timerProgressBar: true,
           icon: "success",
           title: "เข้าสู่ระบบสำเร็จ",
@@ -51,7 +53,6 @@ export default function LoginPage() {
           background: '#ffffff',
         });
         
-        localStorage.setItem("token", response.data.token);
         // Use window.location for full page reload to ensure middleware works
         window.location.href = "/dashboard";
       } else {

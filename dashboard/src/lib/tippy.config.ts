@@ -5,24 +5,24 @@ import type { TippyProps } from '@tippyjs/react';
  * ใช้สำหรับตั้งค่า default props ของ Tippy ทั้งระบบ
  */
 export const tippyDefaultProps: Partial<TippyProps> = {
-  // Animation
-  animation: 'fade',
-  duration: [200, 100],
+  // Animation - ใช้ scale เพื่อให้ smooth 
+  animation: 'scale',
+  duration: [150, 100],
   
   // Placement
   placement: 'top',
   
   // Behavior
   interactive: false,
-  trigger: 'mouseenter focus',
+  trigger: 'mouseenter', 
   hideOnClick: true,
   
   // Styling - ใช้ theme ตาม dark mode
   theme: 'light-border',
   arrow: true,
   
-  // Delay
-  delay: [100, 0],
+  // Delay - 300ms 
+  delay: [300, 0],
   
   // Offset
   offset: [0, 8],

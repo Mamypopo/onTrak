@@ -5,10 +5,9 @@ import Swal, { SweetAlertOptions } from 'sweetalert2'
  * Automatically detects system/theme preference
  */
 export function getSwalConfig(overrides?: SweetAlertOptions): SweetAlertOptions {
-  // ตรวจสอบ dark mode จาก class หรือ system preference
-  const isDark = 
-    document.documentElement.classList.contains('dark') ||
-    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  // ตรวจสอบ dark mode จาก class เท่านั้น (ไม่ใช้ system preference)
+  const isDark = typeof document !== 'undefined' && 
+    document.documentElement.classList.contains('dark')
 
   const baseConfig: SweetAlertOptions = {
     color: isDark ? '#e5e7eb' : '#1f2937',
@@ -34,10 +33,9 @@ export function getSwalConfig(overrides?: SweetAlertOptions): SweetAlertOptions 
  * ใช้สำหรับแจ้งเตือนเล็ก ๆ เช่น ส่งคำสั่งสำเร็จ / คัดลอกข้อมูล
  */
 export function getToastConfig(overrides?: SweetAlertOptions): SweetAlertOptions {
-  // ตรวจสอบ dark mode จาก class หรือ system preference
-  const isDark = 
-    document.documentElement.classList.contains('dark') ||
-    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  // ตรวจสอบ dark mode จาก class เท่านั้น (ไม่ใช้ system preference)
+  const isDark = typeof document !== 'undefined' && 
+    document.documentElement.classList.contains('dark')
 
   // ลบพารามิเตอร์ที่ไม่เข้ากันกับ toast mode ออกจาก overrides
   const { backdrop, allowOutsideClick, allowEscapeKey, allowEnterKey, focusConfirm, ...safeOverrides } = overrides || {}
