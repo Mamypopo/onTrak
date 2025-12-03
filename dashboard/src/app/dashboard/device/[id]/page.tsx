@@ -576,9 +576,10 @@ export default function DeviceDetailPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Last Seen</p>
                   <p className="text-sm font-medium line-clamp-1">
-                    {formatDistanceToNow(new Date(device.lastSeen), {
+                    {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), {
                       addSuffix: true,
-                    })}
+                      locale: th,
+                    }) : "ไม่ทราบเวลา"}
                   </p>
                 </div>
               </div>
@@ -769,17 +770,25 @@ export default function DeviceDetailPage() {
                         <span className="font-semibold">{device.installedAppsCount}</span>
                       </div>
                     )}
-                    {device.bootTime && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">เวลาบูต</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(Number(device.bootTime)).toLocaleString()}
-                        </span>
-                      </div>
-                    )}
+                    {device.bootTime && (() => {
+                      try {
+                        const bootDate = new Date(Number(device.bootTime));
+                        if (isNaN(bootDate.getTime())) return null;
+                        return (
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Activity className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm">เวลาบูต</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {bootDate.toLocaleString('th-TH')}
+                            </span>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
                   </div>
                 </div>
               </CardContent>
@@ -980,8 +989,12 @@ export default function DeviceDetailPage() {
                         {/* Timeline */}
                         <div className="space-y-0 max-h-96 overflow-y-auto px-2">
                           {actionLogs.map((log: any, index: number) => {
+                            if (!log.createdAt) return null;
                             const logDate = new Date(log.createdAt);
-                            const prevLogDate = index > 0 ? new Date(actionLogs[index - 1].createdAt) : null;
+                            if (isNaN(logDate.getTime())) return null;
+                            const prevLogDate = index > 0 && actionLogs[index - 1].createdAt 
+                              ? new Date(actionLogs[index - 1].createdAt) 
+                              : null;
                             const showDateSeparator = !prevLogDate || !isSameDay(logDate, prevLogDate);
                             
                             const getActionIcon = (action: string) => {
@@ -1119,8 +1132,12 @@ export default function DeviceDetailPage() {
                       <div className="relative">
                         <div className="space-y-0 max-h-96 overflow-y-auto px-2">
                           {borrowRecords.map((borrow: any, index: number) => {
+                            if (!borrow.borrowTime) return null;
                             const borrowDate = new Date(borrow.borrowTime);
-                            const prevBorrowDate = index > 0 ? new Date(borrowRecords[index - 1].borrowTime) : null;
+                            if (isNaN(borrowDate.getTime())) return null;
+                            const prevBorrowDate = index > 0 && borrowRecords[index - 1].borrowTime
+                              ? new Date(borrowRecords[index - 1].borrowTime)
+                              : null;
                             const showDateSeparator = !prevBorrowDate || !isSameDay(borrowDate, prevBorrowDate);
 
                             const formatTime = (date: Date) => {
@@ -1190,11 +1207,19 @@ export default function DeviceDetailPage() {
                                             <span className="text-[10px] text-muted-foreground">
                                               {formatTime(borrowDate)}
                                             </span>
-                                            {borrow.returnTime && (
-                                              <span className="text-[10px] text-muted-foreground">
-                                                • คืน: {formatTime(new Date(borrow.returnTime))}
-                                              </span>
-                                            )}
+                                            {borrow.returnTime && (() => {
+                                              try {
+                                                const returnDate = new Date(borrow.returnTime);
+                                                if (isNaN(returnDate.getTime())) return null;
+                                                return (
+                                                  <span className="text-[10px] text-muted-foreground">
+                                                    • คืน: {formatTime(returnDate)}
+                                                  </span>
+                                                );
+                                              } catch {
+                                                return null;
+                                              }
+                                            })()}
                                           </div>
                                         </div>
                                         <Badge variant={borrow.returnTime ? "success" : "info"} className="text-xs shrink-0">
@@ -1382,9 +1407,10 @@ export default function DeviceDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Last Seen</span>
                     <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(device.lastSeen), {
+                      {device.lastSeen ? formatDistanceToNow(new Date(device.lastSeen), {
                         addSuffix: true,
-                      })}
+                        locale: th,
+                      }) : "ไม่ทราบเวลา"}
                     </span>
                   </div>
                 </div>

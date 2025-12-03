@@ -259,6 +259,7 @@ export async function createDevice(deviceData) {
         model: deviceData.model || null,
         osVersion: deviceData.osVersion || null,
         status: 'OFFLINE',
+        lastSeen: new Date(), // Ensure lastSeen is set explicitly
       },
     });
 
