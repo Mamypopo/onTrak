@@ -2,33 +2,6 @@ import prisma from '../db/client.js';
 import logger from '../utils/logger.js';
 
 /**
- * Convert BigInt fields to string for JSON serialization
- */
-function serializeBigInt(obj) {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-  
-  if (typeof obj === 'bigint') {
-    return obj.toString();
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(item => serializeBigInt(item));
-  }
-  
-  if (typeof obj === 'object') {
-    const serialized = {};
-    for (const [key, value] of Object.entries(obj)) {
-      serialized[key] = serializeBigInt(value);
-    }
-    return serialized;
-  }
-  
-  return obj;
-}
-
-/**
  * Calculate distance between two coordinates using Haversine formula
  * Returns distance in meters
  */
@@ -246,7 +219,7 @@ export async function getDeviceById(id) {
     }
 
     // Convert BigInt to String for JSON serialization
-    return serializeBigInt({
+    return {
       ...device,
       metrics: device.metrics.map(metric => ({
         ...metric,
@@ -257,7 +230,7 @@ export async function getDeviceById(id) {
         storageUsed: metric.storageUsed.toString(),
         storageAvailable: metric.storageAvailable.toString(),
       })),
-    });
+    };
   } catch (error) {
     logger.error({ error, deviceId: id }, 'Error fetching device');
     throw error;
@@ -314,8 +287,7 @@ export async function getAllDevices() {
       },
     });
 
-    // Convert BigInt to String for JSON serialization
-    return serializeBigInt(devices);
+    return devices;
   } catch (error) {
     logger.error({ error }, 'Error fetching devices');
     throw error;
