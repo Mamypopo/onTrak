@@ -22,22 +22,20 @@ async function handleDeviceStatus(topic, data) {
     const deviceId = match[1];
     logger.debug({ deviceId, data }, 'Received device status');
 
-    // Update or create device
-    const device = await prisma.device.upsert({
+    // Find device first - only update if device exists
+    const device = await prisma.device.findUnique({
       where: { deviceCode: deviceId },
-      update: {
-        battery: data.battery || 0,
-        wifiStatus: data.wifiStatus || false,
-        isCharging: data.isCharging || false,
-        batteryHealth: data.batteryHealth || null,
-        chargingMethod: data.chargingMethod || null,
-        mobileDataEnabled: data.mobileDataEnabled || false,
-        networkConnected: data.networkConnected || false,
-        lastSeen: new Date(),
-        status: 'ONLINE',
-      },
-      create: {
-        deviceCode: deviceId,
+    });
+
+    if (!device) {
+      logger.warn({ deviceId }, 'Device not found in database. Please create device first before it can send status updates.');
+      return;
+    }
+
+    // Update existing device only
+    const updatedDevice = await prisma.device.update({
+      where: { deviceCode: deviceId },
+      data: {
         battery: data.battery || 0,
         wifiStatus: data.wifiStatus || false,
         isCharging: data.isCharging || false,
@@ -58,23 +56,23 @@ async function handleDeviceStatus(topic, data) {
     // Broadcast to dashboard
     broadcastToDashboard({
       type: 'device_status',
-      deviceId: device.id,
+      deviceId: updatedDevice.id,
       deviceCode: deviceId,
       data: {
-        battery: device.battery,
-        wifiStatus: device.wifiStatus,
-        isCharging: device.isCharging,
-        batteryHealth: device.batteryHealth,
-        chargingMethod: device.chargingMethod,
-        mobileDataEnabled: device.mobileDataEnabled,
-        networkConnected: device.networkConnected,
-        screenOn: device.screenOn,
-        volumeLevel: device.volumeLevel,
-        bluetoothEnabled: device.bluetoothEnabled,
-        installedAppsCount: device.installedAppsCount,
-        bootTime: device.bootTime ? device.bootTime.toString() : null,
-        lastSeen: device.lastSeen,
-        status: device.status,
+        battery: updatedDevice.battery,
+        wifiStatus: updatedDevice.wifiStatus,
+        isCharging: updatedDevice.isCharging,
+        batteryHealth: updatedDevice.batteryHealth,
+        chargingMethod: updatedDevice.chargingMethod,
+        mobileDataEnabled: updatedDevice.mobileDataEnabled,
+        networkConnected: updatedDevice.networkConnected,
+        screenOn: updatedDevice.screenOn,
+        volumeLevel: updatedDevice.volumeLevel,
+        bluetoothEnabled: updatedDevice.bluetoothEnabled,
+        installedAppsCount: updatedDevice.installedAppsCount,
+        bootTime: updatedDevice.bootTime ? updatedDevice.bootTime.toString() : null,
+        lastSeen: updatedDevice.lastSeen,
+        status: updatedDevice.status,
       },
     });
 

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import api from "@/lib/api";
+import Swal from "sweetalert2";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -19,7 +20,6 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const {
@@ -32,25 +32,75 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
-    setError("");
 
     try {
       const response = await api.post("/api/auth/login", data);
       
-      console.log("Login response:", response.data);
-      
       if (response.data.success && response.data.token) {
+        // แสดง success toast (ใช้ light mode สำหรับ login page)
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true,
+          icon: "success",
+          title: "เข้าสู่ระบบสำเร็จ",
+          text: `ยินดีต้อนรับ ${response.data.user.fullName || response.data.user.username}`,
+          color: '#1f2937',
+          background: '#ffffff',
+        });
+        
         localStorage.setItem("token", response.data.token);
         // Use window.location for full page reload to ensure middleware works
         window.location.href = "/dashboard";
       } else {
-        setError("Invalid credentials");
         setLoading(false);
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          icon: "error",
+          title: "เข้าสู่ระบบไม่สำเร็จ",
+          text: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+          color: '#1f2937',
+          background: '#ffffff',
+        });
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      setError(err.response?.data?.error || "Login failed");
+      
+      // แสดง error message ตามประเภท error
+      const errorMessage = err.response?.data?.error || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
+      let title = "เข้าสู่ระบบไม่สำเร็จ";
+      let text = errorMessage;
+      
+      // แปลง error message เป็นภาษาไทย
+      if (errorMessage === "Invalid credentials") {
+        text = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+      } else if (errorMessage === "Account is disabled") {
+        text = "บัญชีของคุณถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบ";
+      } else if (errorMessage === "Username and password are required") {
+        text = "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน";
+      } else if (errorMessage === "Internal server error") {
+        text = "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง";
+      }
+      
       setLoading(false);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        icon: "error",
+        title: title,
+        text: text,
+        color: '#1f2937',
+        background: '#ffffff',
+      });
     }
   };
 
@@ -66,7 +116,16 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const result = handleSubmit(onSubmit)(e);
+              return false;
+            }} 
+            className="space-y-4"
+            noValidate
+          >
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium">
                 Username
@@ -99,12 +158,6 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-
-            {error && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                {error}
-              </div>
-            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}

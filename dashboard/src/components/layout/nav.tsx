@@ -6,16 +6,48 @@ import { usePathname, useRouter } from "next/navigation"
 import { LogOut, Menu, X, LayoutDashboard, Users, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import Swal from "sweetalert2"
+import { getSwalConfig } from "@/lib/swal-config"
 
 export function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    router.push("/login")
-    router.refresh()
+  const handleLogout = async () => {
+    const result = await Swal.fire(getSwalConfig({
+      icon: "question",
+      title: "ออกจากระบบ",
+      text: "คุณต้องการออกจากระบบหรือไม่?",
+      showCancelButton: true,
+      confirmButtonText: "ออกจากระบบ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444",
+    }))
+
+    if (result.isConfirmed) {
+      localStorage.removeItem("token")
+      localStorage.removeItem("theme")
+      
+      // แสดง toast success ก่อน redirect
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        timerProgressBar: true,
+        icon: "success",
+        title: "ออกจากระบบสำเร็จ",
+        color: '#1f2937',
+        background: '#ffffff',
+      })
+      
+      // รอให้ toast แสดงก่อน redirect
+      setTimeout(() => {
+        router.push("/login")
+        router.refresh()
+      }, 200)
+    }
   }
 
   const isDashboard = pathname === "/dashboard"

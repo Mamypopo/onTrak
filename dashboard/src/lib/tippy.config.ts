@@ -7,7 +7,7 @@ import type { TippyProps } from '@tippyjs/react';
 export const tippyDefaultProps: Partial<TippyProps> = {
   // Animation
   animation: 'fade',
-  duration: [200, 150],
+  duration: [200, 100],
   
   // Placement
   placement: 'top',
@@ -15,10 +15,10 @@ export const tippyDefaultProps: Partial<TippyProps> = {
   // Behavior
   interactive: false,
   trigger: 'mouseenter focus',
-  hideOnClick: false,
+  hideOnClick: true,
   
   // Styling - ใช้ theme ตาม dark mode
-  theme: 'light-border', // จะถูก override ด้วย getTippyProps
+  theme: 'light-border',
   arrow: true,
   
   // Delay
@@ -29,6 +29,12 @@ export const tippyDefaultProps: Partial<TippyProps> = {
   
   // Z-index
   zIndex: 9999,
+  
+  // Append to body เพื่อหลีกเลี่ยงปัญหา z-index และ overflow
+  appendTo: () => document.body,
+  
+  // Allow HTML content
+  allowHTML: false,
 };
 
 /**

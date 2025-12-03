@@ -34,17 +34,28 @@ export function getSwalConfig(overrides?: SweetAlertOptions): SweetAlertOptions 
  * ใช้สำหรับแจ้งเตือนเล็ก ๆ เช่น ส่งคำสั่งสำเร็จ / คัดลอกข้อมูล
  */
 export function getToastConfig(overrides?: SweetAlertOptions): SweetAlertOptions {
-  const base = getSwalConfig({
+  // ตรวจสอบ dark mode จาก class หรือ system preference
+  const isDark = 
+    document.documentElement.classList.contains('dark') ||
+    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  // ลบพารามิเตอร์ที่ไม่เข้ากันกับ toast mode ออกจาก overrides
+  const { backdrop, allowOutsideClick, allowEscapeKey, allowEnterKey, focusConfirm, ...safeOverrides } = overrides || {}
+
+  // Toast config ไม่ควรมีพารามิเตอร์ที่ไม่เข้ากันกับ toast mode
+  const toastConfig: SweetAlertOptions = {
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
     timer: 2000,
     timerProgressBar: true,
-    backdrop: false,
-    ...overrides,
-  })
+    // ไม่ใส่ backdrop, allowOutsideClick, allowEscapeKey, allowEnterKey, focusConfirm เพราะไม่เข้ากันกับ toast
+    color: isDark ? '#e5e7eb' : '#1f2937',
+    background: isDark ? '#1a1a1a' : '#ffffff',
+    ...safeOverrides,
+  }
 
-  return base
+  return toastConfig
 }
 
 /**

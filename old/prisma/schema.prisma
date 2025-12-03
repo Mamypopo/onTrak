@@ -1,0 +1,322 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+//  Restaurant Basic Info
+// ========================================
+model RestaurantInfo {
+  id            Int       @id @default(autoincrement())
+  name          String
+  address       String?
+  phone         String?
+  logoUrl       String?
+  wifiName      String?
+  wifiPassword  String?
+  openTime      String?
+  closeTime     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ========================================
+//  Tables & Sessions
+// ========================================
+model Table {
+  id           Int              @id @default(autoincrement())
+  name         String           @unique  // ชื่อโต๊ะ (เช่น "โต๊ะ 1", "VIP 1", "ห้องส่วนตัว A")
+  status       TableStatus      @default(AVAILABLE)
+  sessions     TableSession[]
+
+  @@index([name])
+  @@index([status])
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
+model TableSession {
+  id             Int           @id @default(autoincrement())
+  tableId        Int
+  table          Table         @relation(fields: [tableId], references: [id])
+  peopleCount    Int
+  packageId      Int?
+  package        Package?      @relation(fields: [packageId], references: [id])
+  startTime      DateTime
+  expireTime     DateTime?
+  status         SessionStatus @default(ACTIVE)
+  extraChargeIds Json?         // เก็บ array ของ extraCharge IDs ที่เลือกตอนเปิดโต๊ะ
+  orders         Order[]
+  billing        BillingSummary?
+
+  @@index([tableId])
+  @@index([status])
+  @@index([startTime])
+}
+
+enum SessionStatus {
+  ACTIVE
+  CLOSED
+}
+
+// ========================================
+//  Category + Menu Items
+// ========================================
+model MenuCategory {
+  id        Int         @id @default(autoincrement())
+  name      String
+  items     MenuItem[]
+
+  @@index([name])
+}
+
+model MenuItem {
+  id               Int             @id @default(autoincrement())
+  name             String
+  description      String?          // รายละเอียดเมนู (เช่น ส่วนประกอบ, วิธีทำ)
+  price            Float
+  imageUrl         String?
+  isAvailable      Boolean         @default(true)
+  menuCategoryId   Int
+  category         MenuCategory    @relation(fields: [menuCategoryId], references: [id])
+  orderItems       OrderItem[]
+  
+  // Field สำหรับ filtering (แสดงใน session type ไหน)
+  isBuffetItem     Boolean         @default(true)   // แสดงในบุฟเฟ่ต์
+  isALaCarteItem   Boolean         @default(true)   // แสดงใน à la carte
+  
+  // Field สำหรับการคิดเงิน (ฟรีในบุฟเฟ่ต์หรือไม่)
+  isFreeInBuffet   Boolean         @default(true)   // ฟรีในบุฟเฟ่ต์ (ถ้าแสดงในบุฟเฟ่ต์)
+  
+  // Field สำหรับกำหนดเมนูยอดนิยมและเมนูแนะนำ
+  isFeatured       Boolean         @default(false)  // เมนูแนะนำ (สำหรับ Hero Banner)
+  isPopular        Boolean         @default(false)  // เมนูยอดนิยม
+
+  @@index([name])
+  @@index([isAvailable])
+  @@index([menuCategoryId])
+  @@index([isBuffetItem])
+  @@index([isALaCarteItem])
+  @@index([isFreeInBuffet])
+  @@index([isFeatured])
+  @@index([isPopular])
+}
+
+// ========================================
+//  Orders & Order Items
+// ========================================
+model Order {
+  id                Int             @id @default(autoincrement())
+  tableSessionId    Int
+  session           TableSession    @relation(fields: [tableSessionId], references: [id])
+  note              String?
+  status            OrderStatus     @default(OPEN)
+  createdAt         DateTime        @default(now())
+  items             OrderItem[]
+
+  @@index([tableSessionId])
+  @@index([status, createdAt])
+}
+
+enum OrderStatus {
+  OPEN
+  SERVED
+}
+
+model OrderItem {
+  id          Int            @id @default(autoincrement())
+  orderId     Int
+  order       Order          @relation(fields: [orderId], references: [id])
+  menuItemId  Int
+  menuItem    MenuItem       @relation(fields: [menuItemId], references: [id])
+  qty         Int
+  note        String?
+  status      KitchenStatus  @default(WAITING)
+  
+  itemType    OrderItemType  @default(A_LA_CARTE)
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@index([status])
+  @@index([itemType])
+}
+
+enum OrderItemType {
+  BUFFET_INCLUDED  // ฟรี (รวมในบุฟเฟ่ต์)
+  A_LA_CARTE       // จ่ายตามราคา
+}
+
+enum KitchenStatus {
+  WAITING
+  COOKING
+  DONE
+  SERVED
+}
+
+// ========================================
+//  Packages (บุฟเฟต์/แพ็กเกจร้าน)
+// ========================================
+model Package {
+  id               Int         @id @default(autoincrement())
+  name             String
+  pricePerPerson   Float
+  durationMinutes  Int?
+  sessions         TableSession[]
+
+  @@index([name])
+}
+
+// ========================================
+//  Extra Charges (น้ำรีฟิล / ค่าบริการอื่นๆ)
+// ========================================
+model ExtraCharge {
+  id           Int            @id @default(autoincrement())
+  name         String
+  price        Float
+  chargeType   ChargeType
+  active       Boolean        @default(true)
+
+  @@index([active])
+  @@index([chargeType])
+}
+
+enum ChargeType {
+  PER_PERSON
+  PER_SESSION
+}
+
+// ========================================
+//  Promotions
+// ========================================
+model Promotion {
+  id           Int       @id @default(autoincrement())
+  name         String
+  type         PromoType
+  value        Float
+  condition    Json?
+  active       Boolean      @default(true)
+
+  @@index([active])
+  @@index([name])
+}
+
+enum PromoType {
+  PERCENT      // ลด % จากยอดรวม
+  FIXED        // ลดจำนวนเงินจากยอดรวม
+  PER_PERSON   // ลดรายคน (มา X จ่าย Y)
+  MIN_PEOPLE   // ลดเมื่อมีคนขั้นต่ำ
+  MIN_AMOUNT   // ลดเมื่อยอดขั้นต่ำ
+}
+
+// ========================================
+//  Billing / Receipt Summary
+// ========================================
+model BillingSummary {
+  id              Int             @id @default(autoincrement())
+  sessionId       Int             @unique
+  session         TableSession    @relation(fields: [sessionId], references: [id])
+  subtotal        Float
+  extraCharge     Float
+  discount        Float
+  discountType    DiscountType?   // PERCENT, FIXED, or null (from promotion)
+  discountValue   Float?          // Value used for discount calculation
+  promotionId     Int?             // Reference to promotion if used
+  vat             Float            @default(0)
+  vatRate         Float?          // VAT rate percentage (e.g., 7 for 7%)
+  grandTotal      Float
+  paymentMethod   PaymentMethod?
+  receivedAmount  Float?           // Amount received (for CASH)
+  change          Float?           // Change amount (for CASH)
+  createdAt       DateTime        @default(now())
+  items           BillingItem[]
+  
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([promotionId])
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+  PROMOTION
+}
+
+enum PaymentMethod {
+  CASH
+  QR
+}
+
+model BillingItem {
+  id               Int             @id @default(autoincrement())
+  billingSummaryId Int
+  billing          BillingSummary  @relation(fields: [billingSummaryId], references: [id])
+  name             String
+  qty              Int?
+  unitPrice        Float
+  totalPrice       Float
+  type             BillingItemType
+
+  @@index([billingSummaryId])
+  @@index([type])
+}
+
+enum BillingItemType {
+  MENU
+  EXTRA
+  PROMOTION
+}
+
+// ========================================
+//  User Account + RBAC System
+// ========================================
+model User {
+  id            Int        @id @default(autoincrement())
+  name          String
+  username      String      @unique
+  passwordHash  String
+  role          UserRole    @default(STAFF)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  logs          SystemLog[]
+
+  @@index([role])
+  @@index([active])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CASHIER
+  KITCHEN
+  RUNNER
+  STAFF
+}
+
+// ========================================
+//  System Logs
+// ========================================
+model SystemLog {
+  id            Int        @id @default(autoincrement())
+  userId        Int?
+  user          User?      @relation(fields: [userId], references: [id])
+  action        String
+  detail        Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
