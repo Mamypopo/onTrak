@@ -23,7 +23,6 @@ import com.ontrak.mdm.model.CommandAction
 import com.ontrak.mdm.model.MQTTCommand
 import com.ontrak.mdm.receiver.DeviceOwnerReceiver
 import com.ontrak.mdm.ui.MainActivity
-import com.ontrak.mdm.ui.MessageDialogActivity
 import com.ontrak.mdm.util.KioskModeManager
 
 object CommandHandler {
@@ -47,6 +46,8 @@ object CommandHandler {
             CommandAction.BLUETOOTH_ON -> setBluetoothEnabled(context, true)
             CommandAction.BLUETOOTH_OFF -> setBluetoothEnabled(context, false)
             CommandAction.SHUTDOWN_DEVICE -> shutdownDevice(context)
+            CommandAction.DISABLE_CAMERA -> setCameraEnabled(context, false)
+            CommandAction.ENABLE_CAMERA -> setCameraEnabled(context, true)
         }
     }
     
@@ -77,8 +78,38 @@ object CommandHandler {
     
     private fun restartDevice(context: Context) {
         try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            
+            // Check if app is device owner (REQUIRED for reboot)
+            val isDeviceOwner = dpm.isDeviceOwnerApp(context.packageName)
+            
+            if (!isDeviceOwner) {
+                Log.e(TAG, "Cannot restart device: App is not Device Owner")
+                Log.w(TAG, "To enable reboot functionality:")
+                Log.w(TAG, "1. Factory reset device (or use fresh device)")
+                Log.w(TAG, "2. Run: adb shell dpm set-device-owner com.ontrak.mdm/.receiver.DeviceOwnerReceiver")
+                Log.w(TAG, "3. Verify: adb shell dpm list-owners")
+                return
+            }
+            
+            Log.d(TAG, "Device Owner confirmed, attempting reboot...")
+            
+            // Use PowerManager.reboot() - requires Device Owner
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-            powerManager.reboot(null)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // Android 9.0+ - reboot with reason
+                powerManager.reboot("restart")
+                Log.d(TAG, "Device restart command sent (Android 9+)")
+            } else {
+                // Android 8.1 and below
+                powerManager.reboot(null)
+                Log.d(TAG, "Device restart command sent (Android 8.1-)")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Reboot permission denied. Device must be set as Device Owner to restart.", e)
+            Log.w(TAG, "Current package: ${context.packageName}")
+            Log.w(TAG, "To enable reboot: Set app as Device Owner using 'adb shell dpm set-device-owner'")
         } catch (e: Exception) {
             Log.e(TAG, "Error restarting device", e)
         }
@@ -430,6 +461,33 @@ object CommandHandler {
             Log.w(TAG, "Shutdown requires REBOOT permission and device owner privileges")
         } catch (e: Exception) {
             Log.e(TAG, "Error shutting down device: ${e.message}", e)
+        }
+    }
+    
+    private fun setCameraEnabled(context: Context, enabled: Boolean) {
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(context, DeviceOwnerReceiver::class.java)
+            
+            if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                Log.w(TAG, "App is not device owner, cannot ${if (enabled) "enable" else "disable"} camera")
+                return
+            }
+            
+            // Set camera disabled/enabled using DevicePolicyManager
+            // Note: This requires device owner privileges and <disable-camera /> policy in device_admin.xml
+            dpm.setCameraDisabled(adminComponent, !enabled)
+            
+            if (enabled) {
+                Log.d(TAG, "Camera enabled")
+            } else {
+                Log.d(TAG, "Camera disabled")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Camera control permission denied: ${e.message}")
+            Log.w(TAG, "Camera control requires device owner privileges and disable-camera policy")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error ${if (enabled) "enabling" else "disabling"} camera: ${e.message}", e)
         }
     }
 }

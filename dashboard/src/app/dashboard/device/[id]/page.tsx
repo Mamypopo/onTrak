@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
-import { getSwalConfig } from "@/lib/swal-config";
+import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -64,6 +64,7 @@ interface Device {
   status: string;
   lastSeen: string;
   kioskMode: boolean;
+  cameraEnabled?: boolean;
   metrics: any[];
   actionLogs: any[];
 }
@@ -246,6 +247,14 @@ export default function DeviceDetailPage() {
             title: "Shutdown Command Sent",
             text: "Device will shutdown shortly",
           },
+          DISABLE_CAMERA: {
+            title: "Camera Disabled",
+            text: "Camera access has been blocked on device",
+          },
+          ENABLE_CAMERA: {
+            title: "Camera Enabled",
+            text: "Camera access has been restored on device",
+          },
         };
 
         const message = messages[action] || {
@@ -253,15 +262,10 @@ export default function DeviceDetailPage() {
           text: `Command "${action}" sent successfully`,
         };
 
-        Swal.fire(getSwalConfig({
+        Swal.fire(getToastConfig({
           icon: "success",
           title: message.title,
           text: message.text,
-          toast: true,
-          position: "top-end",
-          timer: 2500,
-          showConfirmButton: false,
-          timerProgressBar: true,
         }));
       }
     } catch (error: any) {
@@ -293,14 +297,9 @@ export default function DeviceDetailPage() {
         });
 
         if (response.data.success) {
-          Swal.fire(getSwalConfig({
+          Swal.fire(getToastConfig({
             icon: "success",
             title: "ยืมอุปกรณ์สำเร็จ",
-            toast: true,
-            position: "top-end",
-            timer: 2500,
-            showConfirmButton: false,
-            timerProgressBar: true,
           }));
           fetchDevice();
         }
@@ -319,14 +318,9 @@ export default function DeviceDetailPage() {
       const response = await api.post(`/api/device/${deviceId}/return`);
 
       if (response.data.success) {
-        Swal.fire(getSwalConfig({
+        Swal.fire(getToastConfig({
           icon: "success",
           title: "คืนอุปกรณ์สำเร็จ",
-          toast: true,
-          position: "top-end",
-          timer: 2500,
-          showConfirmButton: false,
-          timerProgressBar: true,
         }));
         fetchDevice();
       }
@@ -904,23 +898,48 @@ export default function DeviceDetailPage() {
                   {/* Camera Control Section */}
                   <div>
                     <h4 className="text-sm font-semibold mb-3 text-foreground">กล้อง</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        onClick={() => sendCommand("OPEN_CAMERA")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Camera className="w-4 h-4 mr-2" />
-                        เปิดกล้อง
-                      </Button>
-                      <Button
-                        onClick={() => sendCommand("TAKE_PHOTO")}
-                        disabled={sendingCommand}
-                        variant="default"
-                      >
-                        <Camera className="w-4 h-4 mr-2" />
-                        ถ่ายรูป
-                      </Button>
+                    <div className="space-y-3">
+                      {/* Camera Enable/Disable Toggle */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Camera className={cn(
+                            "w-4 h-4",
+                            device.cameraEnabled !== false ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                          )} />
+                          <Label htmlFor="camera-toggle" className="text-sm font-medium cursor-pointer">
+                            อนุญาตให้ใช้กล้อง
+                          </Label>
+                        </div>
+                        <Switch
+                          id="camera-toggle"
+                          checked={device.cameraEnabled !== false}
+                          onCheckedChange={async (checked) => {
+                            // Optimistic update
+                            setDevice((prev) => prev ? { ...prev, cameraEnabled: checked } : null);
+                            await sendCommand(checked ? "ENABLE_CAMERA" : "DISABLE_CAMERA");
+                          }}
+                          disabled={sendingCommand}
+                        />
+                      </div>
+                      {/* Camera Actions */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={() => sendCommand("OPEN_CAMERA")}
+                          disabled={sendingCommand || device.cameraEnabled === false}
+                          variant="outline"
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          เปิดกล้อง
+                        </Button>
+                        <Button
+                          onClick={() => sendCommand("TAKE_PHOTO")}
+                          disabled={sendingCommand || device.cameraEnabled === false}
+                          variant="default"
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          ถ่ายรูป
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

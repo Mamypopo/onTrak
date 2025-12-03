@@ -24,6 +24,24 @@ export function getSwalConfig(overrides?: SweetAlertOptions): SweetAlertOptions 
 }
 
 /**
+ * Toast config (non-blocking) with dark mode support
+ * ใช้สำหรับแจ้งเตือนเล็ก ๆ เช่น ส่งคำสั่งสำเร็จ / คัดลอกข้อมูล
+ */
+export function getToastConfig(overrides?: SweetAlertOptions): SweetAlertOptions {
+  const base = getSwalConfig({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 2000,
+    timerProgressBar: true,
+    backdrop: false,
+    ...overrides,
+  })
+
+  return base
+}
+
+/**
  * SweetAlert2 wrapper with dark mode support
  */
 export const SwalWithTheme = {

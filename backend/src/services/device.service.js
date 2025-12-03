@@ -71,6 +71,45 @@ export async function updateDeviceLocation(deviceCode, locationData) {
     // Save location history if position changed significantly
     if (shouldSaveHistory) {
       try {
+        // Circular Buffer: เก็บแค่จำนวนจำกัด (เช่น 100 records) แล้วลบอันเก่าสุด
+        const MAX_LOCATION_HISTORY_PER_DEVICE = parseInt(process.env.MAX_LOCATION_HISTORY_PER_DEVICE || '100');
+        
+        // ตรวจสอบจำนวน records ปัจจุบัน
+        const currentCount = await prisma.deviceLocationHistory.count({
+          where: { deviceId: device.id },
+        });
+        
+        // ถ้าเกิน limit ให้ลบอันเก่าสุดออกก่อน (ลบให้เหลือ limit - 1)
+        if (currentCount >= MAX_LOCATION_HISTORY_PER_DEVICE) {
+          // คำนวณจำนวนที่ต้องลบ (ถ้ามี 101 records, limit = 100, ต้องลบ 2 อัน)
+          const recordsToDelete = currentCount - MAX_LOCATION_HISTORY_PER_DEVICE + 1;
+          
+          // หา records เก่าสุดที่ต้องลบ
+          const oldestRecords = await prisma.deviceLocationHistory.findMany({
+            where: { deviceId: device.id },
+            orderBy: { createdAt: 'asc' },
+            take: recordsToDelete,
+            select: { id: true },
+          });
+          
+          if (oldestRecords.length > 0) {
+            // ลบ records เก่าสุดทั้งหมดที่เกิน limit
+            await prisma.deviceLocationHistory.deleteMany({
+              where: {
+                deviceId: device.id,
+                id: { in: oldestRecords.map(r => r.id) },
+              },
+            });
+            logger.debug({ 
+              deviceCode, 
+              deletedCount: oldestRecords.length,
+              beforeCount: currentCount,
+              afterCount: currentCount - oldestRecords.length
+            }, 'Deleted oldest location history (circular buffer)');
+          }
+        }
+        
+        // บันทึก location history ใหม่
         await prisma.deviceLocationHistory.create({
           data: {
             deviceId: device.id,
@@ -81,7 +120,7 @@ export async function updateDeviceLocation(deviceCode, locationData) {
             heading: locationData.heading || null,
           },
         });
-        logger.info({ deviceCode, deviceId: device.id }, 'Location history saved');
+        logger.info({ deviceCode, deviceId: device.id, currentCount }, 'Location history saved');
       } catch (error) {
         logger.error({ error, deviceCode }, 'Error saving location history');
         // ไม่ throw error เพื่อไม่ให้กระทบการอัพเดท location หลัก

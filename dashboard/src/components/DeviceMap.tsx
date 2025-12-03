@@ -10,7 +10,7 @@ import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route } from 
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tippy";
 import Swal from "sweetalert2";
-import { getSwalConfig } from "@/lib/swal-config";
+import { getToastConfig } from "@/lib/swal-config";
 
 // Fix for default marker icon in Next.js
 if (typeof window !== "undefined") {
@@ -190,15 +190,9 @@ export default function DeviceMap({
   const copyCoordinates = async (lat: number, lng: number) => {
     try {
       await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-      Swal.fire(getSwalConfig({
+      Swal.fire(getToastConfig({
         icon: "success",
         title: "คัดลอกพิกัดแล้ว",
-        text: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-        toast: true,
-        position: "top-end",
-        timer: 2000,
-        showConfirmButton: false,
-        timerProgressBar: true,
       }));
     } catch (error) {
       console.error('Failed to copy:', error);

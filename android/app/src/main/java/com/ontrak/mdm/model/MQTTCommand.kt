@@ -48,6 +48,12 @@ enum class CommandAction {
     BLUETOOTH_OFF,
     
     @SerializedName("SHUTDOWN_DEVICE")
-    SHUTDOWN_DEVICE
+    SHUTDOWN_DEVICE,
+    
+    @SerializedName("DISABLE_CAMERA")
+    DISABLE_CAMERA,
+    
+    @SerializedName("ENABLE_CAMERA")
+    ENABLE_CAMERA
 }
 
