@@ -467,10 +467,6 @@ export default function DeviceDetailPage() {
         return "success";
       case "OFFLINE":
         return "muted";
-      case "IN_USE":
-        return "warning";
-      case "AVAILABLE":
-        return "info";
       default:
         return "muted";
     }

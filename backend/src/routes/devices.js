@@ -5,7 +5,7 @@ async function deviceRoutes(fastify, options) {
   fastify.post(
     "/",
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'MANAGER'])],
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
     },
     deviceController.createDevice
   );
@@ -55,24 +55,6 @@ async function deviceRoutes(fastify, options) {
     deviceController.sendCommand
   );
 
-  // Borrow device
-  fastify.post(
-    "/:id/borrow",
-    {
-      preHandler: [fastify.authenticate],
-    },
-    deviceController.borrowDevice
-  );
-
-  // Return device
-  fastify.post(
-    "/:id/return",
-    {
-      preHandler: [fastify.authenticate],
-    },
-    deviceController.returnDevice
-  );
-
   // Get device history
   fastify.get(
     "/:id/history",
@@ -82,14 +64,7 @@ async function deviceRoutes(fastify, options) {
     deviceController.getDeviceHistory
   );
 
-  // Get all borrow records
-  fastify.get(
-    "/borrows",
-    {
-      preHandler: [fastify.authenticate],
-    },
-    deviceController.getAllBorrowRecords
-  );
+  
 }
 
 export default deviceRoutes;

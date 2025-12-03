@@ -219,139 +219,6 @@ export async function sendCommand(request, reply) {
 }
 
 /**
- * Borrow device
- */
-export async function borrowDevice(request, reply) {
-  try {
-    const { id } = request.params;
-    const { reason } = request.body;
-
-    const device = await prisma.device.findUnique({
-      where: { id },
-    });
-
-    if (!device) {
-      return reply.code(404).send({
-        error: 'Device not found',
-      });
-    }
-
-    // Check if device is already borrowed
-    const activeBorrow = await prisma.borrowRecord.findFirst({
-      where: {
-        deviceId: id,
-        status: 'BORROWED',
-      },
-    });
-
-    if (activeBorrow) {
-      return reply.code(400).send({
-        error: 'Device is already borrowed',
-      });
-    }
-
-    // Create borrow record
-    const borrowRecord = await prisma.borrowRecord.create({
-      data: {
-        deviceId: id,
-        userId: request.user?.id || null,
-        user: request.user?.username || 'unknown',
-        reason: reason || null,
-        status: 'BORROWED',
-      },
-    });
-
-    // Create audit log
-    await createAuditLog(request, 'BORROW_DEVICE', 'DEVICE', id, { reason });
-
-    // Update device status
-    await prisma.device.update({
-      where: { id },
-      data: {
-        status: 'IN_USE',
-      },
-    });
-
-    logger.info({ deviceId: id, user: borrowRecord.user }, 'Device borrowed');
-
-    return {
-      success: true,
-      data: borrowRecord,
-    };
-  } catch (error) {
-    logger.error({ error }, 'Error borrowing device');
-    return reply.code(500).send({
-      error: 'Internal server error',
-    });
-  }
-}
-
-/**
- * Return device
- */
-export async function returnDevice(request, reply) {
-  try {
-    const { id } = request.params;
-
-    const device = await prisma.device.findUnique({
-      where: { id },
-    });
-
-    if (!device) {
-      return reply.code(404).send({
-        error: 'Device not found',
-      });
-    }
-
-    // Find active borrow record
-    const borrowRecord = await prisma.borrowRecord.findFirst({
-      where: {
-        deviceId: id,
-        status: 'BORROWED',
-      },
-    });
-
-    if (!borrowRecord) {
-      return reply.code(400).send({
-        error: 'Device is not currently borrowed',
-      });
-    }
-
-    // Update borrow record
-    const updated = await prisma.borrowRecord.update({
-      where: { id: borrowRecord.id },
-      data: {
-        returnTime: new Date(),
-        status: 'RETURNED',
-      },
-    });
-
-    // Update device status
-    await prisma.device.update({
-      where: { id },
-      data: {
-        status: 'AVAILABLE',
-      },
-    });
-
-    logger.info({ deviceId: id }, 'Device returned');
-
-    // Create audit log
-    await createAuditLog(request, 'RETURN_DEVICE', 'DEVICE', id);
-
-    return {
-      success: true,
-      data: updated,
-    };
-  } catch (error) {
-    logger.error({ error }, 'Error returning device');
-    return reply.code(500).send({
-      error: 'Internal server error',
-    });
-  }
-}
-
-/**
  * Calculate route for device location history
  */
 export async function calculateDeviceRoute(request, reply) {
@@ -436,93 +303,60 @@ export async function getDeviceHistory(request, reply) {
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit),
       skip: parseInt(offset),
+      include: {
+        userRef: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+          },
+        },
+      },
     });
 
-    // Get borrow records
-    const borrows = await prisma.borrowRecord.findMany({
+    
+    const checkoutItems = await prisma.checkoutItem.findMany({
       where: { deviceId: id },
-      orderBy: { borrowTime: 'desc' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        checkout: {
+          select: {
+            id: true,
+            checkoutNumber: true,
+            company: true,
+            charger: true,
+            createdAt: true,
+            creator: {
+              select: {
+                id: true,
+                username: true,
+                fullName: true,
+              },
+            },
+          },
+        },
+        returner: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+          },
+        },
+      },
     });
 
     return {
       success: true,
       data: {
         logs,
-        borrows,
+        checkouts: checkoutItems, 
       },
     };
   } catch (error) {
-    logger.error({ error }, 'Error fetching device history');
+    logger.error({ error, deviceId: id }, 'Error fetching device history');
     return reply.code(500).send({
       error: 'Internal server error',
-    });
-  }
-}
-
-/**
- * Get all borrow records
- */
-export async function getAllBorrowRecords(request, reply) {
-  try {
-    const { 
-      limit = 50, 
-      offset = 0, 
-      status, 
-      userId,
-      deviceId 
-    } = request.query;
-
-    const where = {};
-    
-    if (status) {
-      where.status = status;
-    }
-    
-    if (userId) {
-      where.userId = userId;
-    }
-    
-    if (deviceId) {
-      where.deviceId = deviceId;
-    }
-
-    const [borrowRecords, total] = await Promise.all([
-      prisma.borrowRecord.findMany({
-        where,
-        orderBy: { borrowTime: 'desc' },
-        take: parseInt(limit),
-        skip: parseInt(offset),
-        include: {
-          device: {
-            select: {
-              id: true,
-              deviceCode: true,
-              name: true,
-            },
-          },
-          userRef: {
-            select: {
-              id: true,
-              username: true,
-              fullName: true,
-            },
-          },
-        },
-      }),
-      prisma.borrowRecord.count({ where }),
-    ]);
-
-    return {
-      success: true,
-      data: borrowRecords,
-      total,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-    };
-  } catch (error) {
-    logger.error({ error }, 'Error fetching borrow records');
-    return reply.code(500).send({
-      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 }

@@ -6,7 +6,7 @@ import { createAuditLog } from '../utils/audit.js';
 async function userRoutes(fastify, options) {
   // Get all users (Admin/Manager only)
   fastify.get('/', {
-    preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'MANAGER'])],
+    preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
   }, async (request, reply) => {
     try {
       const users = await prisma.user.findMany({
@@ -42,7 +42,7 @@ async function userRoutes(fastify, options) {
 
   // Get user by ID
   fastify.get('/:id', {
-    preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'MANAGER'])],
+    preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
   }, async (request, reply) => {
     try {
       const { id } = request.params;
@@ -118,7 +118,7 @@ async function userRoutes(fastify, options) {
           email: email || null,
           password: hashPassword(password),
           fullName: fullName || null,
-          role: role || 'USER',
+          role: role || 'STAFF',
         },
         select: {
           id: true,
@@ -158,7 +158,7 @@ async function userRoutes(fastify, options) {
 
       // Check permissions
       const isAdmin = currentUser.role === 'ADMIN';
-      const isManager = currentUser.role === 'MANAGER';
+      const isStaff = currentUser.role === 'STAFF';
       const isSelf = currentUser.id === id;
 
       if (!isAdmin && !isSelf) {

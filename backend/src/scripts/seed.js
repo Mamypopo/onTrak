@@ -13,7 +13,7 @@ async function main() {
     create: {
       username: 'admin',
       email: 'admin@ontrak.com',
-      password: hashPassword('admin123'),
+      password: hashPassword('123456'),
       fullName: 'Administrator',
       role: 'ADMIN',
       isActive: true,
@@ -22,37 +22,21 @@ async function main() {
 
   console.log('Created admin user:', admin.username);
 
-  // Create manager user
-  const manager = await prisma.user.upsert({
-    where: { username: 'manager' },
+  // Create staff user
+  const staff = await prisma.user.upsert({
+    where: { username: 'staff' },
     update: {},
     create: {
-      username: 'manager',
-      email: 'manager@ontrak.com',
-      password: hashPassword('manager123'),
-      fullName: 'Manager',
-      role: 'MANAGER',
+      username: 'staff',
+      email: 'staff@ontrak.com',
+      password: hashPassword('123456'),
+      fullName: 'Staff',
+      role: 'STAFF',
       isActive: true,
     },
   });
 
-  console.log('Created manager user:', manager.username);
-
-  // Create regular user
-  const user = await prisma.user.upsert({
-    where: { username: 'user' },
-    update: {},
-    create: {
-      username: 'user',
-      email: 'user@ontrak.com',
-      password: hashPassword('user123'),
-      fullName: 'Regular User',
-      role: 'USER',
-      isActive: true,
-    },
-  });
-
-  console.log('Created user:', user.username);
+  console.log('Created staff user:', staff.username);
 
   // Create test devices
   const devices = [
@@ -93,7 +77,7 @@ async function main() {
       latitude: 13.7560,
       longitude: 100.5015,
       kioskMode: false,
-      status: 'IN_USE',
+      status: 'ONLINE',
     },
     {
       deviceCode: 'TAB-004',
@@ -106,7 +90,7 @@ async function main() {
       latitude: 13.7568,
       longitude: 100.5022,
       kioskMode: false,
-      status: 'AVAILABLE',
+      status: 'ONLINE',
     },
    
   ];

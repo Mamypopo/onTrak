@@ -24,7 +24,7 @@ interface Device {
   wifiStatus: boolean;
   latitude: number | null;
   longitude: number | null;
-  status: "ONLINE" | "OFFLINE" | "IN_USE" | "AVAILABLE";
+  status: "ONLINE" | "OFFLINE";
   lastSeen: string | null;
   kioskMode: boolean;
 }
@@ -96,33 +96,14 @@ export default function DashboardPage() {
   };
 
 
-  const getStatusVariant = (status: string): "success" | "muted" | "warning" | "info" => {
+  const getStatusVariant = (status: string): "success" | "muted" => {
     switch (status) {
       case "ONLINE":
         return "success";
       case "OFFLINE":
         return "muted";
-      case "IN_USE":
-        return "warning";
-      case "AVAILABLE":
-        return "info";
       default:
         return "muted";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "ONLINE":
-        return "bg-green-500";
-      case "OFFLINE":
-        return "bg-muted";
-      case "IN_USE":
-        return "bg-yellow-500";
-      case "AVAILABLE":
-        return "bg-blue-500";
-      default:
-        return "bg-muted";
     }
   };
 
@@ -165,10 +146,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {loading ? (
             <>
-              {[1, 2, 3, 4, 5].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <Card key={i}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -208,36 +189,6 @@ export default function DashboardPage() {
                     </div>
                     <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
                       <Activity className="h-6 w-6 text-green-500" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">พร้อมใช้งาน</p>
-                      <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">
-                        {devices.filter((d) => d.status === "AVAILABLE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Wifi className="h-6 w-6 text-blue-500" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">กำลังใช้งาน</p>
-                      <p className="text-2xl font-bold mt-1 text-yellow-600 dark:text-yellow-400">
-                        {devices.filter((d) => d.status === "IN_USE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                      <Battery className="h-6 w-6 text-yellow-500" />
                     </div>
                   </div>
                 </CardContent>
