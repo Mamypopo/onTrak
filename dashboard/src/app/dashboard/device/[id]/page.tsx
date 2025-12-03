@@ -976,9 +976,9 @@ export default function DeviceDetailPage() {
                         ))}
                       </div>
                     ) : actionLogs.length > 0 ? (
-                      <div className="relative ">
+                      <div className="relative">
                         {/* Timeline */}
-                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2 ">
+                        <div className="space-y-0 max-h-96 overflow-y-auto px-2">
                           {actionLogs.map((log: any, index: number) => {
                             const logDate = new Date(log.createdAt);
                             const prevLogDate = index > 0 ? new Date(actionLogs[index - 1].createdAt) : null;
@@ -1026,7 +1026,7 @@ export default function DeviceDetailPage() {
                             return (
                               <div key={log.id || `log-${index}`}>
                                 {showDateSeparator && (
-                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 mb-2 border-b">
+                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 px-2 mb-2 border-b">
                                     <p className="text-xs font-semibold text-muted-foreground">
                                       {formatDateHeader(logDate)}
                                     </p>
@@ -1117,7 +1117,7 @@ export default function DeviceDetailPage() {
                   <TabsContent value="borrow" className="mt-4">
                     {borrowRecords.length > 0 ? (
                       <div className="relative">
-                        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+                        <div className="space-y-0 max-h-96 overflow-y-auto px-2">
                           {borrowRecords.map((borrow: any, index: number) => {
                             const borrowDate = new Date(borrow.borrowTime);
                             const prevBorrowDate = index > 0 ? new Date(borrowRecords[index - 1].borrowTime) : null;
@@ -1142,7 +1142,7 @@ export default function DeviceDetailPage() {
                             return (
                               <div key={borrow.id || `borrow-${index}`}>
                                 {showDateSeparator && (
-                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 mb-2 border-b">
+                                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 py-2 px-2 mb-2 border-b">
                                     <p className="text-xs font-semibold text-muted-foreground">
                                       {formatDateHeader(borrowDate)}
                                     </p>

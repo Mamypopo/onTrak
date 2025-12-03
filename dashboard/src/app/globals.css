@@ -235,3 +235,28 @@
 .dark .tippy-box[data-theme~='light-border'][data-placement^='right'] > .tippy-arrow::before {
   border-right-color: hsl(var(--card));
 }
+
+/* SweetAlert2 Fix - Ensure buttons are clickable */
+.swal2-container {
+  z-index: 9999 !important;
+}
+
+.swal2-popup {
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+}
+
+.swal2-actions {
+  pointer-events: auto !important;
+}
+
+.swal2-confirm,
+.swal2-cancel,
+.swal2-deny {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.swal2-backdrop-show {
+  pointer-events: auto !important;
+}

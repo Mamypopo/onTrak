@@ -108,19 +108,7 @@ async function main() {
       kioskMode: false,
       status: 'AVAILABLE',
     },
-    {
-      deviceCode: 'TAB-005',
-      name: 'Tablet 005 - Offline Device',
-      serialNumber: 'SN321654987',
-      model: 'Samsung Galaxy Tab A7',
-      osVersion: 'Android 11',
-      battery: 0,
-      wifiStatus: false,
-      latitude: null,
-      longitude: null,
-      kioskMode: false,
-      status: 'OFFLINE',
-    },
+   
   ];
 
   for (const deviceData of devices) {

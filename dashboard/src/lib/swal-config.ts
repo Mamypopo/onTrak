@@ -17,6 +17,12 @@ export function getSwalConfig(overrides?: SweetAlertOptions): SweetAlertOptions 
     confirmButtonColor: isDark ? '#a855f7' : '#9333ea', // primary color
     cancelButtonColor: isDark ? '#6b7280' : '#9ca3af',
     denyButtonColor: isDark ? '#ef4444' : '#dc2626',
+    allowOutsideClick: true,
+    allowEscapeKey: true,
+    allowEnterKey: true,
+    focusConfirm: true,
+    showConfirmButton: true,
+    confirmButtonText: 'OK',
     ...overrides,
   }
 
