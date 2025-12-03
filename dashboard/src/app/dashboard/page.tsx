@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet } from "lucide-react";
+import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ interface Device {
   status: "ONLINE" | "OFFLINE";
   lastSeen: string | null;
   kioskMode: boolean;
+  // สถานะการยืม (คำนวณจาก backend ถ้ามี, ถ้าไม่มีถือว่า AVAILABLE)
+  borrowStatus?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE";
 }
 
 export default function DashboardPage() {
@@ -36,6 +38,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [borrowFilter, setBorrowFilter] = useState<"ALL" | "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE">("ALL");
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -63,18 +66,23 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    // Filter devices based on search
+    // Filter devices based on search + borrowStatus
+    let list = devices;
+
     if (searchQuery) {
-      const filtered = devices.filter(
+      list = list.filter(
         (device) =>
           device.deviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
           device.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredDevices(filtered);
-    } else {
-      setFilteredDevices(devices);
     }
-  }, [searchQuery, devices]);
+
+    if (borrowFilter !== "ALL") {
+      list = list.filter((device) => (device.borrowStatus || "AVAILABLE") === borrowFilter);
+    }
+
+    setFilteredDevices(list);
+  }, [searchQuery, devices, borrowFilter]);
 
   const fetchDevices = async () => {
     try {
@@ -131,7 +139,7 @@ export default function DashboardPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -141,15 +149,56 @@ export default function DashboardPage() {
                   className="pl-10"
                 />
               </div>
+              <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">สถานะการยืม:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant={borrowFilter === "ALL" ? "default" : "outline"}
+                      onClick={() => setBorrowFilter("ALL")}
+                    >
+                      ทั้งหมด
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={borrowFilter === "AVAILABLE" ? "default" : "outline"}
+                      onClick={() => setBorrowFilter("AVAILABLE")}
+                    >
+                      ว่าง
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={borrowFilter === "IN_USE" ? "default" : "outline"}
+                      onClick={() => setBorrowFilter("IN_USE")}
+                    >
+                      กำลังใช้งาน
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={borrowFilter === "IN_MAINTENANCE" ? "default" : "outline"}
+                      onClick={() => setBorrowFilter("IN_MAINTENANCE")}
+                    >
+                      กำลังซ่อม
+                    </Button>
+                  </div>
+                </div>
+                <Link href="/dashboard/checkouts/new">
+                  <Button size="sm" className="gap-2">
+                    <ClipboardList className="h-4 w-4" />
+                    เบิกอุปกรณ์
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
           {loading ? (
             <>
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -165,6 +214,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
+              {/* สถานะการเชื่อมต่อ */}
               <Card className="card-hover">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -204,6 +254,57 @@ export default function DashboardPage() {
                     </div>
                     <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
                       <Activity className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* สถานะการยืม: ว่าง */}
+              <Card className="card-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">ว่าง</p>
+                      <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">
+                        {devices.filter((d) => (d.borrowStatus || "AVAILABLE") === "AVAILABLE").length}
+                      </p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Tablet className="h-6 w-6 text-blue-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* สถานะการยืม: กำลังใช้งาน */}
+              <Card className="card-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">กำลังใช้งาน</p>
+                      <p className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+                        {devices.filter((d) => d.borrowStatus === "IN_USE").length}
+                      </p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+                      <Activity className="h-6 w-6 text-amber-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* สถานะการยืม: กำลังซ่อม */}
+              <Card className="card-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">กำลังซ่อม</p>
+                      <p className="text-2xl font-bold mt-1 text-red-600 dark:text-red-400">
+                        {devices.filter((d) => d.borrowStatus === "IN_MAINTENANCE").length}
+                      </p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                      <Activity className="h-6 w-6 text-red-500" />
                     </div>
                   </div>
                 </CardContent>

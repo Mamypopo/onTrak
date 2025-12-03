@@ -29,7 +29,7 @@ const userSchema = z.object({
   password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร").optional(),
   email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง").optional().nullable(),
   fullName: z.string().min(1, "กรุณากรอกชื่อ").optional().nullable(),
-  role: z.enum(["ADMIN", "MANAGER", "USER", "VIEWER"]),
+  role: z.enum(["ADMIN", "STAFF"]),
   isActive: z.boolean().default(true),
 });
 
@@ -38,7 +38,7 @@ interface User {
   username: string;
   email: string | null;
   fullName: string | null;
-  role: "ADMIN" | "MANAGER" | "USER" | "VIEWER";
+  role: "ADMIN" | "STAFF";
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
@@ -68,7 +68,7 @@ export default function UsersPage() {
       password: "",
       email: "",
       fullName: "",
-      role: "USER" as const,
+      role: "STAFF" as const,
       isActive: true,
     },
   });
@@ -94,23 +94,23 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (editingUser) {
-      reset({
-        username: editingUser.username,
-        email: editingUser.email || "",
-        fullName: editingUser.fullName || "",
-        role: editingUser.role,
-        isActive: editingUser.isActive,
-        password: "",
-      });
+        reset({
+          username: editingUser.username,
+          email: editingUser.email || "",
+          fullName: editingUser.fullName || "",
+          role: editingUser.role,
+          isActive: editingUser.isActive,
+          password: "",
+        });
     } else {
-      reset({
-        username: "",
-        password: "",
-        email: "",
-        fullName: "",
-        role: "USER",
-        isActive: true,
-      });
+        reset({
+          username: "",
+          password: "",
+          email: "",
+          fullName: "",
+          role: "STAFF",
+          isActive: true,
+        });
     }
   }, [editingUser, reset]);
 
@@ -241,26 +241,18 @@ export default function UsersPage() {
 
   const roleLabels = {
     ADMIN: "ผู้ดูแลระบบ",
-    MANAGER: "ผู้จัดการ",
-    USER: "ผู้ใช้",
-    VIEWER: "ผู้ดู",
+    STAFF: "พนักงาน",
   };
 
   const roleColors = {
     ADMIN: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30",
-    MANAGER: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
-    USER: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
-    VIEWER: "bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30",
+    STAFF: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "ADMIN":
         return <Shield className="w-4 h-4 text-red-500" />;
-      case "MANAGER":
-        return <Shield className="w-4 h-4 text-blue-500" />;
-      case "VIEWER":
-        return <Eye className="w-4 h-4 text-gray-500" />;
       default:
         return <User className="w-4 h-4 text-green-500" />;
     }
@@ -270,19 +262,15 @@ export default function UsersPage() {
     switch (role) {
       case "ADMIN":
         return "ผู้ดูแลระบบ - มีสิทธิ์เข้าถึงทุกฟีเจอร์และจัดการผู้ใช้ได้";
-      case "MANAGER":
-        return "ผู้จัดการ - สามารถจัดการอุปกรณ์และดูรายงานได้";
-      case "USER":
-        return "ผู้ใช้ - สามารถใช้งานระบบพื้นฐานได้";
-      case "VIEWER":
-        return "ผู้ดู - สามารถดูข้อมูลได้อย่างเดียว ไม่สามารถแก้ไขได้";
+      case "STAFF":
+        return "พนักงาน - สามารถใช้งานระบบตามสิทธิ์ที่ได้รับมอบหมาย";
       default:
         return "";
     }
   };
 
   // Check permission
-  if (currentUser && currentUser.role !== "ADMIN" && currentUser.role !== "MANAGER") {
+  if (currentUser && currentUser.role !== "ADMIN") {
     return (
       <AppLayout>
         <div className="flex-1 container mx-auto p-6">
@@ -383,17 +371,15 @@ export default function UsersPage() {
                     <Controller
                       name="role"
                       control={control}
-                      defaultValue="USER"
+                      defaultValue="STAFF"
                       render={({ field }) => (
-                        <Select value={field.value || "USER"} onValueChange={field.onChange}>
+                        <Select value={field.value || "STAFF"} onValueChange={field.onChange}>
                           <SelectTrigger>
                             <SelectValue placeholder="เลือกบทบาท" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="USER">ผู้ใช้</SelectItem>
-                            <SelectItem value="MANAGER">ผู้จัดการ</SelectItem>
                             <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
-                            <SelectItem value="VIEWER">ผู้ดู</SelectItem>
+                            <SelectItem value="STAFF">พนักงาน</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
@@ -466,9 +452,7 @@ export default function UsersPage() {
                 <SelectContent>
                   <SelectItem value="all">บทบาททั้งหมด</SelectItem>
                   <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
-                  <SelectItem value="MANAGER">ผู้จัดการ</SelectItem>
-                  <SelectItem value="USER">ผู้ใช้</SelectItem>
-                  <SelectItem value="VIEWER">ผู้ดู</SelectItem>
+                  <SelectItem value="STAFF">พนักงาน</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -174,7 +174,6 @@ model Checkout {
   charger         Int?            // จำนวนที่ชาร์จ (จำนวน charger/power bank)
   startTime       DateTime        @default(now()) // วันที่และเวลาเริ่มใช้งาน
   endTime         DateTime?       // วันที่และเวลาสิ้นสุด (null = ยังไม่สิ้นสุด)
-  expectedEndTime DateTime?       // เวลาที่คาดว่าจะคืน
   usageNotes      String?         // หมายเหตุการใช้งาน
   createdBy       String          // ผู้สร้าง checkout (อาจเป็นคนละคนกับผู้เบิก)
   creator         User            @relation("CheckoutCreatedBy", fields: [createdBy], references: [id])
