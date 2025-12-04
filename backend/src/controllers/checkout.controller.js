@@ -427,8 +427,8 @@ export async function returnDevices(request, reply) {
                 maintenanceStatus: maintenanceStatus,
               },
             });
-          } else if (maintenanceStatus === 'REPAIRED' || maintenanceStatus === null) {
-            // ถ้าซ่อมเสร็จแล้วหรือไม่มีปัญหา → ตั้งเป็น NONE
+          } else if (maintenanceStatus === null || maintenanceStatus === 'NONE') {
+            // ถ้าไม่มีปัญหา → ตั้งเป็น NONE
             await tx.device.update({
               where: { id: item.deviceId },
               data: {

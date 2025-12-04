@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Eye, Package, Calendar, User, Building2, ClipboardList, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Plus, Eye, Package, Calendar, User, Building2, ClipboardList, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -287,7 +287,7 @@ export default function CheckoutsPage() {
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Skeleton className="h-8 w-8 rounded ml-auto" />
+                          <Skeleton className="h-9 w-32 rounded ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -357,11 +357,14 @@ export default function CheckoutsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Link href={`/dashboard/checkouts/${checkout.id}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link href={`/dashboard/checkouts/${checkout.id}`}>
+                              <Button variant="default" size="sm" className="gap-2">
+                                <Eye className="h-4 w-4" />
+                                ดูรายละเอียด
+                              </Button>
+                            </Link>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

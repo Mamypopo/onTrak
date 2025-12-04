@@ -280,6 +280,93 @@ export async function calculateDeviceRoute(request, reply) {
 }
 
 /**
+ * Update maintenance status for multiple devices
+ * PATCH /api/device/maintenance-status
+ */
+export async function updateMaintenanceStatus(request, reply) {
+  try {
+    const { deviceIds, maintenanceStatus } = request.body;
+
+    if (!deviceIds || !Array.isArray(deviceIds) || deviceIds.length === 0) {
+      return reply.code(400).send({
+        error: 'deviceIds is required and must be a non-empty array',
+      });
+    }
+
+    if (!maintenanceStatus) {
+      return reply.code(400).send({
+        error: 'maintenanceStatus is required',
+      });
+    }
+
+    const validStatuses = ['NONE', 'HAS_PROBLEM', 'NEEDS_REPAIR', 'IN_MAINTENANCE', 'DAMAGED'];
+    if (!validStatuses.includes(maintenanceStatus)) {
+      return reply.code(400).send({
+        error: `maintenanceStatus must be one of: ${validStatuses.join(', ')}`,
+      });
+    }
+
+    const currentUser = request.user;
+
+    // Verify all devices exist
+    const devices = await prisma.device.findMany({
+      where: { id: { in: deviceIds } },
+      select: { id: true, deviceCode: true },
+    });
+
+    if (devices.length !== deviceIds.length) {
+      return reply.code(400).send({
+        error: 'Some devices not found',
+      });
+    }
+
+    // Update devices
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedDevices = await tx.device.updateMany({
+        where: { id: { in: deviceIds } },
+        data: { maintenanceStatus },
+      });
+
+      // Create audit log for each device
+      await Promise.all(
+        devices.map((device) =>
+          createAuditLog(request, 'UPDATE_MAINTENANCE_STATUS', 'DEVICE', device.id, {
+            deviceCode: device.deviceCode,
+            maintenanceStatus,
+          })
+        )
+      );
+
+      return updatedDevices;
+    });
+
+    // Broadcast status changes
+    const { onMaintenanceStatusChanged } = await import('../services/device-status-realtime.service.js');
+    await Promise.all(deviceIds.map((deviceId) => onMaintenanceStatusChanged(deviceId)));
+
+    logger.info(
+      { deviceIds, maintenanceStatus, updatedCount: updated.count },
+      'Maintenance status updated'
+    );
+
+    return {
+      success: true,
+      data: {
+        updatedCount: updated.count,
+        maintenanceStatus,
+      },
+      message: `Updated maintenance status for ${updated.count} device(s)`,
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error updating maintenance status');
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+/**
  * Get device history
  */
 export async function getDeviceHistory(request, reply) {

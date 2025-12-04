@@ -64,7 +64,14 @@ async function deviceRoutes(fastify, options) {
     deviceController.getDeviceHistory
   );
 
-  
+  // Update maintenance status (bulk)
+  fastify.patch(
+    "/maintenance-status",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.updateMaintenanceStatus
+  );
 }
 
 export default deviceRoutes;

@@ -45,6 +45,8 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
@@ -52,6 +54,7 @@ import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import Swal from "sweetalert2";
 import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
+import { Tooltip } from "@/components/ui/tippy";
 
 interface CheckoutItem {
   id: string;
@@ -71,6 +74,7 @@ interface CheckoutItem {
   } | null;
   problem: string | null;
   solution: string | null;
+  maintenanceStatus: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED" | null;
   returnNotes: string | null;
 }
 
@@ -132,8 +136,12 @@ export default function CheckoutDetailPage() {
     hasProblem: boolean;
     problem: string;
     solution: string;
-    maintenanceStatus: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "REPAIRED" | "DAMAGED";
+    maintenanceStatus: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED";
   }>>({});
+  
+  // Filter and sort for returned items
+  const [returnedFilter, setReturnedFilter] = useState<"ALL" | "WITH_PROBLEM" | "NO_PROBLEM">("ALL");
+  const [returnedSort, setReturnedSort] = useState<"DATE_DESC" | "DATE_ASC" | "NAME_ASC" | "NAME_DESC">("DATE_DESC");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -390,7 +398,33 @@ export default function CheckoutDetailPage() {
   };
 
   const activeItems = checkout?.items.filter((item) => !item.returnedAt) || [];
-  const returnedItems = checkout?.items.filter((item) => item.returnedAt) || [];
+  const allReturnedItems = checkout?.items.filter((item) => item.returnedAt) || [];
+  
+  // Filter returned items
+  const filteredReturnedItems = allReturnedItems.filter((item) => {
+    if (returnedFilter === "ALL") return true;
+    const hasProblem = item.problem || (item.maintenanceStatus && item.maintenanceStatus !== "NONE");
+    if (returnedFilter === "WITH_PROBLEM") return hasProblem;
+    if (returnedFilter === "NO_PROBLEM") return !hasProblem;
+    return true;
+  });
+  
+  // Sort returned items
+  const returnedItems = [...filteredReturnedItems].sort((a, b) => {
+    if (returnedSort === "DATE_DESC") {
+      return new Date(b.returnedAt || 0).getTime() - new Date(a.returnedAt || 0).getTime();
+    }
+    if (returnedSort === "DATE_ASC") {
+      return new Date(a.returnedAt || 0).getTime() - new Date(b.returnedAt || 0).getTime();
+    }
+    if (returnedSort === "NAME_ASC") {
+      return (a.device.name || a.device.deviceCode).localeCompare(b.device.name || b.device.deviceCode, "th");
+    }
+    if (returnedSort === "NAME_DESC") {
+      return (b.device.name || b.device.deviceCode).localeCompare(a.device.name || a.device.deviceCode, "th");
+    }
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -427,7 +461,7 @@ export default function CheckoutDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(checkout.status)}
-            {activeItems.length > 0 && checkout.status === "ACTIVE" && (
+            {activeItems.length > 0 && (checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
               <Button 
                 onClick={() => {
                   if (activeItems.length === 0) {
@@ -517,7 +551,7 @@ export default function CheckoutDetailPage() {
                       <Package className="h-5 w-5" />
                       กำลังใช้งาน ({activeItems.length} เครื่อง)
                     </CardTitle>
-                    {checkout.status === "ACTIVE" && (
+                    {(checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -542,11 +576,13 @@ export default function CheckoutDetailPage() {
                         <Card
                           key={item.id}
                           className={cn(
-                            "cursor-pointer transition-all hover:shadow-md",
-                            isSelected && "ring-2 ring-primary border-primary"
+                            "cursor-pointer transition-all hover:shadow-lg border-2",
+                            isSelected 
+                              ? "ring-2 ring-primary border-primary bg-primary/5" 
+                              : "border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10"
                           )}
                           onClick={() => {
-                            if (checkout.status === "ACTIVE") {
+                            if (checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") {
                               if (isSelected) {
                                 setSelectedItems(selectedItems.filter((id) => id !== item.id));
                               } else {
@@ -559,7 +595,7 @@ export default function CheckoutDetailPage() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <Tablet className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <Tablet className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
                                   <h3 className="font-semibold text-sm line-clamp-1">
                                     {item.device.name || item.device.deviceCode}
                                   </h3>
@@ -573,17 +609,17 @@ export default function CheckoutDetailPage() {
                                   </p>
                                 )}
                               </div>
-                              {checkout.status === "ACTIVE" && (
+                              {(checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
                                 <div className="shrink-0">
                                   {isSelected ? (
                                     <CheckSquare className="h-5 w-5 text-primary" />
                                   ) : (
-                                    <Square className="h-5 w-5 text-muted-foreground" />
+                                    <Square className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                   )}
                                 </div>
                               )}
                             </div>
-                            <Badge variant="outline" className="border-amber-500 text-amber-600 w-full justify-center">
+                            <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10 w-full justify-center">
                               กำลังใช้งาน
                             </Badge>
                           </CardContent>
@@ -596,57 +632,165 @@ export default function CheckoutDetailPage() {
             )}
 
             {/* Returned Devices */}
-            {returnedItems.length > 0 && (
+            {allReturnedItems.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5" />
-                    คืนแล้ว ({returnedItems.length} เครื่อง)
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5" />
+                      คืนแล้ว ({filteredReturnedItems.length} / {allReturnedItems.length} เครื่อง)
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={returnedFilter}
+                        onValueChange={(value: "ALL" | "WITH_PROBLEM" | "NO_PROBLEM") => setReturnedFilter(value)}
+                      >
+                        <SelectTrigger className="w-[140px] h-8">
+                          <Filter className="h-3.5 w-3.5 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">ทั้งหมด</SelectItem>
+                          <SelectItem value="WITH_PROBLEM">มีปัญหา</SelectItem>
+                          <SelectItem value="NO_PROBLEM">ไม่มีปัญหา</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={returnedSort}
+                        onValueChange={(value: "DATE_DESC" | "DATE_ASC" | "NAME_ASC" | "NAME_DESC") => setReturnedSort(value)}
+                      >
+                        <SelectTrigger className="w-[140px] h-8">
+                          <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DATE_DESC">วันที่ล่าสุด</SelectItem>
+                          <SelectItem value="DATE_ASC">วันที่เก่าสุด</SelectItem>
+                          <SelectItem value="NAME_ASC">ชื่อ A-Z</SelectItem>
+                          <SelectItem value="NAME_DESC">ชื่อ Z-A</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
+                  {returnedItems.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">ไม่พบอุปกรณ์ที่ตรงกับเงื่อนไข</p>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {returnedItems.map((item) => (
-                      <Card key={item.id} className="bg-muted/30">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Tablet className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <h3 className="font-semibold text-sm line-clamp-1">
-                                  {item.device.name || item.device.deviceCode}
-                                </h3>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-1">
-                                {item.device.deviceCode}
-                              </p>
-                              {item.device.model && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {item.device.model}
-                                </p>
-                              )}
-                              {item.returnedAt && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  คืนเมื่อ: {format(new Date(item.returnedAt), "dd MMM yyyy HH:mm", { locale: th })}
-                                </p>
-                              )}
-                              {item.problem && (
-                                <div className="text-xs text-red-600 mt-2 flex items-start gap-1">
-                                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
-                                  <span>ปัญหา: {item.problem}</span>
+                    {returnedItems.map((item) => {
+                      const hasProblem = item.problem || (item.maintenanceStatus && item.maintenanceStatus !== "NONE");
+                      return (
+                        <Card 
+                          key={item.id} 
+                          className={cn(
+                            "border-2 transition-all hover:shadow-lg",
+                            hasProblem
+                              ? "border-red-500/50 bg-red-500/5 hover:bg-red-500/10"
+                              : "border-green-500/50 bg-green-500/5 hover:bg-green-500/10"
+                          )}
+                        >
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Tablet className={cn(
+                                    "h-4 w-4 shrink-0",
+                                    hasProblem 
+                                      ? "text-red-600 dark:text-red-400" 
+                                      : "text-green-600 dark:text-green-400"
+                                  )} />
+                                  <Tooltip content={item.device.name || item.device.deviceCode}>
+                                    <h3 className="font-semibold text-sm line-clamp-1 ">
+                                      {item.device.name || item.device.deviceCode}
+                                    </h3>
+                                  </Tooltip>
                                 </div>
-                              )}
+                                <Tooltip content={item.device.deviceCode}>
+                                  <p className="text-xs text-muted-foreground line-clamp-1 ">
+                                    {item.device.deviceCode}
+                                  </p>
+                                </Tooltip>
+                                {item.device.model && (
+                                  <Tooltip content={item.device.model}>
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1 ">
+                                      {item.device.model}
+                                    </p>
+                                  </Tooltip>
+                                )}
+                                {item.returnedAt && (
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    คืนเมื่อ: {format(new Date(item.returnedAt), "dd MMM yyyy HH:mm", { locale: th })}
+                                  </p>
+                                )}
+                                {item.problem && (
+                                  <div className="mt-2 space-y-1">
+                                    <div className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                                      <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                                      <span className="font-medium">ปัญหา:</span>
+                                    </div>
+                                    <Tooltip content={item.problem}>
+                                      <p className="text-xs text-red-600 dark:text-red-400 ml-4 line-clamp-2 ">
+                                        {item.problem}
+                                      </p>
+                                    </Tooltip>
+                                  </div>
+                                )}
+                                {item.solution && (
+                                  <div className="mt-2 space-y-1">
+                                    <div className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
+                                      <CheckCircle2 className="h-3 w-3 shrink-0 mt-0.5" />
+                                      <span className="font-medium">แนวทางแก้ไข:</span>
+                                    </div>
+                                    <Tooltip content={item.solution}>
+                                      <p className="text-xs text-green-600 dark:text-green-400 ml-4 line-clamp-2 ">
+                                        {item.solution}
+                                      </p>
+                                    </Tooltip>
+                                  </div>
+                                )}
+                                {item.maintenanceStatus && item.maintenanceStatus !== "NONE" && (
+                                  <div className="mt-2">
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn(
+                                        "text-xs",
+                                        item.maintenanceStatus === "HAS_PROBLEM" && "border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-500/10",
+                                        item.maintenanceStatus === "NEEDS_REPAIR" && "border-red-500 text-red-600 dark:text-red-400 bg-red-500/10",
+                                        item.maintenanceStatus === "IN_MAINTENANCE" && "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10",
+                                        item.maintenanceStatus === "DAMAGED" && "border-gray-500 text-gray-600 dark:text-gray-400 bg-gray-500/10"
+                                      )}
+                                    >
+                                      {item.maintenanceStatus === "HAS_PROBLEM" && "มีปัญหา"}
+                                      {item.maintenanceStatus === "NEEDS_REPAIR" && "ต้องซ่อม"}
+                                      {item.maintenanceStatus === "IN_MAINTENANCE" && "กำลังซ่อม"}
+                                      {item.maintenanceStatus === "DAMAGED" && "เสียหาย"}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="border-emerald-500 text-emerald-600">
-                              คืนแล้ว
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "w-full justify-center",
+                                  hasProblem
+                                    ? "border-red-500 text-red-600 dark:text-red-400 bg-red-500/10"
+                                    : "border-green-500 text-green-600 dark:text-green-400 bg-green-500/10"
+                                )}
+                              >
+                                คืนแล้ว
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -860,7 +1004,7 @@ export default function CheckoutDetailPage() {
                                   </Label>
                                   <Select
                                     value={problemData.maintenanceStatus}
-                                    onValueChange={(value: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "REPAIRED" | "DAMAGED") =>
+                                    onValueChange={(value: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED") =>
                                       updateItemProblem(item.id, "maintenanceStatus", value)
                                     }
                                   >
@@ -871,7 +1015,6 @@ export default function CheckoutDetailPage() {
                                       <SelectItem value="HAS_PROBLEM">มีปัญหา</SelectItem>
                                       <SelectItem value="NEEDS_REPAIR">ต้องซ่อม</SelectItem>
                                       <SelectItem value="IN_MAINTENANCE">กำลังซ่อม</SelectItem>
-                                      <SelectItem value="REPAIRED">ซ่อมเสร็จแล้ว</SelectItem>
                                       <SelectItem value="DAMAGED">เสียหาย (ไม่สามารถซ่อมได้)</SelectItem>
                                     </SelectContent>
                                   </Select>
