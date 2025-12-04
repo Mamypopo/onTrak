@@ -127,6 +127,7 @@ export default function CheckoutDetailPage() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [returning, setReturning] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [returnNotes, setReturnNotes] = useState("");
   // Store collapsed state for each tablet (itemId -> boolean)
   // Default to true (collapsed) for all items
@@ -274,6 +275,62 @@ export default function CheckoutDetailPage() {
       );
     } finally {
       setReturning(false);
+    }
+  };
+
+  const handleCancelCheckout = async () => {
+    if (!checkout) return;
+
+    const activeItems = checkout.items.filter((item) => !item.returnedAt);
+    
+    const result = await Swal.fire({
+      title: "ยืนยันการยกเลิกการเบิก",
+      html: `
+        <div class="text-left space-y-2">
+          <p><strong>เลขที่การเบิก:</strong> ${checkout.checkoutNumber}</p>
+          <p><strong>จำนวนอุปกรณ์ที่ยังไม่ได้คืน:</strong> ${activeItems.length} เครื่อง</p>
+          <p class="text-sm text-muted-foreground mt-3">การยกเลิกจะทำให้อุปกรณ์ทั้งหมดกลับมาเป็นสถานะ "ว่าง" ทันที</p>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันยกเลิก",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      input: "textarea",
+      inputPlaceholder: "เหตุผลในการยกเลิก (ไม่บังคับ)",
+      inputAttributes: {
+        "aria-label": "เหตุผลในการยกเลิก"
+      },
+      showLoaderOnConfirm: true,
+      preConfirm: async (reason) => {
+        try {
+          setCancelling(true);
+          const response = await api.post(`/api/checkouts/${checkoutId}/cancel`, {
+            reason: reason || null,
+          });
+          return response.data;
+        } catch (error: any) {
+          Swal.showValidationMessage(
+            error?.response?.data?.error || "เกิดข้อผิดพลาดในการยกเลิก"
+          );
+          throw error;
+        } finally {
+          setCancelling(false);
+        }
+      },
+    });
+
+    if (result.isConfirmed) {
+      await Swal.fire(
+        getToastConfig({
+          icon: "success",
+          title: "ยกเลิกการเบิกสำเร็จ",
+        })
+      );
+      // Redirect to checkout list immediately (don't fetch again since checkout is now deleted)
+      router.push("/dashboard/checkouts");
     }
   };
 
@@ -462,25 +519,36 @@ export default function CheckoutDetailPage() {
           <div className="flex items-center gap-2">
             {getStatusBadge(checkout.status)}
             {activeItems.length > 0 && (checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
-              <Button 
-                onClick={() => {
-                  if (activeItems.length === 0) {
-                    Swal.fire(
-                      getToastConfig({
-                        icon: "info",
-                        title: "ไม่มีอุปกรณ์ที่สามารถคืนได้",
-                        text: "กรุณาเลือกอุปกรณ์ที่ต้องการคืนก่อน",
-                      })
-                    );
-                    return;
-                  }
-                  setReturnDialogOpen(true);
-                }} 
-                className="gap-2"
-              >
-                <Package className="h-4 w-4" />
-                คืนอุปกรณ์
-              </Button>
+              <>
+                <Button 
+                  onClick={() => {
+                    if (activeItems.length === 0) {
+                      Swal.fire(
+                        getToastConfig({
+                          icon: "info",
+                          title: "ไม่มีอุปกรณ์ที่สามารถคืนได้",
+                          text: "กรุณาเลือกอุปกรณ์ที่ต้องการคืนก่อน",
+                        })
+                      );
+                      return;
+                    }
+                    setReturnDialogOpen(true);
+                  }} 
+                  className="gap-2"
+                >
+                  <Package className="h-4 w-4" />
+                  คืนอุปกรณ์
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelCheckout}
+                  disabled={cancelling}
+                  className="gap-2"
+                >
+                  <XCircle className="h-4 w-4" />
+                  {cancelling ? "กำลังยกเลิก..." : "ยกเลิกการเบิก"}
+                </Button>
+              </>
             )}
           </div>
         </div>

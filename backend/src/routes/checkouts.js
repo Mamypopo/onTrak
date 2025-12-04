@@ -36,6 +36,15 @@ async function checkoutRoutes(fastify, options) {
     },
     checkoutController.returnDevices,
   );
+
+  // Cancel a checkout
+  fastify.post(
+    '/:id/cancel',
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    checkoutController.cancelCheckout,
+  );
 }
 
 export default checkoutRoutes;

@@ -31,8 +31,6 @@ export async function listCheckouts(request, reply) {
       ];
     }
 
-    // Note: status is a computed field, so we can't filter in Prisma query
-    // We'll filter after calculating status
     const [items, total] = await Promise.all([
       prisma.checkout.findMany({
         where,
@@ -154,7 +152,7 @@ export async function createCheckout(request, reply) {
     // Verify devices exist and are available
     const devices = await prisma.device.findMany({
       where: { id: { in: deviceIds } },
-      select: { id: true, deviceCode: true, name: true },
+      select: { id: true, deviceCode: true, name: true, maintenanceStatus: true },
     });
 
     if (devices.length !== deviceIds.length) {
@@ -163,23 +161,27 @@ export async function createCheckout(request, reply) {
       });
     }
 
-    // Check if any device is not available (IN_USE or IN_MAINTENANCE)
-    const { getMultipleDeviceBorrowStatus } = await import('../services/device-status.service.js');
-    const deviceStatusMap = await getMultipleDeviceBorrowStatus(deviceIds);
-    
-    const unavailableDevices = devices.filter(device => {
-      const status = deviceStatusMap[device.id] || 'AVAILABLE';
-      return status !== 'AVAILABLE';
-    });
+    // Check if any selected device is currently in use or in maintenance
+    const { getDeviceBorrowStatus } = await import('../services/device-status.service.js');
+    const unavailableDevices = await Promise.all(
+      devices.map(async (device) => {
+        const borrowStatus = await getDeviceBorrowStatus(device.id);
+        if (borrowStatus !== 'AVAILABLE') {
+          return { deviceCode: device.deviceCode, borrowStatus };
+        }
+        return null;
+      }),
+    );
 
-    if (unavailableDevices.length > 0) {
+    const problematicDevices = unavailableDevices.filter(Boolean);
+
+    if (problematicDevices.length > 0) {
+      const messages = problematicDevices.map(
+        (d) => `Device ${d.deviceCode} is currently ${d.borrowStatus === 'IN_USE' ? 'in use' : 'in maintenance'}.`,
+      );
       return reply.code(400).send({
-        error: 'Some devices are not available',
-        details: unavailableDevices.map(d => ({
-          deviceCode: d.deviceCode,
-          name: d.name,
-          status: deviceStatusMap[d.id],
-        })),
+        error: 'Some selected devices are not available for checkout.',
+        details: messages,
       });
     }
 
@@ -203,10 +205,9 @@ export async function createCheckout(request, reply) {
           checkoutNumber,
           company: company || null,
           borrowerId: borrowerId || null,
-          charger: charger ?? null,
-          // ถ้าไม่ส่งมา จะใช้ default(now()) ตาม schema
-          ...(startTime && { startTime: new Date(startTime) }),
-          ...(endTime && { endTime: new Date(endTime) }),
+          charger: charger || null,
+          startTime: startTime ? new Date(startTime) : new Date(),
+          endTime: endTime ? new Date(endTime) : null,
           usageNotes: usageNotes || null,
           createdBy: currentUser.id,
           items: {
@@ -215,42 +216,31 @@ export async function createCheckout(request, reply) {
             })),
           },
           events: {
-            create: [
-              {
-                eventType: 'CREATED',
-                userId: currentUser.id,
-                notes: 'Checkout created',
+            create: {
+              eventType: 'CREATED',
+              userId: currentUser.id,
+              notes: `Checkout ${checkoutNumber} created by ${currentUser.username}`,
+              newData: {
+                company,
+                borrowerId,
+                deviceIds,
               },
-              {
-                eventType: 'CHECKED_OUT',
-                userId: currentUser.id,
-                notes: 'Devices checked out',
-              },
-            ],
+            },
           },
-        },
-        include: {
-          items: true,
         },
       });
 
-      // Audit log
-      await createAuditLog(request, 'CHECKOUT_CREATED', 'CHECKOUT', created.id, {
-        checkoutNumber: created.checkoutNumber,
-        deviceIds,
-      });
+      // Broadcast borrow status for affected devices
+      await onCheckoutCreated(created.id, deviceIds);
 
       return created;
     });
 
-    // Broadcast borrow status for all devices
-    await onCheckoutCreated(checkout.id, deviceIds);
-
-    return reply.code(201).send({
+    return {
       success: true,
       data: checkout,
       message: 'Checkout created successfully',
-    });
+    };
   } catch (error) {
     logger.error({ error }, 'Error creating checkout');
     return reply.code(500).send({
@@ -261,7 +251,7 @@ export async function createCheckout(request, reply) {
 }
 
 /**
- * Get checkout detail
+ * Get checkout by ID
  * GET /api/checkouts/:id
  */
 export async function getCheckoutById(request, reply) {
@@ -364,10 +354,10 @@ export async function returnDevices(request, reply) {
       // Old format: itemIds array with single problem/solution
       itemsToReturn = itemIds.map((itemId) => ({
         itemId,
-        problem,
-        solution,
-        maintenanceStatus,
-        returnNotes,
+        problem: problem || null,
+        solution: solution || null,
+        maintenanceStatus: maintenanceStatus || null,
+        returnNotes: returnNotes || null,
       }));
     } else {
       return reply.code(400).send({
@@ -405,7 +395,7 @@ export async function returnDevices(request, reply) {
         targetItems.map(async (item) => {
           const itemData = itemIdMap.get(item.id);
           const maintenanceStatus = itemData.maintenanceStatus ?? item.maintenanceStatus ?? null;
-          
+
           // Update CheckoutItem
           const updatedItem = await tx.checkoutItem.update({
             where: { id: item.id },
@@ -480,7 +470,7 @@ export async function returnDevices(request, reply) {
       }
 
       await createAuditLog(request, 'CHECKOUT_RETURN', 'CHECKOUT', checkout.id, {
-        itemIds,
+        itemIds: targetItems.map((item) => item.id),
       });
 
       return finalCheckout;
@@ -505,4 +495,103 @@ export async function returnDevices(request, reply) {
   }
 }
 
+/**
+ * Cancel a checkout
+ * POST /api/checkouts/:id/cancel
+ */
+export async function cancelCheckout(request, reply) {
+  try {
+    const { id } = request.params;
+    const { reason } = request.body; // Optional cancellation reason
 
+    const currentUser = request.user;
+
+    const checkout = await prisma.checkout.findUnique({
+      where: { id },
+      include: {
+        items: {
+          select: {
+            id: true,
+            deviceId: true,
+            returnedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!checkout) {
+      return reply.code(404).send({
+        error: 'Checkout not found',
+      });
+    }
+
+    if (checkout.deletedAt) {
+      return reply.code(400).send({
+        error: 'Checkout is already cancelled',
+      });
+    }
+
+    // Check if all items are already returned
+    const returnedCount = checkout.items.filter((item) => item.returnedAt !== null).length;
+    const totalCount = checkout.items.length;
+
+    if (returnedCount === totalCount && totalCount > 0) {
+      return reply.code(400).send({
+        error: 'Cannot cancel checkout that is already fully returned',
+      });
+    }
+
+    // Cancel checkout (soft delete)
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const updated = await tx.checkout.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+
+      // Create cancellation event
+      await tx.checkoutEvent.create({
+        data: {
+          checkoutId: checkout.id,
+          eventType: 'CANCELLED',
+          userId: currentUser.id,
+          notes: reason || `Checkout cancelled by ${currentUser.username}`,
+          newData: {
+            cancelledAt: updated.deletedAt,
+            reason: reason || null,
+          },
+        },
+      });
+
+      return updated;
+    });
+
+    // Broadcast borrow status for affected devices
+    const deviceIds = checkout.items
+      .filter((item) => item.returnedAt === null) // Only active items
+      .map((item) => item.deviceId);
+    
+    const uniqueDeviceIds = [...new Set(deviceIds)];
+    await Promise.all(
+      uniqueDeviceIds.map((deviceId) => onDeviceReturned(deviceId))
+    );
+
+    await createAuditLog(request, 'CHECKOUT_CANCEL', 'CHECKOUT', checkout.id, {
+      checkoutNumber: checkout.checkoutNumber,
+      reason: reason || null,
+    });
+
+    return {
+      success: true,
+      data: cancelled,
+      message: 'Checkout cancelled successfully',
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error cancelling checkout');
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
