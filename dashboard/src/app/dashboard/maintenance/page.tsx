@@ -124,21 +124,23 @@ export default function MaintenancePage() {
       return;
     }
 
-    const confirmResult = await Swal.fire({
-      title: "ยืนยันเปลี่ยนสถานะเป็นพร้อมใช้",
-      html: `
-        <div class="text-left space-y-2">
-          <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
-          <p class="text-sm text-muted-foreground">อุปกรณ์ที่เลือกจะสามารถเบิกได้ทันที</p>
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "ยืนยัน",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
-    });
+    const confirmResult = await Swal.fire(
+      getSwalConfig({
+        title: "ยืนยันเปลี่ยนสถานะเป็นพร้อมใช้",
+        html: `
+          <div class="text-left space-y-2">
+            <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
+            <p class="text-sm text-muted-foreground">อุปกรณ์ที่เลือกจะสามารถเบิกได้ทันที</p>
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "ยืนยัน",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#10b981",
+        cancelButtonColor: "#6b7280",
+      })
+    );
 
     if (!confirmResult.isConfirmed) {
       return;
