@@ -114,6 +114,19 @@ class MDMService : Service() {
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "MDMService onStartCommand")
+
+        intent?.action?.let { action ->
+            if (action == ACTION_SEND_DATA_NOW) {
+                Log.d(TAG, "Received request to send data now")
+                // Use a coroutine to avoid blocking the main thread
+                serviceScope.launch {
+                    publishStatus()
+                    requestLocationUpdate()
+                    publishMetrics()
+                }
+            }
+        }
+
         return START_STICKY // Auto-restart if killed
     }
     
@@ -496,6 +509,6 @@ class MDMService : Service() {
         private const val TAG = "MDMService"
         private const val CHANNEL_ID = "mdm_service_channel"
         private const val NOTIFICATION_ID = 1
+        const val ACTION_SEND_DATA_NOW = "com.ontrak.mdm.service.ACTION_SEND_DATA_NOW"
     }
 }
-

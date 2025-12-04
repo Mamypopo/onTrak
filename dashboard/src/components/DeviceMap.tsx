@@ -390,9 +390,10 @@ export default function DeviceMap({
       >
         <MapUpdater center={[latitude, longitude]} routePositions={routePositions} />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://maps.google.com/">Google Maps</a>'
+          url="https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
           maxZoom={19}
+          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
         />
         
         {/* เส้นทาง (Route/Polyline) */}
@@ -542,4 +543,3 @@ export default function DeviceMap({
     </div>
   );
 }
-

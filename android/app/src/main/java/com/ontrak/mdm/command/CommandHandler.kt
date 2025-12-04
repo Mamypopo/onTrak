@@ -22,6 +22,7 @@ import com.ontrak.mdm.R
 import com.ontrak.mdm.model.CommandAction
 import com.ontrak.mdm.model.MQTTCommand
 import com.ontrak.mdm.receiver.DeviceOwnerReceiver
+import com.ontrak.mdm.service.MDMService
 import com.ontrak.mdm.ui.MainActivity
 import com.ontrak.mdm.util.KioskModeManager
 
@@ -48,9 +49,22 @@ object CommandHandler {
             CommandAction.SHUTDOWN_DEVICE -> shutdownDevice(context)
             CommandAction.DISABLE_CAMERA -> setCameraEnabled(context, false)
             CommandAction.ENABLE_CAMERA -> setCameraEnabled(context, true)
+            CommandAction.SEND_DATA_NOW -> sendDataNow(context)
         }
     }
     
+    private fun sendDataNow(context: Context) {
+        try {
+            val intent = Intent(context, MDMService::class.java).apply {
+                action = MDMService.ACTION_SEND_DATA_NOW
+            }
+            context.startService(intent)
+            Log.d(TAG, "Sent request to MDMService to send data now")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending request to MDMService", e)
+        }
+    }
+
     private fun lockDevice(context: Context) {
         try {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -424,7 +438,7 @@ object CommandHandler {
             } else {
                 if (bluetoothAdapter.isEnabled) {
                     bluetoothAdapter.disable()
-                    Log.d(TAG, "Bluetooth disabled")
+                    Log.d(TAG, "Bluetooth already disabled")
                 } else {
                     Log.d(TAG, "Bluetooth already disabled")
                 }
@@ -491,4 +505,3 @@ object CommandHandler {
         }
     }
 }
-

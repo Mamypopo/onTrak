@@ -54,6 +54,8 @@ enum class CommandAction {
     DISABLE_CAMERA,
     
     @SerializedName("ENABLE_CAMERA")
-    ENABLE_CAMERA
+    ENABLE_CAMERA,
+    
+    @SerializedName("SEND_DATA_NOW")
+    SEND_DATA_NOW
 }
-

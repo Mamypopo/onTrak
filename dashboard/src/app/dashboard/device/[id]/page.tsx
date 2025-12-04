@@ -281,6 +281,10 @@ export default function DeviceDetailPage() {
             title: "Camera Enabled",
             text: "Camera access has been restored on device",
           },
+          SEND_DATA_NOW: {
+            title: "ส่งคำสั่ง Sync แล้ว",
+            text: "อุปกรณ์จะทำการส่งข้อมูลล่าสุดในไม่ช้า",
+          },
         };
 
         const message = messages[action] || {
@@ -869,6 +873,15 @@ export default function DeviceDetailPage() {
                       >
                         <Power className="w-4 h-4 mr-2" />
                         รีสตาร์ท
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("SEND_DATA_NOW")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                        className="col-span-2"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        Sync Data Now
                       </Button>
                     </div>
                   </div>
@@ -1498,4 +1511,3 @@ export default function DeviceDetailPage() {
     </AppLayout>
   );
 }
-
