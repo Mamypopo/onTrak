@@ -24,6 +24,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -143,6 +144,16 @@ export default function CreateCheckoutPage() {
       return;
     }
 
+    if (!form.borrowerId) {
+      await Swal.fire(
+        getToastConfig({
+          icon: "warning",
+          title: "กรุณาเลือกผู้เบิก",
+        })
+      );
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -228,18 +239,21 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="borrower">ผู้เบิก (optional)</Label>
+                    <Label htmlFor="borrower">
+                      ผู้เบิก <span className="text-destructive">*</span>
+                    </Label>
                     {loadingUsers ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
                       <Select
-                        value={form.borrowerId || undefined}
+                        value={form.borrowerId || ""}
                         onValueChange={(value) =>
-                          handleInputChange("borrowerId", value)
+                          handleInputChange("borrowerId", value || "")
                         }
+                        required
                       >
                         <SelectTrigger id="borrower">
-                          <SelectValue placeholder="เลือกผู้เบิก (เว้นว่างได้)" />
+                          <SelectValue placeholder="กรุณาเลือกผู้เบิก" />
                         </SelectTrigger>
                         <SelectContent>
                           {users.map((user) => (
@@ -321,6 +335,9 @@ export default function CreateCheckoutPage() {
                     <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw]">
                       <DialogHeader>
                         <DialogTitle>เลือกอุปกรณ์ที่จะเบิก</DialogTitle>
+                        <DialogDescription>
+                          เลือกอุปกรณ์ที่ต้องการเบิกจากรายการด้านล่าง
+                        </DialogDescription>
                       </DialogHeader>
                       {loadingDevices ? (
                         <div className="space-y-3">

@@ -296,7 +296,10 @@ function calculateConnectionStatus(lastSeen) {
  */
 export async function getAllDevices() {
   try {
-    const devices = await prisma.device.findMany({
+    const { getAllDevicesWithStatus } = await import('./device-status.service.js');
+    
+    // Get devices with borrow status
+    const devices = await getAllDevicesWithStatus({
       orderBy: { lastSeen: 'desc' },
       include: {
         _count: {
@@ -318,6 +321,7 @@ export async function getAllDevices() {
         bootTime: device.bootTime ? device.bootTime.toString() : null,
         // Override stored status with computed status (more accurate)
         status: computedStatus,
+        // borrowStatus is already included from getAllDevicesWithStatus
       };
     });
   } catch (error) {

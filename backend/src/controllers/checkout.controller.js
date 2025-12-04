@@ -24,10 +24,6 @@ export async function listCheckouts(request, reply) {
       deletedAt: null,
     };
 
-    if (status) {
-      where.status = status;
-    }
-
     if (search) {
       where.OR = [
         { checkoutNumber: { contains: search, mode: 'insensitive' } },
@@ -35,11 +31,13 @@ export async function listCheckouts(request, reply) {
       ];
     }
 
+    // Note: status is a computed field, so we can't filter in Prisma query
+    // We'll filter after calculating status
     const [items, total] = await Promise.all([
       prisma.checkout.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        take: parseInt(limit),
+        take: parseInt(limit) * 2, // Get more items to account for filtering
         skip: parseInt(offset),
         include: {
           borrower: {
@@ -49,17 +47,76 @@ export async function listCheckouts(request, reply) {
             select: { id: true, username: true, fullName: true },
           },
           items: {
-            select: { id: true },
+            select: { id: true, returnedAt: true },
           },
         },
       }),
       prisma.checkout.count({ where }),
     ]);
 
+    // Calculate status for each checkout (computed field)
+    let itemsWithStatus = items.map((checkout) => {
+      const returnedCount = checkout.items.filter((item) => item.returnedAt !== null).length;
+      const totalCount = checkout.items.length;
+      
+      let computedStatus = 'ACTIVE';
+      if (checkout.deletedAt) {
+        computedStatus = 'CANCELLED';
+      } else if (returnedCount === totalCount && totalCount > 0) {
+        computedStatus = 'RETURNED';
+      } else if (returnedCount > 0 && returnedCount < totalCount) {
+        computedStatus = 'PARTIAL_RETURN';
+      }
+
+      return {
+        ...checkout,
+        status: computedStatus,
+      };
+    });
+
+    // Filter by status if provided (after computing status)
+    let filteredTotal = total;
+    if (status) {
+      // If filtering by status, we need to get all items to count properly
+      // For better performance, we could cache this or use a different approach
+      const allItems = await prisma.checkout.findMany({
+        where,
+        include: {
+          items: {
+            select: { id: true, returnedAt: true },
+          },
+        },
+      });
+
+      const allItemsWithStatus = allItems.map((checkout) => {
+        const returnedCount = checkout.items.filter((item) => item.returnedAt !== null).length;
+        const totalCount = checkout.items.length;
+        
+        let computedStatus = 'ACTIVE';
+        if (checkout.deletedAt) {
+          computedStatus = 'CANCELLED';
+        } else if (returnedCount === totalCount && totalCount > 0) {
+          computedStatus = 'RETURNED';
+        } else if (returnedCount > 0 && returnedCount < totalCount) {
+          computedStatus = 'PARTIAL_RETURN';
+        }
+
+        return {
+          ...checkout,
+          status: computedStatus,
+        };
+      });
+
+      filteredTotal = allItemsWithStatus.filter((item) => item.status === status).length;
+      itemsWithStatus = itemsWithStatus.filter((item) => item.status === status);
+      // Limit to requested limit after filtering
+      itemsWithStatus = itemsWithStatus.slice(0, parseInt(limit));
+    }
+
     return {
       success: true,
-      data: items,
-      total,
+      data: itemsWithStatus,
+      total: filteredTotal,
       limit: Number(limit),
       offset: Number(offset),
     };
@@ -94,7 +151,7 @@ export async function createCheckout(request, reply) {
       });
     }
 
-    // Verify devices exist
+    // Verify devices exist and are available
     const devices = await prisma.device.findMany({
       where: { id: { in: deviceIds } },
       select: { id: true, deviceCode: true, name: true },
@@ -103,6 +160,26 @@ export async function createCheckout(request, reply) {
     if (devices.length !== deviceIds.length) {
       return reply.code(400).send({
         error: 'Some devices not found',
+      });
+    }
+
+    // Check if any device is not available (IN_USE or IN_MAINTENANCE)
+    const { getMultipleDeviceBorrowStatus } = await import('../services/device-status.service.js');
+    const deviceStatusMap = await getMultipleDeviceBorrowStatus(deviceIds);
+    
+    const unavailableDevices = devices.filter(device => {
+      const status = deviceStatusMap[device.id] || 'AVAILABLE';
+      return status !== 'AVAILABLE';
+    });
+
+    if (unavailableDevices.length > 0) {
+      return reply.code(400).send({
+        error: 'Some devices are not available',
+        details: unavailableDevices.map(d => ({
+          deviceCode: d.deviceCode,
+          name: d.name,
+          status: deviceStatusMap[d.id],
+        })),
       });
     }
 
@@ -232,9 +309,25 @@ export async function getCheckoutById(request, reply) {
       });
     }
 
+    // Calculate status (computed field)
+    const returnedCount = checkout.items.filter((item) => item.returnedAt !== null).length;
+    const totalCount = checkout.items.length;
+    
+    let status = 'ACTIVE';
+    if (checkout.deletedAt) {
+      status = 'CANCELLED';
+    } else if (returnedCount === totalCount && totalCount > 0) {
+      status = 'RETURNED';
+    } else if (returnedCount > 0 && returnedCount < totalCount) {
+      status = 'PARTIAL_RETURN';
+    }
+
     return {
       success: true,
-      data: checkout,
+      data: {
+        ...checkout,
+        status,
+      },
     };
   } catch (error) {
     logger.error({ error }, 'Error fetching checkout detail');
@@ -253,6 +346,8 @@ export async function returnDevices(request, reply) {
   try {
     const { id } = request.params;
     const {
+      items, // Array of { itemId, problem?, solution?, maintenanceStatus?, returnNotes? }
+      // Backward compatibility
       itemIds,
       problem,
       solution,
@@ -260,9 +355,23 @@ export async function returnDevices(request, reply) {
       returnNotes,
     } = request.body;
 
-    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+    // Support both new format (items array) and old format (itemIds array)
+    let itemsToReturn = [];
+    if (items && Array.isArray(items) && items.length > 0) {
+      // New format: items array with per-item data
+      itemsToReturn = items;
+    } else if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
+      // Old format: itemIds array with single problem/solution
+      itemsToReturn = itemIds.map((itemId) => ({
+        itemId,
+        problem,
+        solution,
+        maintenanceStatus,
+        returnNotes,
+      }));
+    } else {
       return reply.code(400).send({
-        error: 'itemIds is required and must be a non-empty array',
+        error: 'items or itemIds is required and must be a non-empty array',
       });
     }
 
@@ -279,7 +388,8 @@ export async function returnDevices(request, reply) {
       });
     }
 
-    const targetItems = checkout.items.filter((item) => itemIds.includes(item.id));
+    const itemIdMap = new Map(itemsToReturn.map((item) => [item.itemId, item]));
+    const targetItems = checkout.items.filter((item) => itemIdMap.has(item.id));
 
     if (targetItems.length === 0) {
       return reply.code(400).send({
@@ -290,21 +400,45 @@ export async function returnDevices(request, reply) {
     const updated = await prisma.$transaction(async (tx) => {
       const now = new Date();
 
-      // Update each item
+      // Update each item with its specific data
       const updatedItems = await Promise.all(
-        targetItems.map((item) =>
-          tx.checkoutItem.update({
+        targetItems.map(async (item) => {
+          const itemData = itemIdMap.get(item.id);
+          const maintenanceStatus = itemData.maintenanceStatus ?? item.maintenanceStatus ?? null;
+          
+          // Update CheckoutItem
+          const updatedItem = await tx.checkoutItem.update({
             where: { id: item.id },
             data: {
               returnedAt: item.returnedAt || now,
               returnedBy: item.returnedBy || currentUser.id,
-              problem: problem ?? item.problem,
-              solution: solution ?? item.solution,
-              maintenanceStatus: maintenanceStatus ?? item.maintenanceStatus,
-              returnNotes: returnNotes ?? item.returnNotes,
+              problem: itemData.problem ?? item.problem ?? null,
+              solution: itemData.solution ?? item.solution ?? null,
+              maintenanceStatus: maintenanceStatus,
+              returnNotes: itemData.returnNotes ?? returnNotes ?? item.returnNotes ?? null,
             },
-          }),
-        ),
+          });
+
+          // Update Device maintenanceStatus if maintenance status is set
+          if (maintenanceStatus && maintenanceStatus !== 'NONE') {
+            await tx.device.update({
+              where: { id: item.deviceId },
+              data: {
+                maintenanceStatus: maintenanceStatus,
+              },
+            });
+          } else if (maintenanceStatus === 'REPAIRED' || maintenanceStatus === null) {
+            // ถ้าซ่อมเสร็จแล้วหรือไม่มีปัญหา → ตั้งเป็น NONE
+            await tx.device.update({
+              where: { id: item.deviceId },
+              data: {
+                maintenanceStatus: 'NONE',
+              },
+            });
+          }
+
+          return updatedItem;
+        }),
       );
 
       // Create event
@@ -315,8 +449,13 @@ export async function returnDevices(request, reply) {
           userId: currentUser.id,
           notes: `Returned ${updatedItems.length} devices`,
           newData: {
-            itemIds,
-            maintenanceStatus: maintenanceStatus || null,
+            itemIds: targetItems.map((item) => item.id),
+            items: updatedItems.map((item) => ({
+              itemId: item.id,
+              deviceId: item.deviceId,
+              problem: item.problem,
+              maintenanceStatus: item.maintenanceStatus,
+            })),
           },
         },
       });

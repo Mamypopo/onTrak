@@ -9,17 +9,18 @@ import prisma from '../db/client.js';
  * @returns {Promise<'AVAILABLE' | 'IN_USE' | 'IN_MAINTENANCE'>}
  */
 export async function getDeviceBorrowStatus(deviceId) {
-  // 1. ตรวจสอบว่ามี maintenance status = IN_MAINTENANCE หรือไม่
-  const inMaintenance = await prisma.checkoutItem.findFirst({
-    where: {
-      deviceId,
-      maintenanceStatus: 'IN_MAINTENANCE',
-      returnedAt: null, // ยังไม่คืน
-    },
+  // 1. ตรวจสอบสถานะ maintenance จาก Device table (current state)
+  const device = await prisma.device.findUnique({
+    where: { id: deviceId },
+    select: { maintenanceStatus: true },
   });
 
-  if (inMaintenance) {
-    return 'IN_MAINTENANCE';
+  if (device && device.maintenanceStatus && device.maintenanceStatus !== 'NONE') {
+    // ถ้ามีปัญหาแต่ยังไม่ได้ส่งซ่อม = HAS_PROBLEM หรือ NEEDS_REPAIR → IN_MAINTENANCE
+    // ถ้ากำลังซ่อม = IN_MAINTENANCE → IN_MAINTENANCE
+    if (['IN_MAINTENANCE', 'HAS_PROBLEM', 'NEEDS_REPAIR'].includes(device.maintenanceStatus)) {
+      return 'IN_MAINTENANCE';
+    }
   }
 
   // 2. ตรวจสอบว่ามี checkout ที่ active (ยังไม่คืน) หรือไม่
@@ -27,17 +28,20 @@ export async function getDeviceBorrowStatus(deviceId) {
     where: {
       deviceId,
       returnedAt: null, // ยังไม่คืน
+      checkout: {
+        deletedAt: null, // ไม่ได้ soft delete
+      },
     },
     include: {
       checkout: {
-        where: {
-          deletedAt: null, // ไม่ได้ soft delete
+        select: {
+          deletedAt: true,
         },
       },
     },
   });
 
-  if (activeCheckout) {
+  if (activeCheckout && !activeCheckout.checkout.deletedAt) {
     return 'IN_USE';
   }
 
@@ -56,24 +60,25 @@ export async function getMultipleDeviceBorrowStatus(deviceIds) {
     return {};
   }
 
-  // Query ทั้งหมดในครั้งเดียว (optimized - ใช้ index)
-  // Index: deviceId, returnedAt, maintenanceStatus
+  // Query devices เพื่อดึง maintenanceStatus จาก Device table (current state)
+  const devices = await prisma.device.findMany({
+    where: {
+      id: { in: deviceIds },
+    },
+    select: {
+      id: true,
+      maintenanceStatus: true,
+    },
+  });
+
+  // Query checkout items ที่ยังไม่คืน (สำหรับตรวจสอบ IN_USE)
   const checkoutItems = await prisma.checkoutItem.findMany({
     where: {
       deviceId: { in: deviceIds },
       returnedAt: null, // ยังไม่คืน
     },
-    include: {
-      checkout: {
-        select: {
-          deletedAt: true,
-        },
-      },
-    },
-    // ใช้ select เฉพาะ fields ที่ต้องการ (ลด data transfer)
     select: {
       deviceId: true,
-      maintenanceStatus: true,
       checkout: {
         select: {
           deletedAt: true,
@@ -89,13 +94,19 @@ export async function getMultipleDeviceBorrowStatus(deviceIds) {
     statusMap[id] = 'AVAILABLE';
   });
 
-  // Update status based on checkout items
+  // Update status based on device maintenanceStatus
+  devices.forEach(device => {
+    if (device.maintenanceStatus && device.maintenanceStatus !== 'NONE') {
+      if (['IN_MAINTENANCE', 'HAS_PROBLEM', 'NEEDS_REPAIR'].includes(device.maintenanceStatus)) {
+        statusMap[device.id] = 'IN_MAINTENANCE';
+      }
+    }
+  });
+
+  // Update status based on checkout items (IN_USE)
   checkoutItems.forEach(item => {
     if (item.checkout.deletedAt) return; // Skip deleted checkouts
-
-    if (item.maintenanceStatus === 'IN_MAINTENANCE') {
-      statusMap[item.deviceId] = 'IN_MAINTENANCE';
-    } else if (statusMap[item.deviceId] === 'AVAILABLE') {
+    if (statusMap[item.deviceId] === 'AVAILABLE') {
       statusMap[item.deviceId] = 'IN_USE';
     }
   });
@@ -161,11 +172,43 @@ export async function getAllDevicesWithStatus(options = {}) {
   const deviceIds = devices.map(d => d.id);
   const statusMap = await getMultipleDeviceBorrowStatus(deviceIds);
 
+  // Query latest problem for devices with maintenance status
+  const devicesWithProblems = deviceIds.filter(id => 
+    statusMap[id] === 'IN_MAINTENANCE'
+  );
+
+  const latestProblems = {};
+  if (devicesWithProblems.length > 0) {
+    const problemItems = await prisma.checkoutItem.findMany({
+      where: {
+        deviceId: { in: devicesWithProblems },
+        problem: { not: null },
+        returnedAt: { not: null },
+      },
+      select: {
+        deviceId: true,
+        problem: true,
+        returnedAt: true,
+      },
+      orderBy: {
+        returnedAt: 'desc',
+      },
+    });
+
+    // Get latest problem for each device
+    problemItems.forEach(item => {
+      if (!latestProblems[item.deviceId]) {
+        latestProblems[item.deviceId] = item.problem;
+      }
+    });
+  }
+
   // Map devices with status (O(n) - efficient)
   return devices.map(device => ({
     ...device,
     borrowStatus: statusMap[device.id] || 'AVAILABLE',
     connectionStatus: device.status,
+    latestProblem: latestProblems[device.id] || null,
   }));
 }
 

@@ -13,6 +13,7 @@ import { requireRole } from './middleware/rbac.js';
 import authRoutes from './routes/auth.js';
 import deviceRoutes from './routes/devices.js';
 import userRoutes from './routes/users.js';
+import checkoutRoutes from './routes/checkouts.js';
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -48,6 +49,7 @@ fastify.decorate('requireRole', requireRole);
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(deviceRoutes, { prefix: '/api/device' });
 await fastify.register(userRoutes, { prefix: '/api/user' });
+await fastify.register(checkoutRoutes, { prefix: '/api/checkouts' });
 
 // WebSocket endpoint
 fastify.register(async function (fastify) {

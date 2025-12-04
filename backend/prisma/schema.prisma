@@ -36,6 +36,7 @@ model Device {
   longitude     Float?
   kioskMode     Boolean  @default(false)
   status        DeviceStatus @default(OFFLINE)
+  maintenanceStatus MaintenanceStatus @default(NONE) // สถานะซ่อมบำรุงปัจจุบัน
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -47,6 +48,7 @@ model Device {
   @@index([deviceCode])
   @@index([status])
   @@index([lastSeen])
+  @@index([maintenanceStatus])
   @@map("devices")
 }
 
@@ -277,6 +279,7 @@ enum CheckoutEventType {
 
 enum MaintenanceStatus {
   NONE              // ไม่มีปัญหา
+  HAS_PROBLEM       // มีปัญหา (เพิ่งรายงานมา)
   NEEDS_REPAIR      // ต้องซ่อม
   IN_MAINTENANCE    // กำลังซ่อม
   REPAIRED          // ซ่อมเสร็จแล้ว
