@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DeviceMultiSelect, CheckoutDevice } from "@/components/checkouts/device-multi-select";
 import Swal from "sweetalert2";
-import { getToastConfig } from "@/lib/swal-config";
+import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import {
   Select,
   SelectContent,
@@ -160,23 +160,25 @@ export default function CreateCheckoutPage() {
     const borrower = users.find((u) => u.id === form.borrowerId);
     const borrowerName = borrower?.fullName || borrower?.username || "ไม่ระบุ";
 
-    const confirmResult = await Swal.fire({
-      title: "ยืนยันการเบิกอุปกรณ์",
-      html: `
-        <div class="text-left space-y-2">
-          <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
-          <p><strong>อุปกรณ์:</strong> ${deviceNames}</p>
-          <p><strong>ผู้เบิก:</strong> ${borrowerName}</p>
-          ${form.company ? `<p><strong>บริษัท/หน่วยงาน:</strong> ${form.company}</p>` : ""}
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "ยืนยันการเบิก",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
-    });
+    const confirmResult = await Swal.fire(
+      getSwalConfig({
+        title: "ยืนยันการเบิกอุปกรณ์",
+        html: `
+          <div class="text-left space-y-2">
+            <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
+            <p><strong>อุปกรณ์:</strong> ${deviceNames}</p>
+            <p><strong>ผู้เบิก:</strong> ${borrowerName}</p>
+            ${form.company ? `<p><strong>บริษัท/หน่วยงาน:</strong> ${form.company}</p>` : ""}
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "ยืนยันการเบิก",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#10b981",
+        cancelButtonColor: "#6b7280",
+      })
+    );
 
     if (!confirmResult.isConfirmed) {
       return;

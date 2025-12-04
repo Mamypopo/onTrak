@@ -285,7 +285,7 @@ export async function calculateDeviceRoute(request, reply) {
  */
 export async function updateMaintenanceStatus(request, reply) {
   try {
-    const { deviceIds, maintenanceStatus } = request.body;
+    const { deviceIds, maintenanceStatus, problem, solution } = request.body;
 
     if (!deviceIds || !Array.isArray(deviceIds) || deviceIds.length === 0) {
       return reply.code(400).send({
@@ -333,6 +333,8 @@ export async function updateMaintenanceStatus(request, reply) {
           createAuditLog(request, 'UPDATE_MAINTENANCE_STATUS', 'DEVICE', device.id, {
             deviceCode: device.deviceCode,
             maintenanceStatus,
+            problem: problem || null,
+            solution: solution || null,
           })
         )
       );
@@ -441,6 +443,150 @@ export async function getDeviceHistory(request, reply) {
     };
   } catch (error) {
     logger.error({ error, deviceId: id }, 'Error fetching device history');
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+/**
+ * Update device information
+ * PUT /api/device/:id
+ */
+export async function updateDevice(request, reply) {
+  try {
+    const { id } = request.params;
+    const { deviceCode, name, serialNumber, model, osVersion } = request.body;
+
+    if (!deviceCode) {
+      return reply.code(400).send({
+        error: 'Device code is required',
+      });
+    }
+
+    // Check if device exists
+    const existingDevice = await prisma.device.findUnique({
+      where: { id },
+    });
+
+    if (!existingDevice) {
+      return reply.code(404).send({
+        error: 'Device not found',
+      });
+    }
+
+    // Check if deviceCode is already taken by another device
+    if (deviceCode !== existingDevice.deviceCode) {
+      const deviceWithSameCode = await prisma.device.findUnique({
+        where: { deviceCode },
+      });
+
+      if (deviceWithSameCode) {
+        return reply.code(409).send({
+          error: 'Device code already exists',
+        });
+      }
+    }
+
+    // Update device
+    const updated = await prisma.device.update({
+      where: { id },
+      data: {
+        deviceCode,
+        name: name || null,
+        serialNumber: serialNumber || null,
+        model: model || null,
+        osVersion: osVersion || null,
+      },
+    });
+
+    // Create audit log
+    await createAuditLog(request, 'UPDATE_DEVICE', 'DEVICE', id, {
+      deviceCode: updated.deviceCode,
+      name: updated.name,
+      changes: {
+        deviceCode: deviceCode !== existingDevice.deviceCode ? { from: existingDevice.deviceCode, to: deviceCode } : undefined,
+        name: name !== existingDevice.name ? { from: existingDevice.name, to: name } : undefined,
+        serialNumber: serialNumber !== existingDevice.serialNumber ? { from: existingDevice.serialNumber, to: serialNumber } : undefined,
+        model: model !== existingDevice.model ? { from: existingDevice.model, to: model } : undefined,
+        osVersion: osVersion !== existingDevice.osVersion ? { from: existingDevice.osVersion, to: osVersion } : undefined,
+      },
+    });
+
+    // Serialize BigInt fields to strings for JSON
+    const serializedDevice = {
+      ...updated,
+      bootTime: updated.bootTime ? updated.bootTime.toString() : null,
+    };
+
+    return {
+      success: true,
+      data: serializedDevice,
+      message: 'Device updated successfully',
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error updating device');
+    return reply.code(500).send({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+/**
+ * Delete device (hard delete)
+ * DELETE /api/device/:id
+ */
+export async function deleteDevice(request, reply) {
+  try {
+    const { id } = request.params;
+
+    // Check if device exists
+    const device = await prisma.device.findUnique({
+      where: { id },
+      include: {
+        checkoutItems: {
+          where: {
+            returnedAt: null, // Check for active checkouts
+          },
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!device) {
+      return reply.code(404).send({
+        error: 'Device not found',
+      });
+    }
+
+    // Check if device is currently in use
+    if (device.checkoutItems.length > 0) {
+      return reply.code(400).send({
+        error: 'Cannot delete device that is currently checked out',
+      });
+    }
+
+    // Hard delete (since there's no deletedAt field in Device model)
+    await prisma.device.delete({
+      where: { id },
+    });
+
+    // Create audit log
+    await createAuditLog(request, 'DELETE_DEVICE', 'DEVICE', id, {
+      deviceCode: device.deviceCode,
+      name: device.name,
+    });
+
+    return {
+      success: true,
+      message: 'Device deleted successfully',
+    };
+  } catch (error) {
+    logger.error({ error }, 'Error deleting device');
     return reply.code(500).send({
       error: 'Internal server error',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined,

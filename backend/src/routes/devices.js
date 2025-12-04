@@ -72,6 +72,24 @@ async function deviceRoutes(fastify, options) {
     },
     deviceController.updateMaintenanceStatus
   );
+
+  // Update device
+  fastify.put(
+    "/:id",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.updateDevice
+  );
+
+  // Delete device
+  fastify.delete(
+    "/:id",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.deleteDevice
+  );
 }
 
 export default deviceRoutes;

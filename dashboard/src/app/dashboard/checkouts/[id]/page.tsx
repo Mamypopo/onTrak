@@ -200,22 +200,24 @@ export default function CheckoutDetailPage() {
     const hasProblems = Object.values(itemProblems).some((p) => p.hasProblem);
     const problemCount = Object.values(itemProblems).filter((p) => p.hasProblem).length;
 
-    const confirmResult = await Swal.fire({
-      title: "ยืนยันการคืนอุปกรณ์",
-      html: `
-        <div class="text-left space-y-2">
-          <p><strong>จำนวนอุปกรณ์:</strong> ${selectedItems.length} เครื่อง</p>
-          <p><strong>อุปกรณ์:</strong> ${selectedDeviceNames}</p>
-          ${hasProblems ? `<p class="text-amber-600"><strong>⚠️ มีการรายงานปัญหา:</strong> ${problemCount} เครื่อง</p>` : ""}
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "ยืนยันการคืน",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
-    });
+    const confirmResult = await Swal.fire(
+      getSwalConfig({
+        title: "ยืนยันการคืนอุปกรณ์",
+        html: `
+          <div class="text-left space-y-2">
+            <p><strong>จำนวนอุปกรณ์:</strong> ${selectedItems.length} เครื่อง</p>
+            <p><strong>อุปกรณ์:</strong> ${selectedDeviceNames}</p>
+            ${hasProblems ? `<p class="text-amber-600"><strong>⚠️ มีการรายงานปัญหา:</strong> ${problemCount} เครื่อง</p>` : ""}
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "ยืนยันการคืน",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#10b981",
+        cancelButtonColor: "#6b7280",
+      })
+    );
 
     if (!confirmResult.isConfirmed) {
       return;
