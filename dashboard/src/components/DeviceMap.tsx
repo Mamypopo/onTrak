@@ -370,7 +370,7 @@ export default function DeviceMap({
       <Tooltip content={isFullscreen ? "ย่อ" : "ขยาย"}>
         <button
           onClick={toggleFullscreen}
-          className="absolute top-2 right-2 z-[1000] bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
+          className="absolute top-2 right-2 z-10 bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
           {isFullscreen ? (

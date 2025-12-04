@@ -218,11 +218,16 @@ export async function getDeviceById(id) {
       return null;
     }
 
+    // Calculate connection status on-the-fly (computed, no DB update)
+    const computedStatus = calculateConnectionStatus(device.lastSeen);
+
     // Serialize BigInt fields to strings for JSON
     // Note: DateTime fields (like lastSeen) are automatically serialized to ISO strings by Prisma
     return {
       ...device,
       bootTime: device.bootTime ? device.bootTime.toString() : null,
+      // Override stored status with computed status (more accurate)
+      status: computedStatus,
       metrics: device.metrics.map(metric => ({
         ...metric,
         memoryTotal: metric.memoryTotal.toString(),
@@ -274,11 +279,27 @@ export async function createDevice(deviceData) {
 }
 
 /**
+ * Calculate connection status from lastSeen (computed, no DB update needed)
+ * @param {Date} lastSeen - Last seen timestamp
+ * @returns {'ONLINE' | 'OFFLINE'}
+ */
+function calculateConnectionStatus(lastSeen) {
+  const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+  const now = new Date();
+  const timeSinceLastSeen = now.getTime() - new Date(lastSeen).getTime();
+  
+  return timeSinceLastSeen > OFFLINE_THRESHOLD_MS ? 'OFFLINE' : 'ONLINE';
+}
+
+/**
  * Get all devices
  */
 export async function getAllDevices() {
   try {
-    const devices = await prisma.device.findMany({
+    const { getAllDevicesWithStatus } = await import('./device-status.service.js');
+    
+    // Get devices with borrow status
+    const devices = await getAllDevicesWithStatus({
       orderBy: { lastSeen: 'desc' },
       include: {
         _count: {
@@ -292,10 +313,17 @@ export async function getAllDevices() {
 
     // Serialize BigInt fields to strings for JSON
     // DateTime fields (like lastSeen) are automatically serialized to ISO strings by Prisma
-    return devices.map(device => ({
-      ...device,
-      bootTime: device.bootTime ? device.bootTime.toString() : null,
-    }));
+    // Calculate connection status on-the-fly (computed, no DB update)
+    return devices.map(device => {
+      const computedStatus = calculateConnectionStatus(device.lastSeen);
+      return {
+        ...device,
+        bootTime: device.bootTime ? device.bootTime.toString() : null,
+        // Override stored status with computed status (more accurate)
+        status: computedStatus,
+        // borrowStatus is already included from getAllDevicesWithStatus
+      };
+    });
   } catch (error) {
     logger.error({ error }, 'Error fetching devices');
     throw error;

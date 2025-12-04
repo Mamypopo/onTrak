@@ -15,7 +15,7 @@ import {
   Lock, Power, Radio, Settings,
   Square, Bell, Camera, Zap, Signal,
   User, Package, PackageCheck, Clock,
-  MessageSquare
+  MessageSquare, AlertCircle, Edit, Trash2, Wrench, WifiOff
 } from "lucide-react";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -25,6 +25,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -68,6 +76,9 @@ interface Device {
   cameraEnabled?: boolean;
   metrics: any[];
   actionLogs: any[];
+  borrowStatus?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE";
+  maintenanceStatus?: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED";
+  latestProblem?: string | null;
 }
 
 export default function DeviceDetailPage() {
@@ -87,6 +98,24 @@ export default function DeviceDetailPage() {
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [messageTitle, setMessageTitle] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [isReportProblemDialogOpen, setIsReportProblemDialogOpen] = useState(false);
+  const [problemData, setProblemData] = useState({
+    problem: "",
+    solution: "",
+    maintenanceStatus: "HAS_PROBLEM" as "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED",
+  });
+  const [reportingProblem, setReportingProblem] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    name: "",
+    deviceCode: "",
+    serialNumber: "",
+    model: "",
+    osVersion: "",
+  });
+  const [editing, setEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -310,56 +339,47 @@ export default function DeviceDetailPage() {
   };
 
   const handleBorrow = async () => {
-    const { value: reason } = await Swal.fire(getSwalConfig({
-      title: "ยืมอุปกรณ์",
-      input: "text",
-      inputLabel: "เหตุผล (ไม่บังคับ)",
-      inputPlaceholder: "กรอกเหตุผลในการยืม...",
-      showCancelButton: true,
-      confirmButtonText: "ยืม",
-      cancelButtonText: "ยกเลิก",
-    }));
-
-    if (reason !== undefined) {
-      try {
-        const response = await api.post(`/api/device/${deviceId}/borrow`, {
-          reason: reason || null,
-        });
-
-        if (response.data.success) {
-          Swal.fire(getToastConfig({
-            icon: "success",
-            title: "ยืมอุปกรณ์สำเร็จ",
-          }));
-          fetchDevice();
-        }
-      } catch (error: any) {
-        Swal.fire(getSwalConfig({
-          icon: "error",
-          title: "เกิดข้อผิดพลาด",
-          text: error.response?.data?.error || "ไม่สามารถยืมอุปกรณ์ได้",
-        }));
-      }
-    }
+    // Redirect to checkout creation page with device pre-selected
+    router.push(`/dashboard/checkouts/new?deviceId=${deviceId}`);
   };
 
   const handleReturn = async () => {
+    // Find active checkout for this device
     try {
-      const response = await api.post(`/api/device/${deviceId}/return`);
+      const checkoutResponse = await api.get("/api/checkouts");
+      if (checkoutResponse.data?.success) {
+        const checkouts = checkoutResponse.data.data || [];
+        // Find checkout that has this device and is still active
+        const activeCheckout = checkouts.find((checkout: any) => {
+          const status = checkout.status || "ACTIVE";
+          return (
+            (status === "ACTIVE" || status === "PARTIAL_RETURN") &&
+            checkout.items?.some((item: any) => 
+              item.deviceId === deviceId && !item.returnedAt
+            )
+          );
+        });
 
-      if (response.data.success) {
-        Swal.fire(getToastConfig({
-          icon: "success",
-          title: "คืนอุปกรณ์สำเร็จ",
-        }));
-        fetchDevice();
+        if (activeCheckout) {
+          router.push(`/dashboard/checkouts/${activeCheckout.id}`);
+        } else {
+          await Swal.fire(
+            getSwalConfig({
+              icon: "info",
+              title: "ไม่พบการเบิกที่ใช้งานอยู่",
+              text: "อุปกรณ์นี้ไม่ได้ถูกเบิกอยู่",
+            })
+          );
+        }
       }
     } catch (error: any) {
-      Swal.fire(getSwalConfig({
-        icon: "error",
-        title: "เกิดข้อผิดพลาด",
-        text: error.response?.data?.error || "ไม่สามารถคืนอุปกรณ์ได้",
-      }));
+      await Swal.fire(
+        getSwalConfig({
+          icon: "error",
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถค้นหาการเบิกได้",
+        })
+      );
     }
   };
 
@@ -387,6 +407,145 @@ export default function DeviceDetailPage() {
       setMessageBody("");
     } catch (error) {
       // error ถูก handle แล้วใน sendCommand
+    }
+  };
+
+  const handleReportProblem = async () => {
+    if (!problemData.problem.trim()) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "warning",
+          title: "กรุณากรอกปัญหา",
+          text: "ต้องระบุปัญหาที่พบ",
+        })
+      );
+      return;
+    }
+
+    try {
+      setReportingProblem(true);
+      const response = await api.patch("/api/device/maintenance-status", {
+        deviceIds: [deviceId],
+        maintenanceStatus: problemData.maintenanceStatus,
+        problem: problemData.problem.trim() || null,
+        solution: problemData.solution.trim() || null,
+      });
+
+      if (response.data.success) {
+        await Swal.fire(
+          getToastConfig({
+            icon: "success",
+            title: "รายงานปัญหาสำเร็จ",
+          })
+        );
+        setIsReportProblemDialogOpen(false);
+        setProblemData({
+          problem: "",
+          solution: "",
+          maintenanceStatus: "HAS_PROBLEM",
+        });
+        fetchDevice();
+      }
+    } catch (error: any) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "error",
+          title: "เกิดข้อผิดพลาด",
+          text: error?.response?.data?.error || "ไม่สามารถรายงานปัญหาได้",
+        })
+      );
+    } finally {
+      setReportingProblem(false);
+    }
+  };
+
+  const handleEditDevice = async () => {
+    if (!editData.deviceCode.trim()) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "warning",
+          title: "กรุณากรอกรหัสอุปกรณ์",
+          text: "รหัสอุปกรณ์เป็นข้อมูลที่จำเป็น",
+        })
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    const result = await Swal.fire(
+      getSwalConfig({
+        title: "ยืนยันการแก้ไขข้อมูล",
+        html: `
+          <div class="text-left space-y-2">
+            <p>คุณต้องการบันทึกการแก้ไขข้อมูลอุปกรณ์ <strong>${device?.deviceCode || editData.deviceCode}</strong> ใช่หรือไม่?</p>
+            ${editData.deviceCode !== device?.deviceCode ? `<p class="text-sm text-muted-foreground">รหัสอุปกรณ์: <strong>${device?.deviceCode}</strong> → <strong>${editData.deviceCode}</strong></p>` : ""}
+            ${editData.name !== device?.name ? `<p class="text-sm text-muted-foreground">ชื่อ: <strong>${device?.name || "-"}</strong> → <strong>${editData.name || "-"}</strong></p>` : ""}
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "บันทึก",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#8b5cf6",
+        cancelButtonColor: "#6b7280",
+      })
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      setEditing(true);
+      const response = await api.put(`/api/device/${deviceId}`, editData);
+
+      if (response.data.success) {
+        await Swal.fire(
+          getToastConfig({
+            icon: "success",
+            title: "แก้ไขข้อมูลสำเร็จ",
+          })
+        );
+        setIsEditDialogOpen(false);
+        fetchDevice();
+      }
+    } catch (error: any) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "error",
+          title: "เกิดข้อผิดพลาด",
+          text: error?.response?.data?.error || "ไม่สามารถแก้ไขข้อมูลได้",
+        })
+      );
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDeleteDevice = async () => {
+    try {
+      setDeleting(true);
+      const response = await api.delete(`/api/device/${deviceId}`);
+
+      if (response.data.success) {
+        await Swal.fire(
+          getToastConfig({
+            icon: "success",
+            title: "ลบอุปกรณ์สำเร็จ",
+          })
+        );
+        router.push("/dashboard");
+      }
+    } catch (error: any) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "error",
+          title: "เกิดข้อผิดพลาด",
+          text: error?.response?.data?.error || "ไม่สามารถลบอุปกรณ์ได้",
+        })
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -476,6 +635,32 @@ export default function DeviceDetailPage() {
     }
   };
 
+  const getBorrowStatusLabel = (status?: string): string => {
+    switch (status) {
+      case "AVAILABLE":
+        return "ว่าง";
+      case "IN_USE":
+        return "กำลังใช้งาน";
+      case "IN_MAINTENANCE":
+        return "มีปัญหา";
+      default:
+        return "ว่าง";
+    }
+  };
+
+  const getBorrowStatusVariant = (status?: string): "success" | "warning" | "destructive" | "default" => {
+    switch (status) {
+      case "AVAILABLE":
+        return "success";
+      case "IN_USE":
+        return "warning";
+      case "IN_MAINTENANCE":
+        return "destructive";
+      default:
+        return "default";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="flex-1 container mx-auto p-6 space-y-6">
@@ -492,10 +677,33 @@ export default function DeviceDetailPage() {
                 {device.name || device.deviceCode}
               </h1>
               <Badge variant={getStatusVariant(device.status)}>
+                {device.status === "ONLINE" ? (
+                  <Signal className="h-3 w-3 mr-1" />
+                ) : (
+                  <WifiOff className="h-3 w-3 mr-1" />
+                )}
                 {device.status}
               </Badge>
+              <Badge variant={getBorrowStatusVariant(device.borrowStatus)}>
+                {getBorrowStatusLabel(device.borrowStatus)}
+              </Badge>
+              {device.maintenanceStatus && device.maintenanceStatus !== "NONE" && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {device.maintenanceStatus === "HAS_PROBLEM" && "มีปัญหา"}
+                  {device.maintenanceStatus === "NEEDS_REPAIR" && "ต้องซ่อม"}
+                  {device.maintenanceStatus === "IN_MAINTENANCE" && "กำลังซ่อม"}
+                  {device.maintenanceStatus === "DAMAGED" && "เสียหาย"}
+                </Badge>
+              )}
             </div>
             <p className="text-muted-foreground mt-1">{device.deviceCode}</p>
+            {device.latestProblem && device.borrowStatus === "IN_MAINTENANCE" && (
+              <p className="text-sm text-destructive mt-1">
+                <AlertCircle className="h-3 w-3 inline mr-1" />
+                {device.latestProblem}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1299,6 +1507,7 @@ export default function DeviceDetailPage() {
                   className="w-full"
                   variant="default"
                 >
+                  <Package className="h-4 w-4 mr-2" />
                   ยืมอุปกรณ์
                 </Button>
                 <Button
@@ -1306,7 +1515,43 @@ export default function DeviceDetailPage() {
                   className="w-full"
                   variant="outline"
                 >
+                  <PackageCheck className="h-4 w-4 mr-2" />
                   คืนอุปกรณ์
+                </Button>
+                <Button
+                  onClick={() => setIsReportProblemDialogOpen(true)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  รายงานปัญหา
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (device) {
+                      setEditData({
+                        name: device.name || "",
+                        deviceCode: device.deviceCode || "",
+                        serialNumber: device.serialNumber || "",
+                        model: device.model || "",
+                        osVersion: device.osVersion || "",
+                      });
+                    }
+                    setIsEditDialogOpen(true);
+                  }}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  แก้ไขข้อมูล
+                </Button>
+                <Button
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="w-full"
+                  variant="destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  ลบอุปกรณ์
                 </Button>
               </CardContent>
             </Card>
@@ -1503,6 +1748,183 @@ export default function DeviceDetailPage() {
                 disabled={sendingCommand}
               >
                 ส่งข้อความ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Report Problem Dialog */}
+        <Dialog open={isReportProblemDialogOpen} onOpenChange={setIsReportProblemDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>รายงานปัญหา</DialogTitle>
+              <DialogDescription>
+                รายงานปัญหาที่พบกับอุปกรณ์นี้
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="maintenanceStatus">สถานะการซ่อม</Label>
+                <Select
+                  value={problemData.maintenanceStatus}
+                  onValueChange={(value: "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED") =>
+                    setProblemData({ ...problemData, maintenanceStatus: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HAS_PROBLEM">มีปัญหา</SelectItem>
+                    <SelectItem value="NEEDS_REPAIR">ต้องซ่อม</SelectItem>
+                    <SelectItem value="IN_MAINTENANCE">กำลังซ่อม</SelectItem>
+                    <SelectItem value="DAMAGED">เสียหาย (ไม่สามารถซ่อมได้)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="problem">ปัญหาที่พบ *</Label>
+                <Textarea
+                  id="problem"
+                  placeholder="เช่น หน้าจอแตก, เปิดไม่ติด, แบตเตอรี่เสื่อม"
+                  value={problemData.problem}
+                  onChange={(e) => setProblemData({ ...problemData, problem: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="solution">แนวทางการแก้ไข (ไม่บังคับ)</Label>
+                <Textarea
+                  id="solution"
+                  placeholder="เช่น ส่งซ่อม, จัดซื้อใหม่, เปลี่ยนแบตเตอรี่"
+                  value={problemData.solution}
+                  onChange={(e) => setProblemData({ ...problemData, solution: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsReportProblemDialogOpen(false);
+                  setProblemData({
+                    problem: "",
+                    solution: "",
+                    maintenanceStatus: "HAS_PROBLEM",
+                  });
+                }}
+                disabled={reportingProblem}
+              >
+                ยกเลิก
+              </Button>
+              <Button onClick={handleReportProblem} disabled={reportingProblem}>
+                {reportingProblem ? "กำลังรายงาน..." : "ยืนยัน"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Device Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>แก้ไขข้อมูลอุปกรณ์</DialogTitle>
+              <DialogDescription>
+                แก้ไขข้อมูลพื้นฐานของอุปกรณ์
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-deviceCode">รหัสอุปกรณ์ *</Label>
+                <Input
+                  id="edit-deviceCode"
+                  value={editData.deviceCode}
+                  onChange={(e) => setEditData({ ...editData, deviceCode: e.target.value })}
+                  placeholder="เช่น TABLET-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">ชื่ออุปกรณ์</Label>
+                <Input
+                  id="edit-name"
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  placeholder="เช่น Tablet สำหรับงานสนาม"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-serialNumber">Serial Number</Label>
+                <Input
+                  id="edit-serialNumber"
+                  value={editData.serialNumber}
+                  onChange={(e) => setEditData({ ...editData, serialNumber: e.target.value })}
+                  placeholder="เช่น SN123456789"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-model">รุ่น</Label>
+                <Input
+                  id="edit-model"
+                  value={editData.model}
+                  onChange={(e) => setEditData({ ...editData, model: e.target.value })}
+                  placeholder="เช่น iPad Pro 12.9"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-osVersion">เวอร์ชัน OS</Label>
+                <Input
+                  id="edit-osVersion"
+                  value={editData.osVersion}
+                  onChange={(e) => setEditData({ ...editData, osVersion: e.target.value })}
+                  placeholder="เช่น Android 13, iOS 17.0"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+                disabled={editing}
+              >
+                ยกเลิก
+              </Button>
+              <Button onClick={handleEditDevice} disabled={editing}>
+                {editing ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Device Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>ยืนยันการลบอุปกรณ์</DialogTitle>
+              <DialogDescription>
+                คุณแน่ใจหรือไม่ว่าต้องการลบอุปกรณ์นี้? การกระทำนี้ไม่สามารถยกเลิกได้
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>รหัสอุปกรณ์:</strong> {device?.deviceCode}
+              </p>
+              {device?.name && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>ชื่อ:</strong> {device.name}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={deleting}
+              >
+                ยกเลิก
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteDevice} disabled={deleting}>
+                {deleting ? "กำลังลบ..." : "ลบอุปกรณ์"}
               </Button>
             </DialogFooter>
           </DialogContent>

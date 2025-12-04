@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet, ClipboardList } from "lucide-react";
+import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet, ClipboardList, AlertCircle, Signal, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                       variant={borrowFilter === "IN_MAINTENANCE" ? "default" : "outline"}
                       onClick={() => setBorrowFilter("IN_MAINTENANCE")}
                     >
-                      กำลังซ่อม
+                      มีปัญหา
                     </Button>
                   </div>
                 </div>
@@ -265,12 +265,12 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">ว่าง</p>
-                      <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">
+                      <p className="text-2xl font-bold mt-1 text-green-600 dark:text-green-400">
                         {devices.filter((d) => (d.borrowStatus || "AVAILABLE") === "AVAILABLE").length}
                       </p>
                     </div>
-                    <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Tablet className="h-6 w-6 text-blue-500" />
+                    <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Tablet className="h-6 w-6 text-green-500" />
                     </div>
                   </div>
                 </CardContent>
@@ -293,18 +293,18 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* สถานะการยืม: กำลังซ่อม */}
+              {/* สถานะการยืม: มีปัญหา */}
               <Card className="card-hover">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">กำลังซ่อม</p>
+                      <p className="text-sm font-medium text-muted-foreground">มีปัญหา</p>
                       <p className="text-2xl font-bold mt-1 text-red-600 dark:text-red-400">
                         {devices.filter((d) => d.borrowStatus === "IN_MAINTENANCE").length}
                       </p>
                     </div>
                     <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-red-500" />
+                      <AlertCircle className="h-6 w-6 text-red-500" />
                     </div>
                   </div>
                 </CardContent>
@@ -362,10 +362,23 @@ export default function DashboardPage() {
                     }
 
                     const { device } = item;
+                    const hasProblem = device.borrowStatus === "IN_MAINTENANCE";
+                    const isInUse = device.borrowStatus === "IN_USE";
+                    const isAvailable = device.borrowStatus === "AVAILABLE" || !device.borrowStatus;
+                    const latestProblem = (device as any).latestProblem;
                     return (
                       <Card
                         key={device.id}
-                        className="card-hover cursor-pointer"
+                        className={cn(
+                          "card-hover cursor-pointer transition-all",
+                          hasProblem 
+                            ? "border-red-500/50 bg-red-500/5 hover:bg-red-500/10" 
+                            : isInUse
+                            ? "border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10"
+                            : isAvailable
+                            ? "border-green-500/50 bg-green-500/5 hover:bg-green-500/10"
+                            : ""
+                        )}
                         onClick={() => router.push(`/dashboard/device/${device.id}`)}
                       >
                         <CardContent className="p-4 space-y-3">
@@ -373,7 +386,16 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <Tablet className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <Tablet className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  hasProblem 
+                                    ? "text-red-500" 
+                                    : isInUse
+                                    ? "text-amber-500"
+                                    : isAvailable
+                                    ? "text-green-500"
+                                    : "text-muted-foreground"
+                                )} />
                                 <h3 className="font-semibold text-sm line-clamp-1">
                                   {device.name || device.deviceCode}
                                 </h3>
@@ -381,13 +403,20 @@ export default function DashboardPage() {
                               <p className="text-xs text-muted-foreground line-clamp-1">
                                 {device.deviceCode}
                               </p>
+                              {hasProblem && latestProblem && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-1 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3 shrink-0" />
+                                  {latestProblem}
+                                </p>
+                              )}
                             </div>
-                            <Badge
-                              variant={getStatusVariant(device.status)}
-                              className="text-xs shrink-0"
-                            >
-                              {device.status}
-                            </Badge>
+                            <div className="shrink-0" title={device.status === "ONLINE" ? "ออนไลน์" : "ออฟไลน์"}>
+                              {device.status === "ONLINE" ? (
+                                <Signal className="h-3.5 w-3.5 text-green-500" strokeWidth={2.5} />
+                              ) : (
+                                <WifiOff className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2.5} />
+                              )}
+                            </div>
                           </div>
 
                           {/* Device Info */}

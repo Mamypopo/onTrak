@@ -64,7 +64,32 @@ async function deviceRoutes(fastify, options) {
     deviceController.getDeviceHistory
   );
 
-  
+  // Update maintenance status (bulk)
+  fastify.patch(
+    "/maintenance-status",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.updateMaintenanceStatus
+  );
+
+  // Update device
+  fastify.put(
+    "/:id",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.updateDevice
+  );
+
+  // Delete device
+  fastify.delete(
+    "/:id",
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    deviceController.deleteDevice
+  );
 }
 
 export default deviceRoutes;

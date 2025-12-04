@@ -36,6 +36,20 @@ model Device {
   longitude     Float?
   kioskMode     Boolean  @default(false)
   status        DeviceStatus @default(OFFLINE)
+  maintenanceStatus MaintenanceStatus @default(NONE) // สถานะซ่อมบำรุงปัจจุบัน
+
+
+  encrytionEnable  Boolean@default(true)
+factoryResetAllowed Boolean@default(false)
+safeModeAllowed  Boolean@default(false)
+debugAllowed   Boolean@default(false)
+sceenCapAllowed  Boolean@default(false)
+credentialAllowed  Boolean@default(false)
+smartLockAllowed  Boolean@default(false)
+locationServiceAllowed Boolean@default(true)
+fingerUnlockAllowed Boolean@default(true)
+accPicAllowed   Boolean@default(true)
+hideSensitiveLSceen Boolean@default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -47,6 +61,7 @@ model Device {
   @@index([deviceCode])
   @@index([status])
   @@index([lastSeen])
+  @@index([maintenanceStatus])
   @@map("devices")
 }
 
@@ -270,16 +285,15 @@ enum CheckoutEventType {
   CHECKED_OUT       // ยืนยันการเบิก
   ITEM_RETURNED     // คืน device
   ITEM_PROBLEM      // รายงานปัญหา
-  ITEM_REPAIRED     // ซ่อมเสร็จ
   CANCELLED         // ยกเลิก checkout
   UPDATED           // แก้ไขข้อมูล
 }
 
 enum MaintenanceStatus {
   NONE              // ไม่มีปัญหา
+  HAS_PROBLEM       // มีปัญหา (เพิ่งรายงานมา)
   NEEDS_REPAIR      // ต้องซ่อม
   IN_MAINTENANCE    // กำลังซ่อม
-  REPAIRED          // ซ่อมเสร็จแล้ว
   DAMAGED           // เสียหาย (ไม่สามารถซ่อมได้)
 }
 

@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DeviceMultiSelect, CheckoutDevice } from "@/components/checkouts/device-multi-select";
 import Swal from "sweetalert2";
-import { getToastConfig } from "@/lib/swal-config";
+import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -143,6 +144,46 @@ export default function CreateCheckoutPage() {
       return;
     }
 
+    if (!form.borrowerId) {
+      await Swal.fire(
+        getToastConfig({
+          icon: "warning",
+          title: "กรุณาเลือกผู้เบิก",
+        })
+      );
+      return;
+    }
+
+    // Confirmation dialog
+    const selectedDevices = devices.filter((d) => selectedIds.includes(d.id));
+    const deviceNames = selectedDevices.map((d) => d.deviceCode).join(", ");
+    const borrower = users.find((u) => u.id === form.borrowerId);
+    const borrowerName = borrower?.fullName || borrower?.username || "ไม่ระบุ";
+
+    const confirmResult = await Swal.fire(
+      getSwalConfig({
+        title: "ยืนยันการเบิกอุปกรณ์",
+        html: `
+          <div class="text-left space-y-2">
+            <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
+            <p><strong>อุปกรณ์:</strong> ${deviceNames}</p>
+            <p><strong>ผู้เบิก:</strong> ${borrowerName}</p>
+            ${form.company ? `<p><strong>บริษัท/หน่วยงาน:</strong> ${form.company}</p>` : ""}
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "ยืนยันการเบิก",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#10b981",
+        cancelButtonColor: "#6b7280",
+      })
+    );
+
+    if (!confirmResult.isConfirmed) {
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -197,11 +238,13 @@ export default function CreateCheckoutPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">
-                กลับไป Dashboard
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => router.back()}
+            >
+              กลับ
+            </Button>
           </div>
         </div>
 
@@ -228,18 +271,21 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="borrower">ผู้เบิก (optional)</Label>
+                    <Label htmlFor="borrower">
+                      ผู้เบิก <span className="text-destructive">*</span>
+                    </Label>
                     {loadingUsers ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
                       <Select
-                        value={form.borrowerId || undefined}
+                        value={form.borrowerId || ""}
                         onValueChange={(value) =>
-                          handleInputChange("borrowerId", value)
+                          handleInputChange("borrowerId", value || "")
                         }
+                        required
                       >
                         <SelectTrigger id="borrower">
-                          <SelectValue placeholder="เลือกผู้เบิก (เว้นว่างได้)" />
+                          <SelectValue placeholder="กรุณาเลือกผู้เบิก" />
                         </SelectTrigger>
                         <SelectContent>
                           {users.map((user) => (
@@ -321,6 +367,9 @@ export default function CreateCheckoutPage() {
                     <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw]">
                       <DialogHeader>
                         <DialogTitle>เลือกอุปกรณ์ที่จะเบิก</DialogTitle>
+                        <DialogDescription>
+                          เลือกอุปกรณ์ที่ต้องการเบิกจากรายการด้านล่าง
+                        </DialogDescription>
                       </DialogHeader>
                       {loadingDevices ? (
                         <div className="space-y-3">
@@ -412,7 +461,7 @@ export default function CreateCheckoutPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.back()}
             >
               ยกเลิก
             </Button>

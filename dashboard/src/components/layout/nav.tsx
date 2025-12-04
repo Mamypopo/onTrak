@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LogOut, Menu, X, LayoutDashboard, Users, Settings2 } from "lucide-react"
+import { LogOut, Menu, X, LayoutDashboard, Users, Settings2, ClipboardList, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import Swal from "sweetalert2"
@@ -51,6 +51,8 @@ export function Nav() {
   const isDashboard = pathname === "/dashboard"
   const isDeviceDetail = pathname?.startsWith("/dashboard/device/")
   const isUsers = pathname === "/dashboard/users"
+  const isCheckouts = pathname?.startsWith("/dashboard/checkouts")
+  const isMaintenance = pathname === "/dashboard/maintenance"
   const isSettings = pathname === "/dashboard/settings"
 
   return (
@@ -93,6 +95,28 @@ export function Nav() {
             >
               <Users className="h-3.5 w-3.5" />
               <span>Users</span>
+            </Link>
+            <Link
+              href="/dashboard/checkouts"
+              className={`inline-flex items-center gap-2 px-1 py-1 text-sm font-medium transition-colors border-b-2 ${
+                isCheckouts
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+              }`}
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span>Checkouts</span>
+            </Link>
+            <Link
+              href="/dashboard/maintenance"
+              className={`inline-flex items-center gap-2 px-1 py-1 text-sm font-medium transition-colors border-b-2 ${
+                isMaintenance
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+              }`}
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              <span>Maintenance</span>
             </Link>
             <Link
               href="/dashboard/settings"
@@ -152,6 +176,22 @@ export function Nav() {
             >
               <Users className="h-4 w-4" />
               <span>Users</span>
+            </Link>
+            <Link
+              href="/dashboard/checkouts"
+              className="flex items-center gap-2 py-2 text-sm font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <ClipboardList className="h-4 w-4" />
+              <span>Checkouts</span>
+            </Link>
+            <Link
+              href="/dashboard/maintenance"
+              className="flex items-center gap-2 py-2 text-sm font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Wrench className="h-4 w-4" />
+              <span>Maintenance</span>
             </Link>
             <Link
               href="/dashboard/settings"
