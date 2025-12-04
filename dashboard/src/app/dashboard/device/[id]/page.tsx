@@ -306,56 +306,47 @@ export default function DeviceDetailPage() {
   };
 
   const handleBorrow = async () => {
-    const { value: reason } = await Swal.fire(getSwalConfig({
-      title: "ยืมอุปกรณ์",
-      input: "text",
-      inputLabel: "เหตุผล (ไม่บังคับ)",
-      inputPlaceholder: "กรอกเหตุผลในการยืม...",
-      showCancelButton: true,
-      confirmButtonText: "ยืม",
-      cancelButtonText: "ยกเลิก",
-    }));
-
-    if (reason !== undefined) {
-      try {
-        const response = await api.post(`/api/device/${deviceId}/borrow`, {
-          reason: reason || null,
-        });
-
-        if (response.data.success) {
-          Swal.fire(getToastConfig({
-            icon: "success",
-            title: "ยืมอุปกรณ์สำเร็จ",
-          }));
-          fetchDevice();
-        }
-      } catch (error: any) {
-        Swal.fire(getSwalConfig({
-          icon: "error",
-          title: "เกิดข้อผิดพลาด",
-          text: error.response?.data?.error || "ไม่สามารถยืมอุปกรณ์ได้",
-        }));
-      }
-    }
+    // Redirect to checkout creation page with device pre-selected
+    router.push(`/dashboard/checkouts/new?deviceId=${deviceId}`);
   };
 
   const handleReturn = async () => {
+    // Find active checkout for this device
     try {
-      const response = await api.post(`/api/device/${deviceId}/return`);
+      const checkoutResponse = await api.get("/api/checkouts");
+      if (checkoutResponse.data?.success) {
+        const checkouts = checkoutResponse.data.data || [];
+        // Find checkout that has this device and is still active
+        const activeCheckout = checkouts.find((checkout: any) => {
+          const status = checkout.status || "ACTIVE";
+          return (
+            (status === "ACTIVE" || status === "PARTIAL_RETURN") &&
+            checkout.items?.some((item: any) => 
+              item.deviceId === deviceId && !item.returnedAt
+            )
+          );
+        });
 
-      if (response.data.success) {
-        Swal.fire(getToastConfig({
-          icon: "success",
-          title: "คืนอุปกรณ์สำเร็จ",
-        }));
-        fetchDevice();
+        if (activeCheckout) {
+          router.push(`/dashboard/checkouts/${activeCheckout.id}`);
+        } else {
+          await Swal.fire(
+            getSwalConfig({
+              icon: "info",
+              title: "ไม่พบการเบิกที่ใช้งานอยู่",
+              text: "อุปกรณ์นี้ไม่ได้ถูกเบิกอยู่",
+            })
+          );
+        }
       }
     } catch (error: any) {
-      Swal.fire(getSwalConfig({
-        icon: "error",
-        title: "เกิดข้อผิดพลาด",
-        text: error.response?.data?.error || "ไม่สามารถคืนอุปกรณ์ได้",
-      }));
+      await Swal.fire(
+        getSwalConfig({
+          icon: "error",
+          title: "เกิดข้อผิดพลาด",
+          text: error.response?.data?.error || "ไม่สามารถค้นหาการเบิกได้",
+        })
+      );
     }
   };
 
