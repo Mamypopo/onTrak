@@ -33,7 +33,6 @@ import {
 
 interface CreateCheckoutForm {
   company: string;
-  borrowerId: string;
   charger: number | null;
   startTime: string;
   endTime: string;
@@ -54,12 +53,10 @@ export default function CreateCheckoutPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);
   const [users, setUsers] = useState<CheckoutUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [form, setForm] = useState<CreateCheckoutForm>({
     company: "",
-    borrowerId: "",
     charger: null,
     startTime: "",
     endTime: "",
@@ -73,8 +70,7 @@ export default function CreateCheckoutPage() {
       return;
     }
     fetchAvailableDevices();
-    fetchUsers();
-  }, [router]);
+  }, [router]); // Removed fetchUsers
 
   const fetchAvailableDevices = async () => {
     try {
@@ -105,22 +101,6 @@ export default function CreateCheckoutPage() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const res = await api.get("/api/user");
-      if (res.data?.success) {
-        const all: CheckoutUser[] = res.data.data;
-        const active = all.filter((u) => u.isActive);
-        setUsers(active);
-      }
-    } catch (error) {
-      console.error("Error fetching users for borrower dropdown:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
   const handleInputChange = (
     field: keyof CreateCheckoutForm,
     value: string
@@ -144,11 +124,21 @@ export default function CreateCheckoutPage() {
       return;
     }
 
-    if (!form.borrowerId) {
+    if (!form.startTime) {
       await Swal.fire(
         getToastConfig({
           icon: "warning",
-          title: "กรุณาเลือกผู้เบิก",
+          title: "กรุณาเลือกวันที่เริ่มใช้งาน",
+        })
+      );
+      return;
+    }
+
+    if (!form.endTime) {
+      await Swal.fire(
+        getToastConfig({
+          icon: "warning",
+          title: "กรุณาเลือกวันที่สิ้นสุด",
         })
       );
       return;
@@ -157,17 +147,14 @@ export default function CreateCheckoutPage() {
     // Confirmation dialog
     const selectedDevices = devices.filter((d) => selectedIds.includes(d.id));
     const deviceNames = selectedDevices.map((d) => d.deviceCode).join(", ");
-    const borrower = users.find((u) => u.id === form.borrowerId);
-    const borrowerName = borrower?.fullName || borrower?.username || "ไม่ระบุ";
 
     const confirmResult = await Swal.fire(
       getSwalConfig({
-        title: "ยืนยันการเบิกอุปกรณ์",
+        title: "ยืนยันการเบิกอุปกรณ์ (ในชื่อของคุณ)",
         html: `
           <div class="text-left space-y-2">
             <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
             <p><strong>อุปกรณ์:</strong> ${deviceNames}</p>
-            <p><strong>ผู้เบิก:</strong> ${borrowerName}</p>
             ${form.company ? `<p><strong>บริษัท/หน่วยงาน:</strong> ${form.company}</p>` : ""}
           </div>
         `,
@@ -188,7 +175,6 @@ export default function CreateCheckoutPage() {
       setSubmitting(true);
       const payload = {
         company: form.company || null,
-        borrowerId: form.borrowerId || null,
         charger: form.charger,
         startTime: form.startTime || null,
         endTime: form.endTime || null,
@@ -271,35 +257,6 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="borrower">
-                      ผู้เบิก <span className="text-destructive">*</span>
-                    </Label>
-                    {loadingUsers ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <Select
-                        value={form.borrowerId || ""}
-                        onValueChange={(value) =>
-                          handleInputChange("borrowerId", value || "")
-                        }
-                        required
-                      >
-                        <SelectTrigger id="borrower">
-                          <SelectValue placeholder="กรุณาเลือกผู้เบิก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.fullName || user.username}{" "}
-                              {user.role === "ADMIN" ? "(Admin)" : "(Staff)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="charger">จำนวนที่ชาร์จ (optional)</Label>
                     <Input
                       id="charger"
@@ -313,10 +270,10 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="startTime">วันที่และเวลาเริ่มใช้งาน (optional)</Label>
+                    <Label htmlFor="startTime">วันที่เริ่มใช้งาน <span className="text-destructive">*</span></Label>
                     <Input
                       id="startTime"
-                      type="datetime-local"
+                      type="date"
                       value={form.startTime}
                       onChange={(e) =>
                         handleInputChange("startTime", e.target.value)
@@ -325,10 +282,10 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="endTime">วันที่และเวลาสิ้นสุด (optional)</Label>
+                    <Label htmlFor="endTime">วันที่สิ้นสุด <span className="text-destructive">*</span></Label>
                     <Input
                       id="endTime"
-                      type="datetime-local"
+                      type="date"
                       value={form.endTime}
                       onChange={(e) =>
                         handleInputChange("endTime", e.target.value)
@@ -474,5 +431,3 @@ export default function CreateCheckoutPage() {
     </AppLayout>
   );
 }
-
-

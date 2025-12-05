@@ -1067,20 +1067,29 @@ export default function DeviceDetailPage() {
                     <h4 className="text-sm font-semibold mb-3 text-foreground">ควบคุมอุปกรณ์</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        onClick={() => sendCommand("LOCK_DEVICE")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Lock className="w-4 h-4 mr-2" />
-                        ล็อค
-                      </Button>
-                      <Button
                         onClick={() => sendCommand("RESTART_DEVICE")}
                         disabled={sendingCommand}
                         variant="outline"
                       >
                         <Power className="w-4 h-4 mr-2" />
                         รีสตาร์ท
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("SHUTDOWN_DEVICE")}
+                        disabled={sendingCommand}
+                        variant="destructive"
+                        className="bg-red-600/10 text-red-600 border-red-600/20 hover:bg-red-600/20"
+                      >
+                        <Power className="w-4 h-4 mr-2" />
+                        ปิดเครื่อง
+                      </Button>
+                      <Button
+                        onClick={() => sendCommand("LOCK_DEVICE")}
+                        disabled={sendingCommand}
+                        variant="outline"
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        ล็อค
                       </Button>
                       <Button
                         onClick={() => sendCommand("SEND_DATA_NOW")}

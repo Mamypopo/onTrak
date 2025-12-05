@@ -135,7 +135,6 @@ export async function createCheckout(request, reply) {
   try {
     const {
       company,
-      borrowerId,
       charger,
       deviceIds,
       startTime,
@@ -204,10 +203,10 @@ export async function createCheckout(request, reply) {
         data: {
           checkoutNumber,
           company: company || null,
-          borrowerId: borrowerId || null,
+          borrowerId: currentUser.id, // Set borrower to current user
           charger: charger || null,
-          startTime: startTime ? new Date(startTime) : new Date(),
-          endTime: endTime ? new Date(endTime) : null,
+          startTime: startTime ? new Date(startTime) : new Date(), // Frontend will send date string
+          endTime: endTime ? new Date(endTime) : null, // Frontend will send date string
           usageNotes: usageNotes || null,
           createdBy: currentUser.id,
           items: {
@@ -222,7 +221,7 @@ export async function createCheckout(request, reply) {
               notes: `Checkout ${checkoutNumber} created by ${currentUser.username}`,
               newData: {
                 company,
-                borrowerId,
+                borrowerId: currentUser.id,
                 deviceIds,
               },
             },
