@@ -13,8 +13,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, Settings,
-  Square, Bell, Camera, Zap, Signal,
-  User, Package, PackageCheck, Clock,
+  Square, Bell, Camera, Zap, Signal, Shield, MemoryStick,
+  User, Package, PackageCheck, Users, MessageCircle, Globe, PhoneCall, WifiOff as WifiOffIcon,
+  Network, RadioTower, MicOff, Usb, AppWindow, Wallpaper, Scan, Clock,
+  ShieldCheck, Fingerprint, UserCog, FileLock, Factory, Bug, ScreenShare, Key, LockIcon, EyeOff,
   MessageSquare, AlertCircle, Edit, Trash2, Wrench, WifiOff
 } from "lucide-react";
 import Link from "next/link";
@@ -79,6 +81,37 @@ interface Device {
   borrowStatus?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE";
   maintenanceStatus?: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED";
   latestProblem?: string | null;
+  encrytionEnable?: boolean;
+  factoryResetAllowed?: boolean;
+  safeModeAllowed?: boolean;
+  debugAllowed?: boolean;
+  sceenCapAllowed?: boolean;
+  credentialAllowed?: boolean;
+  smartLockAllowed?: boolean;
+  locationServiceAllowed?: boolean;
+  fingerUnlockAllowed?: boolean;
+  accPicAllowed?: boolean;
+  hideSensitiveLSceen?: boolean;
+  accManageAllowed?: boolean;
+  smsAllowed?: boolean;
+  romingAllowed?: boolean;
+  vpncfAllowed?: boolean;
+  callAllowed?: boolean;
+  netResetAllowed?: boolean;
+  wificfAllowed?: boolean;
+  cellBroadcfAllowed?: boolean;
+  tetheringcfAllowed?: boolean;
+  bluePolicyAllowed?: boolean;
+  micMute?: boolean;
+  sdcardAllowed?: boolean;
+  usbfileTranferAllowed?: boolean;
+  uninstallAllowed?: boolean;
+  installUnknowAllowed?: boolean;
+  systemAppEnable?: boolean;
+  wallpaperAllowed?: boolean;
+  manageAppAllowed?: boolean;
+  googleScanAllowed?: boolean;
+  datetimeChange?: boolean;
 }
 
 export default function DeviceDetailPage() {
@@ -314,6 +347,38 @@ export default function DeviceDetailPage() {
             title: "ส่งคำสั่ง Sync แล้ว",
             text: "อุปกรณ์จะทำการส่งข้อมูลล่าสุดในไม่ช้า",
           },
+          // Security Policies
+          SET_FACTORY_RESET_ALLOWED: { title: "Policy Updated", text: "Factory reset policy has been updated." },
+          SET_SAFE_MODE_ALLOWED: { title: "Policy Updated", text: "Safe mode policy has been updated." },
+          SET_DEBUGGING_ALLOWED: { title: "Policy Updated", text: "Debugging policy has been updated." },
+          SET_SCREEN_CAPTURE_ALLOWED: { title: "Policy Updated", text: "Screen capture policy has been updated." },
+          SET_CONFIG_CREDENTIALS_ALLOWED: { title: "Policy Updated", text: "Credentials config policy has been updated." },
+          SET_SMART_LOCK_ALLOWED: { title: "Policy Updated", text: "Smart Lock policy has been updated." },
+          SET_LOCATION_SERVICES_ALLOWED: { title: "Policy Updated", text: "Location services policy has been updated." },
+          SET_FINGERPRINT_UNLOCK_ALLOWED: { title: "Policy Updated", text: "Fingerprint unlock policy has been updated." },
+          SET_CHANGE_ACCOUNT_PICTURE_ALLOWED: { title: "Policy Updated", text: "Account picture policy has been updated." },
+          SET_HIDE_SENSITIVE_INFO_ON_LOCK_SCREEN: { title: "Policy Updated", text: "Lock screen privacy policy has been updated." },
+          SET_ENCRYPTION_ENABLED: { title: "Policy Updated", text: "Encryption policy has been updated." },
+          SET_MANAGING_ACCOUNTS_ALLOWED: { title: "Policy Updated", text: "Managing accounts policy has been updated." },
+          SET_SMS_ALLOWED: { title: "Policy Updated", text: "SMS policy has been updated." },
+          SET_DATA_ROAMING_ALLOWED: { title: "Policy Updated", text: "Data roaming policy has been updated." },
+          SET_VPN_CONFIG_ALLOWED: { title: "Policy Updated", text: "VPN config policy has been updated." },
+          SET_OUTGOING_CALLS_ALLOWED: { title: "Policy Updated", text: "Outgoing calls policy has been updated." },
+          SET_NETWORK_RESET_ALLOWED: { title: "Policy Updated", text: "Network reset policy has been updated." },
+          SET_WIFI_CONFIG_ALLOWED: { title: "Policy Updated", text: "Wi-Fi config policy has been updated." },
+          SET_CELL_BROADCASTS_CONFIG_ALLOWED: { title: "Policy Updated", text: "Cell broadcasts config policy has been updated." },
+          SET_TETHERING_CONFIG_ALLOWED: { title: "Policy Updated", text: "Tethering config policy has been updated." },
+          SET_BLUETOOTH_POLICY_ALLOWED: { title: "Policy Updated", text: "Bluetooth policy has been updated." },
+          SET_MICROPHONE_MUTED: { title: "Policy Updated", text: "Microphone mute policy has been updated." },
+          SET_EXTERNAL_MEDIA_ALLOWED: { title: "Policy Updated", text: "External media policy has been updated." },
+          SET_USB_FILE_TRANSFER_ALLOWED: { title: "Policy Updated", text: "USB file transfer policy has been updated." },
+          SET_APP_UNINSTALL_ALLOWED: { title: "Policy Updated", text: "App uninstall policy has been updated." },
+          SET_INSTALL_UNKNOWN_SOURCES_ALLOWED: { title: "Policy Updated", text: "Install unknown sources policy has been updated." },
+          SET_MANAGING_APPS_ALLOWED: { title: "Policy Updated", text: "Managing apps policy has been updated." },
+          SET_GOOGLE_SECURITY_SCANS_ALLOWED: { title: "Policy Updated", text: "Google security scans policy has been updated." },
+          SET_DATE_TIME_CHANGE_ALLOWED: { title: "Policy Updated", text: "Date/Time change policy has been updated." },
+
+
         };
 
         const message = messages[action] || {
@@ -969,7 +1034,11 @@ export default function DeviceDetailPage() {
                         <Settings className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">ระดับเสียง</span>
                       </div>
-                      <span className="font-semibold">{device.volumeLevel || 0}%</span>
+                      <span className="font-semibold">
+                        {device.volumeLevel != null && device.volumeLevel > 0
+                          ? `${device.volumeLevel}%`
+                          : "-"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
@@ -994,7 +1063,7 @@ export default function DeviceDetailPage() {
                         <Badge variant="muted" className="text-xs">ปิด</Badge>
                       )}
                     </div>
-                    {device.installedAppsCount && (
+                    {device.installedAppsCount != null && device.installedAppsCount > 0 && (
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-2">
                           <Settings className="w-4 h-4 text-muted-foreground" />
@@ -1030,179 +1099,460 @@ export default function DeviceDetailPage() {
             {/* Control Panel - All Controls Together */}
             <Card className="card-hover">
               <CardHeader>
-                <CardTitle>แผงควบคุม</CardTitle>
+                <CardTitle>แผงควบคุมและนโยบาย</CardTitle>
                 <CardDescription>
-                  ส่งคำสั่งควบคุมอุปกรณ์จากระยะไกล
+                  ส่งคำสั่งและจัดการนโยบายความปลอดภัยของอุปกรณ์
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Alert Section */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 text-foreground">การแจ้งเตือน</h4>
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => sendCommand("PLAY_SOUND")}
-                        disabled={sendingCommand}
-                        variant="default"
-                        className="w-full"
-                      >
-                        <Bell className="w-4 h-4 mr-2" />
-                        ส่งเสียงแจ้งเตือน (เสียง + สั่น)
-                      </Button>
-                      <Button
-                        onClick={handleShowMessage}
-                        disabled={sendingCommand}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        ส่งข้อความขึ้นหน้าจอ
-                      </Button>
-                    </div>
-                  </div>
+                <Tabs defaultValue="actions" className="w-full overflow-x-hidden">
+                  <TabsList className="flex w-full overflow-x-auto whitespace-nowrap justify-start sm:grid sm:grid-cols-5 sm:justify-items-stretch">
+                    <TabsTrigger value="actions">คำสั่งด่วน</TabsTrigger>
+                    <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
+                    <TabsTrigger value="network">เครือข่าย</TabsTrigger>
+                    <TabsTrigger value="hardware">ฮาร์ดแวร์</TabsTrigger>
+                    <TabsTrigger value="apps">แอปพลิเคชัน</TabsTrigger>
+                  </TabsList>
 
-                  {/* Device Control Section */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 text-foreground">ควบคุมอุปกรณ์</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        onClick={() => sendCommand("RESTART_DEVICE")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Power className="w-4 h-4 mr-2" />
-                        รีสตาร์ท
-                      </Button>
-                      <Button
-                        onClick={() => sendCommand("SHUTDOWN_DEVICE")}
-                        disabled={sendingCommand}
-                        variant="destructive"
-                        className="bg-red-600/10 text-red-600 border-red-600/20 hover:bg-red-600/20"
-                      >
-                        <Power className="w-4 h-4 mr-2" />
-                        ปิดเครื่อง
-                      </Button>
-                      <Button
-                        onClick={() => sendCommand("LOCK_DEVICE")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                      >
-                        <Lock className="w-4 h-4 mr-2" />
-                        ล็อค
-                      </Button>
-                      <Button
-                        onClick={() => sendCommand("SEND_DATA_NOW")}
-                        disabled={sendingCommand}
-                        variant="outline"
-                        className="col-span-2"
-                      >
-                        <Zap className="w-4 h-4 mr-2" />
-                        Sync Data Now
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Network Control Section */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 text-foreground">เครือข่าย</h4>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Radio className={cn(
-                          "w-4 h-4",
-                          device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
-                        )} />
-                        <Label htmlFor="bluetooth-toggle" className="text-sm font-medium cursor-pointer">
-                          Bluetooth
-                        </Label>
+                  {/* Actions Tab */}
+                  <TabsContent value="actions" className="mt-4">
+                    <div className="space-y-6">
+                      {/* Alert Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">การแจ้งเตือน</h4>
+                        <div className="space-y-2">
+                          <Button onClick={() => sendCommand("PLAY_SOUND")} disabled={sendingCommand} variant="default" className="w-full">
+                            <Bell className="w-4 h-4 mr-2" />
+                            ส่งเสียงแจ้งเตือน (เสียง + สั่น)
+                          </Button>
+                          <Button onClick={handleShowMessage} disabled={sendingCommand} variant="outline" className="w-full">
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            ส่งข้อความขึ้นหน้าจอ
+                          </Button>
+                        </div>
                       </div>
-                      <Switch
-                        id="bluetooth-toggle"
-                        checked={device.bluetoothEnabled || false}
-                        onCheckedChange={async (checked) => {
-                          // Optimistic update
-                          setDevice((prev) => prev ? { ...prev, bluetoothEnabled: checked } : null);
-                          await sendCommand(checked ? "BLUETOOTH_ON" : "BLUETOOTH_OFF");
-                        }}
-                        disabled={sendingCommand}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Kiosk Mode Section */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 text-foreground">โหมด Kiosk</h4>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Square className={cn(
-                          "w-4 h-4",
-                          device.kioskMode ? "text-primary" : "text-muted-foreground"
-                        )} />
-                        <Label htmlFor="kiosk-toggle" className="text-sm font-medium cursor-pointer">
-                          Kiosk Mode
-                        </Label>
+                      {/* Device Control Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">ควบคุมอุปกรณ์</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button onClick={() => sendCommand("RESTART_DEVICE")} disabled={sendingCommand} variant="outline">
+                            <Power className="w-4 h-4 mr-2" />
+                            รีสตาร์ท
+                          </Button>
+                          <Button onClick={() => sendCommand("SHUTDOWN_DEVICE")} disabled={sendingCommand} variant="destructive" className="bg-red-600/10 text-red-600 border-red-600/20 hover:bg-red-600/20">
+                            <Power className="w-4 h-4 mr-2" />
+                            ปิดเครื่อง
+                          </Button>
+                          <Button onClick={() => sendCommand("LOCK_DEVICE")} disabled={sendingCommand} variant="outline">
+                            <Lock className="w-4 h-4 mr-2" />
+                            ล็อค
+                          </Button>
+                          <Button onClick={() => sendCommand("SEND_DATA_NOW")} disabled={sendingCommand} variant="outline" className="col-span-2">
+                            <Zap className="w-4 h-4 mr-2" />
+                            Sync Data Now
+                          </Button>
+                        </div>
                       </div>
-                      <Switch
-                        id="kiosk-toggle"
-                        checked={device.kioskMode}
-                        onCheckedChange={async (checked) => {
-                          // Optimistic update
-                          setDevice((prev) => prev ? { ...prev, kioskMode: checked } : null);
-                          await sendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK");
-                        }}
-                        disabled={sendingCommand}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Camera Control Section */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 text-foreground">กล้อง</h4>
+                      {/* Kiosk Mode Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">โหมด Kiosk</h4>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Square className={cn("w-4 h-4", device.kioskMode ? "text-primary" : "text-muted-foreground")} />
+                            <Label htmlFor="kiosk-toggle" className="text-sm font-medium cursor-pointer">Kiosk Mode</Label>
+                          </div>
+                          <Switch id="kiosk-toggle" checked={device.kioskMode} onCheckedChange={async (checked) => {
+                            setDevice((prev) => prev ? { ...prev, kioskMode: checked } : null);
+                            await sendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK");
+                          }} disabled={sendingCommand} />
+                        </div>
+                      </div>
+
+                      {/* Camera Control Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">กล้อง</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Camera className={cn("w-4 h-4", device.cameraEnabled !== false ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")} />
+                              <Label htmlFor="camera-toggle" className="text-sm font-medium cursor-pointer">อนุญาตให้ใช้กล้อง</Label>
+                            </div>
+                            <Switch id="camera-toggle" checked={device.cameraEnabled !== false} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, cameraEnabled: checked } : null);
+                              await sendCommand(checked ? "ENABLE_CAMERA" : "DISABLE_CAMERA");
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button onClick={() => sendCommand("OPEN_CAMERA")} disabled={sendingCommand || device.cameraEnabled === false} variant="outline">
+                              <Camera className="w-4 h-4 mr-2" />
+                              เปิดกล้อง
+                            </Button>
+                            <Button onClick={() => sendCommand("TAKE_PHOTO")} disabled={sendingCommand || device.cameraEnabled === false} variant="default">
+                              <Camera className="w-4 h-4 mr-2" />
+                              ถ่ายรูป
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Security Tab */}
+                  <TabsContent value="security" className="mt-4">
+                    <div className="space-y-6">
+                      {/* Authentication & Lock Screen */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">การยืนยันตัวตนและหน้าจอล็อก</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Fingerprint className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="fingerprint-toggle" className="text-sm font-medium cursor-pointer">อนุญาตปลดล็อคด้วยลายนิ้วมือ</Label>
+                            </div>
+                            <Switch id="fingerprint-toggle" checked={device.fingerUnlockAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, fingerUnlockAllowed: checked } : null);
+                              await sendCommand("SET_FINGERPRINT_UNLOCK_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <FileLock className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="encryption-toggle" className="text-sm font-medium cursor-pointer">เข้ารหัสข้อมูล</Label>
+                            </div>
+                            <Switch id="encryption-toggle" checked={device.encrytionEnable} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, encrytionEnable: checked } : null);
+                              await sendCommand("SET_ENCRYPTION_ENABLED", { enabled: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Factory className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="factory-reset-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Factory Reset</Label>
+                            </div>
+                            <Switch id="factory-reset-toggle" checked={device.factoryResetAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, factoryResetAllowed: checked } : null);
+                              await sendCommand("SET_FACTORY_RESET_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="safe-mode-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Safe Mode</Label>
+                            </div>
+                            <Switch id="safe-mode-toggle" checked={device.safeModeAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, safeModeAllowed: checked } : null);
+                              await sendCommand("SET_SAFE_MODE_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Bug className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="debugging-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Debugging</Label>
+                            </div>
+                            <Switch id="debugging-toggle" checked={device.debugAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, debugAllowed: checked } : null);
+                              await sendCommand("SET_DEBUGGING_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <ScreenShare className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="screen-capture-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจับภาพหน้าจอ</Label>
+                            </div>
+                            <Switch id="screen-capture-toggle" checked={device.sceenCapAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, sceenCapAllowed: checked } : null);
+                              await sendCommand("SET_SCREEN_CAPTURE_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Key className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="credentials-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจัดการ Credentials</Label>
+                            </div>
+                            <Switch id="credentials-toggle" checked={device.credentialAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, credentialAllowed: checked } : null);
+                              await sendCommand("SET_CONFIG_CREDENTIALS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <LockIcon className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="smart-lock-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Smart Lock</Label>
+                            </div>
+                            <Switch id="smart-lock-toggle" checked={device.smartLockAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, smartLockAllowed: checked } : null);
+                              await sendCommand("SET_SMART_LOCK_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <EyeOff className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="hide-sensitive-toggle" className="text-sm font-medium cursor-pointer">ซ่อนข้อมูลบน Lock Screen</Label>
+                            </div>
+                            <Switch id="hide-sensitive-toggle" checked={device.hideSensitiveLSceen} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, hideSensitiveLSceen: checked } : null);
+                              await sendCommand("SET_HIDE_SENSITIVE_INFO_ON_LOCK_SCREEN", { hide: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Accounts */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">บัญชี</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Users className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="managing-accounts-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจัดการบัญชี</Label>
+                            </div>
+                            <Switch id="managing-accounts-toggle" checked={device.accManageAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, accManageAllowed: checked } : null);
+                              await sendCommand("SET_MANAGING_ACCOUNTS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <UserCog className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="account-picture-toggle" className="text-sm font-medium cursor-pointer">อนุญาตเปลี่ยนรูปโปรไฟล์</Label>
+                            </div>
+                            <Switch id="account-picture-toggle" checked={device.accPicAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, accPicAllowed: checked } : null);
+                              await sendCommand("SET_CHANGE_ACCOUNT_PICTURE_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* System Settings */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">การตั้งค่าระบบ</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Clock className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="datetime-change-toggle" className="text-sm font-medium cursor-pointer">อนุญาตเปลี่ยนวัน/เวลา</Label>
+                            </div>
+                            <Switch id="datetime-change-toggle" checked={device.datetimeChange} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, datetimeChange: checked } : null);
+                              await sendCommand("SET_DATE_TIME_CHANGE_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Network Tab */}
+                  <TabsContent value="network" className="mt-4">
+                    <div className="space-y-6">
+                      {/* Network Control Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">การควบคุมเครือข่าย</h4>
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Radio className={cn("w-4 h-4", device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                            <Label htmlFor="bluetooth-toggle-2" className="text-sm font-medium cursor-pointer">Bluetooth</Label>
+                          </div>
+                          <Switch id="bluetooth-toggle-2" checked={device.bluetoothEnabled || false} onCheckedChange={async (checked) => {
+                            setDevice((prev) => prev ? { ...prev, bluetoothEnabled: checked } : null);
+                            await sendCommand(checked ? "BLUETOOTH_ON" : "BLUETOOTH_OFF");
+                          }} disabled={sendingCommand} />
+                        </div>
+                      </div>
+                      {/* Network & Communication Policies */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">นโยบายเครือข่ายและการสื่อสาร</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <MapPin className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="location-service-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Location Services</Label>
+                            </div>
+                            <Switch id="location-service-toggle" checked={device.locationServiceAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, locationServiceAllowed: checked } : null);
+                              await sendCommand("SET_LOCATION_SERVICES_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="sms-toggle" className="text-sm font-medium cursor-pointer">อนุญาต SMS</Label>
+                            </div>
+                            <Switch id="sms-toggle" checked={device.smsAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, smsAllowed: checked } : null);
+                              await sendCommand("SET_SMS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Globe className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="roaming-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Data Roaming</Label>
+                            </div>
+                            <Switch id="roaming-toggle" checked={device.romingAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, romingAllowed: checked } : null);
+                              await sendCommand("SET_DATA_ROAMING_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Shield className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="vpn-config-toggle" className="text-sm font-medium cursor-pointer">อนุญาตตั้งค่า VPN</Label>
+                            </div>
+                            <Switch id="vpn-config-toggle" checked={device.vpncfAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, vpncfAllowed: checked } : null);
+                              await sendCommand("SET_VPN_CONFIG_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <PhoneCall className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="outgoing-calls-toggle" className="text-sm font-medium cursor-pointer">อนุญาตโทรออก</Label>
+                            </div>
+                            <Switch id="outgoing-calls-toggle" checked={device.callAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, callAllowed: checked } : null);
+                              await sendCommand("SET_OUTGOING_CALLS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <WifiOffIcon className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="network-reset-toggle" className="text-sm font-medium cursor-pointer">อนุญาตรีเซ็ตเครือข่าย</Label>
+                            </div>
+                            <Switch id="network-reset-toggle" checked={device.netResetAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, netResetAllowed: checked } : null);
+                              await sendCommand("SET_NETWORK_RESET_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Wifi className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="wifi-config-toggle" className="text-sm font-medium cursor-pointer">อนุญาตตั้งค่า Wi-Fi</Label>
+                            </div>
+                            <Switch id="wifi-config-toggle" checked={device.wificfAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, wificfAllowed: checked } : null);
+                              await sendCommand("SET_WIFI_CONFIG_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <RadioTower className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="cell-broadcast-toggle" className="text-sm font-medium cursor-pointer">อนุญาตตั้งค่า Cell Broadcast</Label>
+                            </div>
+                            <Switch id="cell-broadcast-toggle" checked={device.cellBroadcfAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, cellBroadcfAllowed: checked } : null);
+                              await sendCommand("SET_CELL_BROADCASTS_CONFIG_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Network className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="tethering-toggle" className="text-sm font-medium cursor-pointer">อนุญาตปล่อย Hotspot</Label>
+                            </div>
+                            <Switch id="tethering-toggle" checked={device.tetheringcfAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, tetheringcfAllowed: checked } : null);
+                              await sendCommand("SET_TETHERING_CONFIG_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Radio className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="bluetooth-policy-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Bluetooth</Label>
+                            </div>
+                            <Switch id="bluetooth-policy-toggle" checked={device.bluePolicyAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, bluePolicyAllowed: checked } : null);
+                              await sendCommand("SET_BLUETOOTH_POLICY_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Hardware Tab */}
+                  <TabsContent value="hardware" className="mt-4">
                     <div className="space-y-3">
-                      {/* Camera Enable/Disable Toggle */}
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Camera className={cn(
-                            "w-4 h-4",
-                            device.cameraEnabled !== false ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                          )} />
-                          <Label htmlFor="camera-toggle" className="text-sm font-medium cursor-pointer">
-                            อนุญาตให้ใช้กล้อง
-                          </Label>
+                          <MicOff className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="mic-mute-toggle" className="text-sm font-medium cursor-pointer">ปิดไมโครโฟน</Label>
                         </div>
-                        <Switch
-                          id="camera-toggle"
-                          checked={device.cameraEnabled !== false}
-                          onCheckedChange={async (checked) => {
-                            // Optimistic update
-                            setDevice((prev) => prev ? { ...prev, cameraEnabled: checked } : null);
-                            await sendCommand(checked ? "ENABLE_CAMERA" : "DISABLE_CAMERA");
-                          }}
-                          disabled={sendingCommand}
-                        />
+                        <Switch id="mic-mute-toggle" checked={device.micMute} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, micMute: checked } : null);
+                          await sendCommand("SET_MICROPHONE_MUTED", { muted: checked });
+                        }} disabled={sendingCommand} />
                       </div>
-                      {/* Camera Actions */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          onClick={() => sendCommand("OPEN_CAMERA")}
-                          disabled={sendingCommand || device.cameraEnabled === false}
-                          variant="outline"
-                        >
-                          <Camera className="w-4 h-4 mr-2" />
-                          เปิดกล้อง
-                        </Button>
-                        <Button
-                          onClick={() => sendCommand("TAKE_PHOTO")}
-                          disabled={sendingCommand || device.cameraEnabled === false}
-                          variant="default"
-                        >
-                          <Camera className="w-4 h-4 mr-2" />
-                          ถ่ายรูป
-                        </Button>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <MemoryStick className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="sd-card-toggle" className="text-sm font-medium cursor-pointer">อนุญาตใช้ SD Card</Label>
+                        </div>
+                        <Switch id="sd-card-toggle" checked={device.sdcardAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, sdcardAllowed: checked } : null);
+                          await sendCommand("SET_EXTERNAL_MEDIA_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Usb className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="usb-transfer-toggle" className="text-sm font-muted cursor-pointer">อนุญาตโอนไฟล์ผ่าน USB</Label>
+                        </div>
+                        <Switch id="usb-transfer-toggle" checked={device.usbfileTranferAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, usbfileTranferAllowed: checked } : null);
+                          await sendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </TabsContent>
+
+                  {/* Applications Tab */}
+                  <TabsContent value="apps" className="mt-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <AppWindow className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="uninstall-toggle" className="text-sm font-medium cursor-pointer">อนุญาตถอนการติดตั้งแอป</Label>
+                        </div>
+                        <Switch id="uninstall-toggle" checked={device.uninstallAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, uninstallAllowed: checked } : null);
+                          await sendCommand("SET_APP_UNINSTALL_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="unknown-sources-toggle" className="text-sm font-medium cursor-pointer">อนุญาตติดตั้งแอปที่ไม่รู้จัก</Label>
+                        </div>
+                        <Switch id="unknown-sources-toggle" checked={device.installUnknowAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, installUnknowAllowed: checked } : null);
+                          await sendCommand("SET_INSTALL_UNKNOWN_SOURCES_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <AppWindow className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="manage-apps-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจัดการแอป</Label>
+                        </div>
+                        <Switch id="manage-apps-toggle" checked={device.manageAppAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, manageAppAllowed: checked } : null);
+                          await sendCommand("SET_MANAGING_APPS_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Scan className="w-4 h-4 text-muted-foreground" />
+                          <Label htmlFor="google-scan-toggle" className="text-sm font-medium cursor-pointer">บังคับสแกนแอปด้วย Google</Label>
+                        </div>
+                        <Switch id="google-scan-toggle" checked={device.googleScanAllowed} onCheckedChange={async (checked) => {
+                          setDevice((prev) => prev ? { ...prev, googleScanAllowed: checked } : null);
+                          await sendCommand("SET_GOOGLE_SECURITY_SCANS_ALLOWED", { allowed: checked });
+                        }} disabled={sendingCommand} />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 
@@ -1237,7 +1587,7 @@ export default function DeviceDetailPage() {
                       </div>
                     ) : actionLogs.length > 0 ? (
                       <div className="relative">
-                        {/* Timeline */}
+                        {/* Timeline - max-h-96 overflow-y-auto */}
                         <div className="space-y-0 max-h-96 overflow-y-auto px-2">
                           {actionLogs.map((log: any, index: number) => {
                             if (!log.createdAt) return null;

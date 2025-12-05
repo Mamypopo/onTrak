@@ -5,8 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "tippy.js/dist/tippy.css";
-import { calculateSimplifiedRoute } from "@/lib/routing";
-import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route } from "lucide-react";
+import { calculateSimplifiedRoute, RoutePoint } from "@/lib/routing";
+import { Maximize2, Minimize2, Copy, Share2, MapPin, ExternalLink, Route, LocateFixed, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tippy";
 import Swal from "sweetalert2";
@@ -47,7 +47,7 @@ export default function DeviceMap({
 }: DeviceMapProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [routePositions, setRoutePositions] = useState<Array<[number, number]>>([]);
-  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -133,7 +133,7 @@ export default function DeviceMap({
     if (rawCoordinates.length >= 2) {
       setIsCalculatingRoute(true);
       
-      calculateSimplifiedRoute(rawCoordinates, 200, 'driving-car', deviceId) // เรียกผ่าน backend API
+      calculateSimplifiedRoute(rawCoordinates as RoutePoint[], 200, 'driving-car', deviceId) // เรียกผ่าน backend API
         .then((routed) => {
           setRoutePositions(routed);
           console.log("Route calculated:", routed.length, "points (from", rawCoordinates.length, "original points)");
@@ -148,6 +148,7 @@ export default function DeviceMap({
         });
     } else {
       setRoutePositions(rawCoordinates);
+      setIsCalculatingRoute(false);
     }
   }, [rawCoordinates, isMounted, deviceId]);
 
@@ -264,6 +265,14 @@ export default function DeviceMap({
     }
   };
 
+  const flyToLocation = useCallback((coords: [number, number], zoom?: number) => {
+    const map = mapInstanceRef.current;
+    if (map) {
+      const currentZoom = map.getZoom();
+      map.flyTo(coords, zoom ?? currentZoom);
+    }
+  }, []);
+
 
   /**
    * Component to handle map updates and store map instance reference
@@ -284,28 +293,16 @@ export default function DeviceMap({
       }
     }, [map]);
     
-    // Update map view when location changes
-    useEffect(() => {
-      if (!map) return;
-      
-      try {
-        map.setView(center, 15);
-      } catch (error) {
-        console.error("Error setting map view:", error);
-      }
-    }, [center, map]);
-    
-    // Auto-fit map bounds to show entire route if history exists
-    useEffect(() => {
-      if (!map || positions.length === 0) return;
-      
-      try {
-        const bounds = L.latLngBounds(positions);
-        map.fitBounds(bounds, { padding: [20, 20] });
-      } catch (error) {
-        console.error("Error fitting bounds:", error);
-      }
-    }, [positions, map]);
+    // // Auto-fit map bounds to show entire route if history exists
+    // useEffect(() => {
+    //   if (!map || positions.length === 0) return;
+    //   try {
+    //     const bounds = L.latLngBounds(positions);
+    //     map.fitBounds(bounds, { padding: [20, 20] });
+    //   } catch (error) {
+    //     console.error("Error fitting bounds:", error);
+    //   }
+    // }, [positions, map]);
     
     // Invalidate size on mount and when window resizes (for fullscreen)
     useEffect(() => {
@@ -366,20 +363,42 @@ export default function DeviceMap({
       style={{ minHeight: '256px' }}
       key={`wrapper-${mapKey}`}
     >
-      {/* Fullscreen Toggle Button */}
-      <Tooltip content={isFullscreen ? "ย่อ" : "ขยาย"}>
-        <button
-          onClick={toggleFullscreen}
-          className="absolute top-2 right-2 z-10 bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4 text-gray-700" />
-          ) : (
-            <Maximize2 className="h-4 w-4 text-gray-700" />
-          )}
-        </button>
-      </Tooltip>
+      {/* Map Controls */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+        <Tooltip content={isFullscreen ? "ย่อ" : "ขยาย"}>
+          <button
+            onClick={toggleFullscreen}
+            className="bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4 text-gray-700" />
+            ) : (
+              <Maximize2 className="h-4 w-4 text-gray-700" />
+            )}
+          </button>
+        </Tooltip>
+        <Tooltip content="ไปยังตำแหน่งปัจจุบัน">
+          <button
+            onClick={() => flyToLocation([latitude, longitude], 19)}
+            className="bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
+            aria-label="Go to current location"
+          >
+            <LocateFixed className="h-4 w-4 text-gray-700" />
+          </button>
+        </Tooltip>
+        {routePositions.length > 0 && (
+          <Tooltip content="ไปยังจุดเริ่มต้น">
+            <button
+              onClick={() => flyToLocation(routePositions[0], 19)}
+              className="bg-white hover:bg-gray-100 rounded-md p-2 shadow-md transition-colors"
+              aria-label="Go to start location"
+            >
+              <Flag className="h-4 w-4 text-gray-700" />
+            </button>
+          </Tooltip>
+        )}
+      </div>
 
       <MapContainer
         key={mapKey}
