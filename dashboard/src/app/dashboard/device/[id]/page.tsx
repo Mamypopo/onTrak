@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { safeFormatDistanceToNow, safeParseDate } from "@/lib/date-utils";
 
 // Dynamic import for Map component to avoid SSR issues
+import { TimePicker } from "@/components/ui/time-picker";
 const DeviceMap = dynamic(() => import("@/components/DeviceMap"), {
   ssr: false,
   loading: () => (
@@ -112,6 +113,8 @@ interface Device {
   manageAppAllowed?: boolean;
   googleScanAllowed?: boolean;
   datetimeChange?: boolean;
+  systemUpdatePolicy?: "AUTOMATIC" | "WINDOWED" | "POSTPONE" | "NONE";
+  systemUpdateWindow?: { start: number; end: number };
 }
 
 export default function DeviceDetailPage() {
@@ -149,6 +152,14 @@ export default function DeviceDetailPage() {
   const [editing, setEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activeControlTab, setActiveControlTab] = useState("actions");
+  const [systemUpdatePolicy, setSystemUpdatePolicy] = useState<"AUTOMATIC" | "WINDOWED" | "POSTPONE" | "NONE">("NONE");
+  const [updateWindow, setUpdateWindow] = useState<{ start: Date, end: Date }>({
+    start: new Date(new Date().setHours(0, 0, 0, 0)),
+    end: new Date(new Date().setHours(23, 59, 0, 0)),
+  });
+
+
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -192,6 +203,16 @@ export default function DeviceDetailPage() {
         // Debug: Check lastSeen value
         console.log("Device lastSeen:", deviceData.lastSeen, typeof deviceData.lastSeen);
         setDevice(deviceData);
+        setSystemUpdatePolicy(deviceData.systemUpdatePolicy || "NONE");
+        if (deviceData.systemUpdateWindow) {
+          const { start, end } = deviceData.systemUpdateWindow;
+          const startDate = new Date();
+          startDate.setHours(Math.floor(start / 60), start % 60, 0, 0);
+          const endDate = new Date();
+          endDate.setHours(Math.floor(end / 60), end % 60, 0, 0);
+          setUpdateWindow({ start: startDate, end: endDate });
+        }
+
       } else {
         console.error("Failed to fetch device:", response.data);
         setDevice(null);
@@ -377,6 +398,7 @@ export default function DeviceDetailPage() {
           SET_MANAGING_APPS_ALLOWED: { title: "Policy Updated", text: "Managing apps policy has been updated." },
           SET_GOOGLE_SECURITY_SCANS_ALLOWED: { title: "Policy Updated", text: "Google security scans policy has been updated." },
           SET_DATE_TIME_CHANGE_ALLOWED: { title: "Policy Updated", text: "Date/Time change policy has been updated." },
+          SET_SYSTEM_UPDATE_POLICY: { title: "Policy Updated", text: "System update policy has been updated." },
 
 
         };
@@ -391,6 +413,11 @@ export default function DeviceDetailPage() {
           title: message.title,
           text: message.text,
         }));
+
+        // Re-fetch device data after sending sync command for immediate update
+        if (action === "SEND_DATA_NOW") {
+          fetchDevice();
+        }
       }
     } catch (error: any) {
       Swal.fire(getSwalConfig({
@@ -612,6 +639,35 @@ export default function DeviceDetailPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleSetSystemUpdatePolicy = async () => {
+    let params: any = { policy: systemUpdatePolicy };
+
+    if (systemUpdatePolicy === 'WINDOWED') {
+      const startMinutes = updateWindow.start.getHours() * 60 + updateWindow.start.getMinutes();
+      const endMinutes = updateWindow.end.getHours() * 60 + updateWindow.end.getMinutes();
+
+      if (startMinutes >= endMinutes) {
+        Swal.fire(getSwalConfig({
+          icon: "warning",
+          title: "เวลาไม่ถูกต้อง",
+          text: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มต้น",
+        }));
+        return;
+      }
+
+      params.start = startMinutes;
+      params.end = endMinutes;
+    }
+
+    await sendCommand("SET_SYSTEM_UPDATE_POLICY", params);
+    // Optimistically update UI state
+    setDevice((prev) => prev ? { 
+      ...prev, 
+      systemUpdatePolicy: systemUpdatePolicy,
+      systemUpdateWindow: systemUpdatePolicy === 'WINDOWED' ? { start: params.start, end: params.end } : undefined,
+    } : null);
   };
 
   if (loading) {
@@ -1105,8 +1161,24 @@ export default function DeviceDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="actions" className="w-full overflow-x-hidden">
-                  <TabsList className="flex w-full overflow-x-auto whitespace-nowrap justify-start sm:grid sm:grid-cols-5 sm:justify-items-stretch">
+                <Tabs value={activeControlTab} onValueChange={setActiveControlTab} className="w-full">
+                  {/* Dropdown for small screens */}
+                  <div className="sm:hidden mb-4">
+                    <Select value={activeControlTab} onValueChange={setActiveControlTab}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกหมวดหมู่" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="actions">คำสั่งด่วน</SelectItem>
+                        <SelectItem value="security">ความปลอดภัย</SelectItem>
+                        <SelectItem value="network">เครือข่าย</SelectItem>
+                        <SelectItem value="hardware">ฮาร์ดแวร์</SelectItem>
+                        <SelectItem value="apps">แอปพลิเคชัน</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Tabs for larger screens */}
+                  <TabsList className="hidden sm:grid w-full grid-cols-5">
                     <TabsTrigger value="actions">คำสั่งด่วน</TabsTrigger>
                     <TabsTrigger value="security">ความปลอดภัย</TabsTrigger>
                     <TabsTrigger value="network">เครือข่าย</TabsTrigger>
@@ -1340,6 +1412,46 @@ export default function DeviceDetailPage() {
                               await sendCommand("SET_DATE_TIME_CHANGE_ALLOWED", { allowed: checked });
                             }} disabled={sendingCommand} />
                           </div>
+                        </div>
+                      </div>
+
+                      {/* System Update Policy */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">นโยบายการอัปเดตระบบ</h4>
+                        <div className="p-3 border rounded-lg space-y-4">
+                          <div className="space-y-2">
+                            <Label>นโยบาย</Label>
+                            <Select value={systemUpdatePolicy} onValueChange={(v: any) => setSystemUpdatePolicy(v)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="เลือกนโยบาย" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NONE">ค่าเริ่มต้นระบบ (Default)</SelectItem>
+                                <SelectItem value="AUTOMATIC">อัปเดตอัตโนมัติ (Automatic)</SelectItem>
+                                <SelectItem value="WINDOWED">อัปเดตในเวลาที่กำหนด (Windowed)</SelectItem>
+                                <SelectItem value="POSTPONE">เลื่อนได้ 30 วัน (Postpone)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {systemUpdatePolicy === 'WINDOWED' && (
+                            <div className="space-y-3 p-3 bg-muted/50 rounded-md">
+                              <p className="text-xs font-medium text-muted-foreground">กำหนดช่วงเวลาอัปเดต (Maintenance Window)</p>
+                              <div className="flex items-center justify-around gap-4">
+                                <div>
+                                  <Label className="text-xs">เวลาเริ่มต้น</Label>
+                                  <TimePicker date={updateWindow.start} setDate={(d) => setUpdateWindow(prev => ({ ...prev, start: d! }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">เวลาสิ้นสุด</Label>
+                                  <TimePicker date={updateWindow.end} setDate={(d) => setUpdateWindow(prev => ({ ...prev, end: d! }))} />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <Button onClick={handleSetSystemUpdatePolicy} disabled={sendingCommand} className="w-full">
+                            <Settings className="w-4 h-4 mr-2" />
+                            บันทึกนโยบายอัปเดต
+                          </Button>
                         </div>
                       </div>
                     </div>

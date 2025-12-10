@@ -175,6 +175,26 @@ export async function sendCommand(request, reply) {
       });
     }
 
+    // Special handling for SET_SYSTEM_UPDATE_POLICY to save to DB
+    if (action === 'SET_SYSTEM_UPDATE_POLICY') {
+      const { policy, start, end } = params || {};
+      const validPolicies = ['AUTOMATIC', 'WINDOWED', 'POSTPONE', 'NONE'];
+
+      if (policy && validPolicies.includes(policy)) {
+        await prisma.device.update({
+          where: { id },
+          data: {
+            systemUpdatePolicy: policy,
+            systemUpdateWindow:
+              policy === 'WINDOWED' && start !== undefined && end !== undefined
+                ? { start, end }
+                : undefined,
+          },
+        });
+        logger.info({ deviceId: device.deviceCode, policy }, 'System update policy saved to database');
+      }
+    }
+
     // Publish command via MQTT
     const command = {
       action,
@@ -593,4 +613,3 @@ export async function deleteDevice(request, reply) {
     });
   }
 }
-
