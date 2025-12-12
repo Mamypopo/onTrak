@@ -1,5 +1,6 @@
 package com.ontrak.mdm.service
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -233,6 +234,7 @@ class MDMService : Service() {
         // Not needed, status updates are sufficient
     }
 
+    @SuppressLint("MissingPermission")
     private fun publishStatus() {
         try {
             val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
@@ -287,34 +289,97 @@ class MDMService : Service() {
 
             val screenOn = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
 
-            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-            val volumeLevel = try {
-                val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION)
-                val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)
-                if (maxVolume > 0) (currentVolume * 100 / maxVolume) else 0
-            } catch (_: Exception) { 0 }
+            val volumeLevel = DeviceInfo.getVolumeLevels(this)
 
             val bluetoothEnabled = android.bluetooth.BluetoothAdapter.getDefaultAdapter()?.isEnabled == true
-            val installedAppsCount = packageManager.getInstalledPackages(0).size
+            val installedApps = DeviceInfo.getInstalledApps(this)
+            val installedAppsCount = installedApps.size
             val bootTime = System.currentTimeMillis() - uptime
+
+            val serialNumber = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Build.getSerial()
+                } else {
+                    @Suppress("DEPRECATION")
+                    Build.SERIAL
+                }
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Failed to get serial number. App is likely not a device owner.")
+                "unknown"
+            }
+
+            val osVersion = Build.VERSION.RELEASE
+            val deviceModel = Build.MODEL
+            val brand = Build.BRAND
+            val isRooted = DeviceInfo.isDeviceRooted()
+            val securityPatch = DeviceInfo.getSecurityPatch()
+            val encryptionStatus = DeviceInfo.getEncryptionStatus(this)
+            val simOperator = DeviceInfo.getSimOperator(this)
+            val ipAddress = DeviceInfo.getIpAddress(this)
+            val macAddress = DeviceInfo.getMacAddress(this)
+            val timezone = DeviceInfo.getTimezone()
+            val locale = DeviceInfo.getLocale()
+            val nfcEnabled = DeviceInfo.isNfcEnabled(this)
+            val isScreenLockEnabled = DeviceInfo.isScreenLockEnabled(this)
+            val isDeveloperModeEnabled = DeviceInfo.isDeveloperModeEnabled(this)
+            val isVpnActive = DeviceInfo.isVpnActive(this)
+            val ssid = DeviceInfo.getSsid(this)
+            val cellularSignalStrength = DeviceInfo.getCellularSignalStrength(this)
+            val wifiSignalStrength = DeviceInfo.getWifiSignalStrength(this)
+            val isAirplaneModeEnabled = DeviceInfo.isAirplaneModeEnabled(this)
+            val isPowerSaveModeEnabled = DeviceInfo.isPowerSaveModeEnabled(this)
+            val screenBrightness = DeviceInfo.getScreenBrightness(this)
+            val isAutoScreenBrightnessEnabled = DeviceInfo.isAutoScreenBrightnessEnabled(this)
+            val ringerMode = DeviceInfo.getRingerMode(this)
+            val batteryTemperature = DeviceInfo.getBatteryTemperature(this)
+            val dndMode = DeviceInfo.getDndMode(this)
 
             val status = DeviceStatus(
                 deviceId = deviceId,
+                serialNumber = serialNumber,
+                osVersion = osVersion,
+                deviceModel = deviceModel,
+                brand = brand,
+                isRooted = isRooted,
+                securityPatch = securityPatch,
+                encryptionStatus = encryptionStatus,
+                simOperator = simOperator,
+                ipAddress = ipAddress,
+                macAddress = macAddress,
+                timezone = timezone,
+                locale = locale,
+                nfcEnabled = nfcEnabled,
+                isScreenLockEnabled = isScreenLockEnabled,
+                isDeveloperModeEnabled = isDeveloperModeEnabled,
+                isVpnActive = isVpnActive,
+                installedApps = installedApps,
+                ssid = ssid,
+                cellularSignalStrength = cellularSignalStrength,
+                wifiSignalStrength = wifiSignalStrength,
+                isAirplaneModeEnabled = isAirplaneModeEnabled,
+                isPowerSaveModeEnabled = isPowerSaveModeEnabled,
+                screenBrightness = screenBrightness,
+                isAutoScreenBrightnessEnabled = isAutoScreenBrightnessEnabled,
+                ringerMode = ringerMode,
+                dndMode = dndMode,
                 battery = batteryLevel,
                 wifiStatus = wifiStatus,
                 uptime = uptime,
                 isCharging = isCharging,
                 batteryHealth = batteryHealth,
                 chargingMethod = chargingMethod,
+                batteryTemperature = batteryTemperature,
+                batteryCycleCount = null,
                 mobileDataEnabled = mobileDataEnabled(),
                 networkConnected = networkConnected,
                 screenOn = screenOn,
-                volumeLevel = volumeLevel,
+                volumeLevels = volumeLevel,
                 bluetoothEnabled = bluetoothEnabled,
                 installedAppsCount = installedAppsCount,
                 bootTime = bootTime
             )
 
+            Log.d(TAG, "Prepared DeviceStatus: $status")
             mqttManager?.publishStatus(status)
         } catch (e: Exception) {
             Log.e(TAG, "Error publishing status", e)

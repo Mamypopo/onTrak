@@ -1,6 +1,8 @@
 package com.ontrak.mdm.mqtt
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.google.gson.Gson
 import com.ontrak.mdm.command.CommandHandler
@@ -56,6 +58,7 @@ class MQTTManager private constructor(private val context: Context) {
         }
     }
     
+    @SuppressLint("MissingPermission")
     fun connect() {
         try {
             Log.d(TAG, "Attempting to connect to MQTT broker: ${MQTTConfig.BROKER_URL}")
@@ -78,11 +81,90 @@ class MQTTManager private constructor(private val context: Context) {
                 
                 // Last Will and Testament
                 val willTopic = MQTTConfig.getStatusTopic(deviceId)
+                val serialNumber = try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Build.getSerial()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Build.SERIAL
+                    }
+                } catch (e: SecurityException) {
+                    Log.w(TAG, "Failed to get serial number for LWT. App is likely not a device owner.", e)
+                    "unknown"
+                }
+                val osVersion = Build.VERSION.RELEASE
+                val deviceModel = Build.MODEL
+                val brand = Build.BRAND
+                val isRooted = DeviceInfo.isDeviceRooted()
+                val securityPatch = DeviceInfo.getSecurityPatch()
+                val encryptionStatus = DeviceInfo.getEncryptionStatus(context)
+                val simOperator = DeviceInfo.getSimOperator(context)
+                val ipAddress = DeviceInfo.getIpAddress(context)
+                val macAddress = DeviceInfo.getMacAddress(context)
+                val timezone = DeviceInfo.getTimezone()
+                val locale = DeviceInfo.getLocale()
+                val nfcEnabled = DeviceInfo.isNfcEnabled(context)
+                val isScreenLockEnabled = DeviceInfo.isScreenLockEnabled(context)
+                val isDeveloperModeEnabled = DeviceInfo.isDeveloperModeEnabled(context)
+                val isVpnActive = DeviceInfo.isVpnActive(context)
+                val isGpsEnabled = DeviceInfo.isGpsEnabled(context)
+                val ssid = DeviceInfo.getSsid(context)
+                val cellularSignalStrength = DeviceInfo.getCellularSignalStrength(context)
+                val wifiSignalStrength = DeviceInfo.getWifiSignalStrength(context)
+                val isAirplaneModeEnabled = DeviceInfo.isAirplaneModeEnabled(context)
+                val isPowerSaveModeEnabled = DeviceInfo.isPowerSaveModeEnabled(context)
+                val screenBrightness = DeviceInfo.getScreenBrightness(context)
+                val isAutoScreenBrightnessEnabled = DeviceInfo.isAutoScreenBrightnessEnabled(context)
+                val ringerMode = DeviceInfo.getRingerMode(context)
+                val batteryTemperature = DeviceInfo.getBatteryTemperature(context)
+                val batteryCycleCount = DeviceInfo.getBatteryCycleCount(context)
+                val dndMode = DeviceInfo.getDndMode(context)
+                val volumeLevels = DeviceInfo.getVolumeLevels(context)
+
                 val willMessage = gson.toJson(DeviceStatus(
                     deviceId = deviceId,
+                    serialNumber = serialNumber,
+                    osVersion = osVersion,
+                    deviceModel = deviceModel,
+                    brand = brand,
+                    isRooted = isRooted,
+                    securityPatch = securityPatch,
+                    encryptionStatus = encryptionStatus,
+                    simOperator = simOperator,
+                    ipAddress = ipAddress,
+                    macAddress = macAddress,
+                    timezone = timezone,
+                    locale = locale,
+                    nfcEnabled = nfcEnabled,
+                    isScreenLockEnabled = isScreenLockEnabled,
+                    isDeveloperModeEnabled = isDeveloperModeEnabled,
+                    isVpnActive = isVpnActive,
+                    isGpsEnabled = isGpsEnabled,
+                    installedApps = emptyList(),
+                    ssid = ssid,
+                    cellularSignalStrength = cellularSignalStrength,
+                    wifiSignalStrength = wifiSignalStrength,
+                    isAirplaneModeEnabled = isAirplaneModeEnabled,
+                    isPowerSaveModeEnabled = isPowerSaveModeEnabled,
+                    screenBrightness = screenBrightness,
+                    isAutoScreenBrightnessEnabled = isAutoScreenBrightnessEnabled,
+                    ringerMode = ringerMode,
+                    dndMode = dndMode,
                     battery = 0,
                     wifiStatus = false,
-                    uptime = 0
+                    uptime = 0,
+                    isCharging = false,
+                    batteryHealth = null,
+                    chargingMethod = null,
+                    batteryTemperature = batteryTemperature,
+                    batteryCycleCount = batteryCycleCount,
+                    mobileDataEnabled = false,
+                    networkConnected = false,
+                    screenOn = false,
+                    volumeLevels = volumeLevels,
+                    bluetoothEnabled = false,
+                    installedAppsCount = 0,
+                    bootTime = 0
                 ))
                 setWill(willTopic, willMessage.toByteArray(), 1, false)
             }
@@ -137,13 +219,14 @@ class MQTTManager private constructor(private val context: Context) {
         
         try {
             val json = gson.toJson(data)
+            Log.d(TAG, "Publishing to $topic: $json")
             val message = MqttMessage(json.toByteArray())
             message.qos = 1
             message.isRetained = false
             
             mqttClient?.publish(topic, message, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    Log.d(TAG, "Published to $topic")
+                    Log.d(TAG, "Successfully published to $topic")
                 }
                 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
@@ -198,4 +281,3 @@ class MQTTManager private constructor(private val context: Context) {
         }
     }
 }
-

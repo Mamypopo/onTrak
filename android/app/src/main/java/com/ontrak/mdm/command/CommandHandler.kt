@@ -18,6 +18,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.os.UserManager
+import android.provider.Settings
 import android.bluetooth.BluetoothAdapter
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -40,6 +41,7 @@ object CommandHandler {
             CommandAction.LOCK_DEVICE -> lockDevice(context)
             CommandAction.UNLOCK_DEVICE -> unlockDevice(context)
             CommandAction.RESTART_DEVICE -> restartDevice(context)
+            CommandAction.WIPE_DEVICE -> wipeDevice(context)
             CommandAction.OPEN_APP -> openApp(context, command.params)
             CommandAction.SHOW_MESSAGE -> showMessage(context, command.params)
             CommandAction.PLAY_SOUND -> playSound(context)
@@ -99,10 +101,16 @@ object CommandHandler {
             // System Update Policy
             CommandAction.SET_SYSTEM_UPDATE_POLICY -> setSystemUpdatePolicy(context, command.params)
 
+            // Screen & Audio
+            CommandAction.SET_SCREEN_BRIGHTNESS -> setScreenBrightness(context, command.params)
+            CommandAction.SET_SCREEN_BRIGHTNESS_MODE -> setScreenBrightnessMode(context, command.params)
+            CommandAction.SET_RINGER_MODE -> setRingerMode(context, command.params)
+            CommandAction.SET_VOLUME_LEVEL -> setVolumeLevel(context, command.params)
+
             else -> Log.w(TAG, "Unhandled command: ${command.action}")
         }
     }
-    
+
     // --- ORIGINAL FUNCTIONS ---
     private fun sendDataNow(context: Context) {
         try {
@@ -119,7 +127,7 @@ object CommandHandler {
     private fun lockDevice(context: Context) {
         try {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            
+
             if (dpm.isDeviceOwnerApp(context.packageName)) {
                 dpm.lockNow()
                 Log.d(TAG, "Device locked")
@@ -130,7 +138,7 @@ object CommandHandler {
             Log.e(TAG, "Error locking device", e)
         }
     }
-    
+
     private fun unlockDevice(_context: Context) {
         try {
             Log.d(TAG, "Unlock device - requires user interaction")
@@ -138,7 +146,7 @@ object CommandHandler {
             Log.e(TAG, "Error unlocking device", e)
         }
     }
-    
+
     private fun restartDevice(context: Context) {
         try {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -158,7 +166,21 @@ object CommandHandler {
             Log.e(TAG, "Error restarting device", e)
         }
     }
-    
+
+    private fun wipeDevice(context: Context) {
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.wipeData(0)
+                Log.d(TAG, "Device wipe initiated")
+            } else {
+                Log.w(TAG, "App is not device owner, cannot wipe device")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error wiping device", e)
+        }
+    }
+
     private fun openApp(context: Context, params: Map<String, Any>?) {
         try {
             val packageName = params?.get("packageName") as? String ?: return
@@ -175,7 +197,7 @@ object CommandHandler {
             Log.e(TAG, "Error opening app", e)
         }
     }
-    
+
     private fun showMessage(context: Context, params: Map<String, Any>?) {
         try {
             val message = params?.get("message") as? String ?: "No message"
@@ -185,7 +207,7 @@ object CommandHandler {
             Log.e(TAG, "Error showing message", e)
         }
     }
-    
+
     private fun showMessageNotification(context: Context, title: String, message: String) {
         try {
             val channelId = "message_channel"
@@ -213,7 +235,7 @@ object CommandHandler {
             Log.e(TAG, "Error showing message notification", e)
         }
     }
-    
+
     private fun playSound(context: Context) {
          try {
             val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
@@ -229,7 +251,7 @@ object CommandHandler {
             }
         }
     }
-    
+
     private fun enableKioskMode(context: Context) {
         try {
             KioskModeManager.enableKioskMode(context)
@@ -238,7 +260,7 @@ object CommandHandler {
             Log.e(TAG, "Error enabling kiosk mode", e)
         }
     }
-    
+
     private fun disableKioskMode(context: Context) {
         try {
             KioskModeManager.disableKioskMode(context)
@@ -247,7 +269,7 @@ object CommandHandler {
             Log.e(TAG, "Error disabling kiosk mode", e)
         }
     }
-    
+
     private fun openCamera(context: Context) {
         try {
             val intent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
@@ -257,11 +279,11 @@ object CommandHandler {
             Log.e(TAG, "Error opening camera", e)
         }
     }
-    
+
     private fun takePhoto(context: Context) {
         openCamera(context)
     }
-    
+
     private fun setBluetoothEnabled(context: Context, enabled: Boolean) {
         try {
             val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() ?: return
@@ -272,7 +294,7 @@ object CommandHandler {
             Log.e(TAG, "Error setting Bluetooth state", e)
         }
     }
-    
+
     private fun shutdownDevice(context: Context) {
         try {
              val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -286,7 +308,7 @@ object CommandHandler {
             Log.e(TAG, "Error shutting down device", e)
         }
     }
-    
+
     private fun setCameraEnabled(context: Context, enabled: Boolean) {
          try {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -348,7 +370,7 @@ object CommandHandler {
             Log.w(TAG, "Cannot uninstall app: Not a device owner.")
         }
     }
-    
+
     private fun setManagedConfigurations(context: Context, params: Map<String, Any>?) {
         val packageName = params?.get("packageName") as? String ?: return
         val configurations = params?.get("configurations") as? Map<String, Any> ?: return
@@ -394,7 +416,7 @@ object CommandHandler {
             else dpm.clearUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
         }
     }
-    
+
     // --- FUNCTIONS FOR SET 1 ---
     private fun setEncryptionEnabled(context: Context, params: Map<String, Any>?) {
         val enabled = params?.get("enabled") as? Boolean ?: return
@@ -575,7 +597,7 @@ object CommandHandler {
             else dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_WIFI)
         }
     }
-    
+
     private fun setCellBroadcastsConfigAllowed(context: Context, params: Map<String, Any>?) {
         val allowed = params?.get("allowed") as? Boolean ?: return
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -611,20 +633,16 @@ object CommandHandler {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
         if (dpm.isDeviceOwnerApp(context.packageName)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                try {
-                    val method = DevicePolicyManager::class.java.getMethod(
-                        "setMicrophoneMute",
-                        ComponentName::class.java,
-                        Boolean::class.javaPrimitiveType
-                    )
-                    method.invoke(dpm, admin, muted)
-                    Log.d(TAG, "Microphone muted policy set to: $muted")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to set microphone policy via reflection", e)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (muted) {
+                    dpm.addUserRestriction(admin, UserManager.DISALLOW_MICROPHONE_TOGGLE)
+                } else {
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_MICROPHONE_TOGGLE)
                 }
+                Log.d(TAG, "Microphone toggle policy set to: ${!muted}")
+
             } else {
-                Log.w(TAG, "Setting microphone mute policy is not supported on this Android version (requires API 28+).")
+                Log.w(TAG, "Setting microphone mute policy is not supported on this Android version (requires API 31+).")
             }
         }
     }
@@ -718,6 +736,70 @@ object CommandHandler {
                 else -> null
             }
             dpm.setSystemUpdatePolicy(admin, policy)
+        }
+    }
+
+    private fun setScreenBrightness(context: Context, params: Map<String, Any>?) {
+        try {
+            val level = (params?.get("level") as? Double)?.toInt() ?: return
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, level.coerceIn(0, 255))
+            Log.d(TAG, "Screen brightness set to $level")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting screen brightness", e)
+        }
+    }
+
+    private fun setScreenBrightnessMode(context: Context, params: Map<String, Any>?) {
+        try {
+            val auto = params?.get("auto") as? Boolean ?: return
+
+            Settings.System.putInt(
+                context.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS_MODE,
+                if (auto) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+            )
+            Log.d(TAG, "Screen brightness mode set to ${if (auto) "auto" else "manual"}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting screen brightness mode", e)
+        }
+    }
+
+    private fun setRingerMode(context: Context, params: Map<String, Any>?) {
+        try {
+            val mode = params?.get("mode") as? String ?: return
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+            when (mode.uppercase()) {
+                "NORMAL" -> audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                "VIBRATE" -> audioManager.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+                "SILENT" -> audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
+            }
+            Log.d(TAG, "Ringer mode set to $mode")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting ringer mode", e)
+        }
+    }
+
+    private fun setVolumeLevel(context: Context, params: Map<String, Any>?) {
+        try {
+            val level = (params?.get("level") as? Double)?.toInt() ?: return
+            val stream = params?.get("stream") as? String ?: "ring"
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            
+            val streamType = when (stream.uppercase()) {
+                "MUSIC" -> AudioManager.STREAM_MUSIC
+                "ALARM" -> AudioManager.STREAM_ALARM
+                "NOTIFICATION" -> AudioManager.STREAM_NOTIFICATION
+                else -> AudioManager.STREAM_RING
+            }
+            
+            val maxVolume = audioManager.getStreamMaxVolume(streamType)
+            val newVolume = (level / 100.0 * maxVolume).toInt().coerceIn(0, maxVolume)
+
+            audioManager.setStreamVolume(streamType, newVolume, 0)
+            Log.d(TAG, "Volume level for $stream set to $level%")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting volume level", e)
         }
     }
 }

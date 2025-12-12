@@ -20,6 +20,9 @@ enum class CommandAction {
     @SerializedName("RESTART_DEVICE")
     RESTART_DEVICE,
     
+    @SerializedName("WIPE_DEVICE")
+    WIPE_DEVICE,
+    
     @SerializedName("OPEN_APP")
     OPEN_APP,
     
@@ -150,5 +153,21 @@ enum class CommandAction {
     @SerializedName("SET_DATE_TIME_CHANGE_ALLOWED")
     SET_DATE_TIME_CHANGE_ALLOWED,
     @SerializedName("SET_ORGANIZATION_MESSAGE")
-    SET_ORGANIZATION_MESSAGE
+    SET_ORGANIZATION_MESSAGE,
+
+    // Screen & Audio
+    @SerializedName("SET_SCREEN_BRIGHTNESS")
+    SET_SCREEN_BRIGHTNESS,
+
+    @SerializedName("SET_SCREEN_BRIGHTNESS_MODE")
+    SET_SCREEN_BRIGHTNESS_MODE,
+
+    @SerializedName("SET_RINGER_MODE")
+    SET_RINGER_MODE,
+
+    @SerializedName("SET_VOLUME_LEVEL")
+    SET_VOLUME_LEVEL,
+
+    @SerializedName("SET_DND_MODE")
+    SET_DND_MODE
 }
