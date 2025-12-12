@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Swal from "sweetalert2";
-import { getSwalConfig } from "@/lib/swal-config";
+import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tablet, CheckCircle2, XCircle, Bell, MessageSquare, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, MessageCircle, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings } from "lucide-react";
+import { Tablet, CheckCircle2, XCircle, Bell, MessageSquare, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, MessageCircle, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings, Vibrate, VolumeX, Moon, Star, AlertCircle, Music, Phone, AlarmClock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 import { TimePicker } from "@/components/ui/time-picker";
 interface Device {
@@ -87,7 +87,7 @@ export default function BulkCommandPage() {
       Swal.fire(getSwalConfig({
         icon: "error",
         title: "ไม่สามารถโหลดแอปได้",
-        text: getErrorMessage(error),
+        text: (error as any).response?.data?.error || (error as Error).message,
       }));
     } finally {
       setLoadingApps(false);
@@ -129,21 +129,12 @@ export default function BulkCommandPage() {
 
       const iframeUrl = `https://play.google.com/work/embedded/search?token=${webToken}&mode=SELECT`;
 
-      const swalInstance = Swal.fire({
+      Swal.fire({
         title: 'Managed Google Play',
         html: `<iframe src="${iframeUrl}" style="width: 100%; height: 70vh; border: none;"></iframe>`,
         width: '80vw',
         showConfirmButton: false,
         showCloseButton: true,
-      });
-
-      // A helper function to get toast configuration, assuming it's in swal-config
-      const getToastConfig = () => ({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
       });
 
       // Define the expected structure of the event data from the iFrame
@@ -156,12 +147,11 @@ export default function BulkCommandPage() {
       const handlePlayEvent = (event: PlayIframeEvent) => {
         if (event.origin === 'https://play.google.com' && event.data && event.data.productId) {
           fetchApprovedApps(); // Refresh app list after approval
-          const Toast = Swal.mixin(getToastConfig());
-          Toast.fire({
+          Swal.fire(getToastConfig({
             icon: 'success',
             title: 'อนุมัติแอปเรียบร้อยแล้ว',
-          });
-          swalInstance.close();
+          }));
+          Swal.close();
           window.removeEventListener('message', handlePlayEvent);
         }
       };
@@ -172,7 +162,7 @@ export default function BulkCommandPage() {
       Swal.fire(getSwalConfig({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: getErrorMessage(error, "ไม่สามารถเปิด Managed Google Play ได้"),
+        text: (error as any).response?.data?.error || "ไม่สามารถเปิด Managed Google Play ได้",
       }));
     }
   }, [fetchApprovedApps]);
@@ -223,7 +213,7 @@ export default function BulkCommandPage() {
       Swal.fire(getSwalConfig({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: getErrorMessage(error, "ไม่สามารถส่งคำสั่งไปยังอุปกรณ์ได้"),
+        text: (error as any).response?.data?.error || "ไม่สามารถส่งคำสั่งไปยังอุปกรณ์ได้",
       }));
     } finally {
       setSending(false);
@@ -306,7 +296,7 @@ export default function BulkCommandPage() {
       Swal.fire(getSwalConfig({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        text: getErrorMessage(error, "ไม่สามารถอัปเดต Policy ได้"),
+        text: (error as any).response?.data?.error || "ไม่สามารถอัปเดต Policy ได้",
       }));
     } finally {
       setSending(false);
@@ -458,6 +448,46 @@ export default function BulkCommandPage() {
                       <Button onClick={() => handleSendCommand("DISABLE_KIOSK")} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ปิด Kiosk</Button>
                     </CardContent>
                   </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">โหมดเสียง</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "NORMAL" })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปกติ</Button>
+                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "VIBRATE" })} disabled={sending}><Vibrate className="w-4 h-4 mr-2" />สั่น</Button>
+                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "SILENT" })} disabled={sending} variant="destructive"><VolumeX className="w-4 h-4 mr-2" />เงียบ</Button>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">โหมดห้ามรบกวน (DND)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "OFF" })} disabled={sending}>
+                        <Bell className="w-4 h-4 mr-2" />ปิด
+                      </Button>
+                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "ALARMS_ONLY" })} disabled={sending}>
+                        <AlertCircle className="w-4 h-4 mr-2" />เฉพาะการปลุก
+                      </Button>
+                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "PRIORITY_ONLY" })} disabled={sending}>
+                        <Star className="w-4 h-4 mr-2" />เฉพาะรายการสำคัญ
+                      </Button>
+                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "TOTAL_SILENCE" })} disabled={sending} variant="destructive">
+                        <Moon className="w-4 h-4 mr-2" />ปิดเสียงทั้งหมด
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">ปิดเสียงเฉพาะประเภท</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "media", level: 0 })} disabled={sending}><Music className="w-4 h-4 mr-2" />ปิดเสียงมีเดีย</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "ring", level: 0 })} disabled={sending}><Phone className="w-4 h-4 mr-2" />ปิดเสียงเรียกเข้า</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "notification", level: 0 })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปิดเสียงแจ้งเตือน</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "alarm", level: 0 })} disabled={sending}><AlarmClock className="w-4 h-4 mr-2" />ปิดเสียงปลุก</Button>
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
 
@@ -543,6 +573,12 @@ export default function BulkCommandPage() {
                       </Button>
                     </CardContent>
                   </Card>
+                  <Card>
+                    <CardHeader><CardTitle className="text-base text-destructive">ล้างข้อมูลเครื่อง (Wipe)</CardTitle></CardHeader>
+                    <CardContent>
+                      <Button onClick={() => handleSendCommand("WIPE_DEVICE")} disabled={sending} variant="destructive" className="w-full"><Trash2 className="w-4 h-4 mr-2" />ล้างข้อมูลทั้งหมด</Button>
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
 
@@ -611,6 +647,13 @@ export default function BulkCommandPage() {
                       <Button onClick={() => handleSendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
                     </CardContent>
                   </Card>
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">โหมดความสว่างหน้าจอ</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => handleSendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: "AUTOMATIC" })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อัตโนมัติ</Button>
+                      <Button onClick={() => handleSendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: "MANUAL" })} disabled={sending}><XCircle className="w-4 h-4 mr-2" />กำหนดเอง</Button>
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
 
@@ -665,7 +708,7 @@ export default function BulkCommandPage() {
                         </div>
                       ) : (
                         <div className="text-center py-6 text-muted-foreground">
-                          ยังไม่มีแอปที่อนุมัติ กด "อนุมัติแอป" เพื่อเริ่มต้น
+                          ยังไม่มีแอปที่อนุมัติ กด &quot;อนุมัติแอป&quot; เพื่อเริ่มต้น
                         </div>
                       )}
                     </CardContent>

@@ -114,11 +114,23 @@ export default function CreateCheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedIds.length === 0) {
+    if (selectedIds.length === 0) { // Assuming selectedIds is the correct state variable
       await Swal.fire(
-        getToastConfig({
+        getSwalConfig({
           icon: "warning",
-          title: "กรุณาเลือกอุปกรณ์อย่างน้อย 1 เครื่อง",
+          title: "ยังไม่ได้เลือกอุปกรณ์",
+          text: "กรุณาเลือกอุปกรณ์อย่างน้อย 1 เครื่อง",
+        })
+      );
+      return;
+    }
+
+    if (!form.company.trim()) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "warning",
+          title: "กรุณากรอกข้อมูล",
+          text: "กรุณากรอกชื่อบริษัท / หน่วยงาน",
         })
       );
       return;
@@ -245,7 +257,7 @@ export default function CreateCheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company">บริษัท / หน่วยงาน</Label>
+                    <Label htmlFor="company">บริษัท / หน่วยงาน <span className="text-destructive">*</span></Label>
                     <Input
                       id="company"
                       placeholder="เช่น ฝ่ายคลังสินค้า, แผนกขาย"

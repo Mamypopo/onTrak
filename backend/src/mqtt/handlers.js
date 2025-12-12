@@ -32,25 +32,62 @@ async function handleDeviceStatus(topic, data) {
       return;
     }
 
-    // Update existing device only
+    const updateData = {
+      battery: data.battery || 0,
+      wifiStatus: data.wifiStatus || false,
+      wifiSignalStrength: data.wifiSignalStrength,
+      ssid: data.ssid || null,
+      isCharging: data.isCharging || false,
+      batteryHealth: data.batteryHealth || null,
+      batteryTemperature: data.batteryTemperature,
+      chargingMethod: data.chargingMethod || null,
+      batteryCycleCount: data.batteryCycleCount,
+      mobileDataEnabled: data.mobileDataEnabled || false,
+      cellularSignalStrength: data.cellularSignalStrength,
+      networkConnected: data.networkConnected || false,
+      airplaneModeEnabled: data.isAirplaneModeEnabled || false,
+      powerSaveModeEnabled: data.isPowerSaveModeEnabled || false,
+      screenBrightness: data.screenBrightness,
+      autoScreenBrightnessEnabled: data.isAutoScreenBrightnessEnabled || false,
+      ringerMode: data.ringerMode || null,
+      dndMode: data.dndMode || null,
+      volumeRing: data.volumeLevels?.ring,
+      volumeMedia: data.volumeLevels?.media,
+      volumeNotification: data.volumeLevels?.notification,
+      volumeAlarm: data.volumeLevels?.alarm,
+      screenOn: data.screenOn || false,
+      bluetoothEnabled: data.bluetoothEnabled || false,
+      nfcEnabled: data.nfcEnabled || false,
+      locationEnabled: data.isGpsEnabled || false,
+      screenLockEnabled: data.isScreenLockEnabled || false,
+      developerModeEnabled: data.isDeveloperModeEnabled || false,
+      vpnActive: data.isVpnActive || false,
+      installedApps: data.installedApps || [],
+      installedAppsCount: data.installedApps?.length ?? data.installedAppsCount ?? 0,
+      bootTime: data.bootTime ? BigInt(data.bootTime) : null,
+      lastSeen: new Date(),
+      status: 'ONLINE',
+    };
+
+    if (data.serialNumber) updateData.serialNumber = data.serialNumber;
+    if (data.osVersion) updateData.osVersion = data.osVersion;
+    if (data.deviceModel) updateData.model = data.deviceModel;
+    if (data.brand) updateData.brandName = data.brand;
+    if (data.isRooted !== undefined) {
+      updateData.rootState = data.isRooted ? 'ROOTED' : 'NOT_ROOTED';
+    }
+    if (data.securityPatch) updateData.securityPatch = data.securityPatch;
+    if (data.encryptionStatus) updateData.encryptionStatus = data.encryptionStatus;
+    if (data.simOperator) updateData.simOperator = data.simOperator;
+    if (data.ipAddress) updateData.ipAddress = data.ipAddress;
+    if (data.macAddress) updateData.macAddress = data.macAddress;
+    if (data.timezone) updateData.timezone = data.timezone;
+    if (data.locale) updateData.locale = data.locale;
+    if (data.rootState && !data.isRooted) updateData.rootState = data.rootState;
+    if (data.brandName && !data.brand) updateData.brandName = data.brandName;
     const updatedDevice = await prisma.device.update({
       where: { deviceCode: deviceId },
-      data: {
-        battery: data.battery || 0,
-        wifiStatus: data.wifiStatus || false,
-        isCharging: data.isCharging || false,
-        batteryHealth: data.batteryHealth || null,
-        chargingMethod: data.chargingMethod || null,
-        mobileDataEnabled: data.mobileDataEnabled || false,
-        networkConnected: data.networkConnected || false,
-        screenOn: data.screenOn || false,
-        volumeLevel: data.volumeLevel || 0,
-        bluetoothEnabled: data.bluetoothEnabled || false,
-        installedAppsCount: data.installedAppsCount || 0,
-        bootTime: data.bootTime ? BigInt(data.bootTime) : null,
-        lastSeen: new Date(),
-        status: 'ONLINE',
-      },
+      data: updateData,
     });
 
     // Broadcast to dashboard
@@ -59,20 +96,49 @@ async function handleDeviceStatus(topic, data) {
       deviceId: updatedDevice.id,
       deviceCode: deviceId,
       data: {
+        serialNumber: updatedDevice.serialNumber,
+        osVersion: updatedDevice.osVersion,
+        model: updatedDevice.model,
         battery: updatedDevice.battery,
         wifiStatus: updatedDevice.wifiStatus,
+        wifiSignalStrength: updatedDevice.wifiSignalStrength,
+        ssid: updatedDevice.ssid,
         isCharging: updatedDevice.isCharging,
         batteryHealth: updatedDevice.batteryHealth,
+        batteryTemperature: updatedDevice.batteryTemperature,
         chargingMethod: updatedDevice.chargingMethod,
+        batteryCycleCount: updatedDevice.batteryCycleCount,
         mobileDataEnabled: updatedDevice.mobileDataEnabled,
+        cellularSignalStrength: updatedDevice.cellularSignalStrength,
         networkConnected: updatedDevice.networkConnected,
+        airplaneModeEnabled: updatedDevice.airplaneModeEnabled,
+        powerSaveModeEnabled: updatedDevice.powerSaveModeEnabled,
+        screenBrightness: updatedDevice.screenBrightness,
+        autoScreenBrightnessEnabled: updatedDevice.autoScreenBrightnessEnabled,
+        ringerMode: updatedDevice.ringerMode,
+        dndMode: updatedDevice.dndMode,
         screenOn: updatedDevice.screenOn,
-        volumeLevel: updatedDevice.volumeLevel,
+        volumeLevels: {
+          ring: updatedDevice.volumeRing,
+          media: updatedDevice.volumeMedia,
+          notification: updatedDevice.volumeNotification,
+          alarm: updatedDevice.volumeAlarm,
+        },
         bluetoothEnabled: updatedDevice.bluetoothEnabled,
+        nfcEnabled: updatedDevice.nfcEnabled,
+        locationEnabled: updatedDevice.locationEnabled,
+        screenLockEnabled: updatedDevice.screenLockEnabled,
+        developerModeEnabled: updatedDevice.developerModeEnabled,
+        vpnActive: updatedDevice.vpnActive,
+        installedApps: updatedDevice.installedApps,
         installedAppsCount: updatedDevice.installedAppsCount,
         bootTime: updatedDevice.bootTime ? updatedDevice.bootTime.toString() : null,
         lastSeen: updatedDevice.lastSeen,
         status: updatedDevice.status,
+        ipAddress: updatedDevice.ipAddress,
+        macAddress: updatedDevice.macAddress,
+        timezone: updatedDevice.timezone,
+        locale: updatedDevice.locale,
       },
     });
 
@@ -276,4 +342,3 @@ export function publishCommand(deviceId, command) {
   const topic = `tablet/${deviceId}/command`;
   return mqttClient.publish(topic, command, { qos: 1 });
 }
-

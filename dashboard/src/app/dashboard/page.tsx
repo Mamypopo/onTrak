@@ -444,6 +444,23 @@ export default function DashboardPage() {
                                 {safeFormatDistanceToNow(device.lastSeen, { addSuffix: true })}
                               </span>
                             </div>
+                            <div className="pt-2 border-t">
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "w-full justify-center text-xs",
+                                  hasProblem
+                                    ? "border-red-500 text-red-600 dark:text-red-400 bg-red-500/10"
+                                    : isInUse
+                                    ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                                    : "border-green-500 text-green-600 dark:text-green-400 bg-green-500/10"
+                                )}
+                              >
+                                {hasProblem && "มีปัญหา"}
+                                {isInUse && "กำลังใช้งาน"}
+                                {isAvailable && "ว่าง"}
+                              </Badge>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -498,4 +515,3 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
-

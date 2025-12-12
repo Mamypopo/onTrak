@@ -32,15 +32,20 @@ export async function updateDeviceLocation(deviceCode, locationData) {
       return null;
     }
 
+    // Prepare data for update, only include fields that are present in the payload
+    const updateData = { // Initialize with common fields
+      lastSeen: new Date(),
+      status: 'ONLINE',
+    };
+
+    // Conditionally add fields if they exist in the payload
+    if (locationData.latitude !== undefined) updateData.latitude = locationData.latitude;
+    if (locationData.longitude !== undefined) updateData.longitude = locationData.longitude;
+
     // Update device location
     const updatedDevice = await prisma.device.update({
       where: { id: device.id },
-      data: {
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        lastSeen: new Date(),
-        status: 'ONLINE',
-      },
+      data: updateData,
     });
 
     // Smart Sampling: เก็บ location history เฉพาะเมื่อเปลี่ยนตำแหน่ง > 50m
@@ -330,3 +335,50 @@ export async function getAllDevices() {
   }
 }
 
+/**
+ * Helper function to send a command to a single device.
+ * This is designed to be called from other services or controllers.
+ * @param {string} deviceId - The ID of the device.
+ * @param {object} command - The command object { action, params }.
+ * @param {object} user - The user object from the request.
+ * @returns {Promise<{success: boolean, message: string, command?: object, error?: string}>}
+ */
+export async function sendCommandToDevice(deviceId, command, user) {
+  try {
+    const { publishCommand } = await import('../mqtt/handlers.js');
+    const { createAuditLog } = await import('../utils/audit.js');
+
+    const device = await prisma.device.findUnique({
+      where: { id: deviceId },
+      select: { id: true, deviceCode: true },
+    });
+
+    if (!device) {
+      logger.warn({ deviceId, action: command.action }, 'Device not found for sending command.');
+      return { success: false, error: 'Device not found' };
+    }
+
+    const published = publishCommand(device.deviceCode, command);
+
+    if (!published) {
+      logger.error({ deviceCode: device.deviceCode }, 'MQTT broker not available, command not sent.');
+      return { success: false, error: 'MQTT broker not available' };
+    }
+
+    // Log the action
+    await prisma.deviceActionLog.create({
+      data: {
+        deviceId: device.id,
+        userId: user?.id || null,
+        user: user?.username || 'system',
+        action: `COMMAND_${command.action}`,
+        payload: command,
+      },
+    });
+
+    return { success: true, message: 'Command sent successfully', command };
+  } catch (error) {
+    logger.error({ error, deviceId, action: command.action }, 'Error in sendCommandToDevice service');
+    return { success: false, error: error.message || 'Internal server error' };
+  }
+}
