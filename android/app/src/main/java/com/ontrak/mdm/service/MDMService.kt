@@ -333,6 +333,9 @@ class MDMService : Service() {
             val ringerMode = DeviceInfo.getRingerMode(this)
             val batteryTemperature = DeviceInfo.getBatteryTemperature(this)
             val dndMode = DeviceInfo.getDndMode(this)
+            val screenWidth = DeviceInfo.getScreenWidth(this)
+            val screenHeight = DeviceInfo.getScreenHeight(this)
+            val screenDpi = DeviceInfo.getScreenDpi(this)
 
             val status = DeviceStatus(
                 deviceId = deviceId,
@@ -369,6 +372,9 @@ class MDMService : Service() {
                 batteryHealth = batteryHealth,
                 chargingMethod = chargingMethod,
                 batteryTemperature = batteryTemperature,
+                screenWidth = screenWidth,
+                screenHeight = screenHeight,
+                screenDpi = screenDpi,
                 batteryCycleCount = null,
                 mobileDataEnabled = mobileDataEnabled(),
                 networkConnected = networkConnected,

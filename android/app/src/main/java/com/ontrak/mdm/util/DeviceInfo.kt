@@ -194,23 +194,23 @@ object DeviceInfo {
 
     fun getVolumeLevels(context: Context): VolumeLevels {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        
+
         val ringVolume = audioManager.getStreamVolume(AudioManager.STREAM_RING)
         val maxRingVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING)
-        val ring = (ringVolume * 100) / maxRingVolume
-        
+        val ring = if (maxRingVolume > 0) (ringVolume * 100f / maxRingVolume).toInt() else 0
+
         val mediaVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
         val maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        val media = (mediaVolume * 100) / maxMediaVolume
-        
+        val media = if (maxMediaVolume > 0) (mediaVolume * 100f / maxMediaVolume).toInt() else 0
+
         val notificationVolume = audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)
         val maxNotificationVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION)
-        val notification = (notificationVolume * 100) / maxNotificationVolume
-        
+        val notification = if (maxNotificationVolume > 0) (notificationVolume * 100f / maxNotificationVolume).toInt() else 0
+
         val alarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
         val maxAlarmVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-        val alarm = (alarmVolume * 100) / maxAlarmVolume
-        
+        val alarm = if (maxAlarmVolume > 0) (alarmVolume * 100f / maxAlarmVolume).toInt() else 0
+
         return VolumeLevels(
             ring = ring,
             media = media,
@@ -256,6 +256,18 @@ object DeviceInfo {
 
     fun isDeviceRooted(): Boolean {
         return checkRootMethod1() || checkRootMethod2() || checkRootMethod3()
+    }
+
+    fun getScreenWidth(context: Context): Int {
+        return context.resources.displayMetrics.widthPixels
+    }
+
+    fun getScreenHeight(context: Context): Int {
+        return context.resources.displayMetrics.heightPixels
+    }
+
+    fun getScreenDpi(context: Context): Int {
+        return context.resources.displayMetrics.densityDpi
     }
 
     private fun checkRootMethod1(): Boolean {

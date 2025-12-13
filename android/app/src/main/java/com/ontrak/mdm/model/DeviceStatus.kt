@@ -109,6 +109,16 @@ data class DeviceStatus(
     @SerializedName("batteryTemperature")
     val batteryTemperature: Int?,
 
+    // Display Info
+    @SerializedName("screenWidth")
+    val screenWidth: Int? = null,
+
+    @SerializedName("screenHeight")
+    val screenHeight: Int? = null,
+
+    @SerializedName("screenDpi")
+    val screenDpi: Int? = null,
+
     @SerializedName("batteryCycleCount")
     val batteryCycleCount: Int?,
 
