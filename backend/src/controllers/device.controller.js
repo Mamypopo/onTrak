@@ -509,17 +509,65 @@ export async function updateDevice(request, reply) {
       }
     }
 
-    // Update device
-    const updated = await prisma.device.update({
-      where: { id },
-      data: {
+    let updated;
+
+    if (deviceCode !== existingDevice.deviceCode) {
+      // Device code changed, reset status and clear history
+      logger.warn({ deviceId: id, from: existingDevice.deviceCode, to: deviceCode }, 'Device code changed. Resetting device status and clearing history.');
+
+      const dataToUpdate = {
         deviceCode,
-        name: name || null,
         serialNumber: serialNumber || null,
         model: model || null,
         osVersion: osVersion || null,
-      },
-    });
+        // Reset status fields
+        lastSeen: new Date(),
+        status: 'OFFLINE',
+        battery: 0,
+        wifiStatus: false,
+        ssid: null,
+        isCharging: false,
+        networkConnected: false,
+        latitude: null,
+        longitude: null,
+        thermalStatus: null,
+        ramAvailable: null,
+        storageFree: null,
+        installedAppDetails: [],
+        installedAppsCount: 0,
+        connectedBluetoothDevices: [],
+        ipAddress: null,
+        macAddress: null,
+      };
+
+      // Use a transaction to ensure atomicity
+      updated = await prisma.$transaction(async (tx) => {
+        // 1. Delete related history
+        await tx.deviceLocationHistory.deleteMany({ where: { deviceId: id } });
+        await tx.deviceActionLog.deleteMany({ where: { deviceId: id } });
+        await tx.deviceMetrics.deleteMany({ where: { deviceId: id } });
+
+        // 2. Update the device with new info and reset status
+        const updatedDevice = await tx.device.update({
+          where: { id },
+          data: dataToUpdate,
+        });
+
+        return updatedDevice;
+      });
+
+    } else {
+      // Device code did not change, just update the info
+      updated = await prisma.device.update({
+        where: { id },
+        data: {
+          name: name || null,
+          serialNumber: serialNumber || null,
+          model: model || null,
+          osVersion: osVersion || null,
+        },
+      });
+    }
 
     // Create audit log
     await createAuditLog(request, 'UPDATE_DEVICE', 'DEVICE', id, {

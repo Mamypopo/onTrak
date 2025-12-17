@@ -41,6 +41,7 @@ async function handleDeviceStatus(topic, data) {
       batteryHealth: data.batteryHealth || null,
       batteryTemperature: data.batteryTemperature,
       chargingMethod: data.chargingMethod || null,
+      thermalStatus: data.thermalStatus || null,
       batteryCycleCount: data.batteryCycleCount,
       mobileDataEnabled: data.mobileDataEnabled || false,
       cellularSignalStrength: data.cellularSignalStrength,
@@ -49,7 +50,17 @@ async function handleDeviceStatus(topic, data) {
       powerSaveModeEnabled: data.isPowerSaveModeEnabled || false,
       screenBrightness: data.screenBrightness,
       autoScreenBrightnessEnabled: data.isAutoScreenBrightnessEnabled || false,
+      screenWidth: data.screenWidth,
+      screenHeight: data.screenHeight,
+      screenDpi: data.screenDpi,
       ringerMode: data.ringerMode || null,
+      storageTotal: data.totalStorage ? BigInt(data.totalStorage) : null,
+      storageFree: data.freeStorage ? BigInt(data.freeStorage) : null,
+      storageExternalTotal: data.totalExternalStorage ? BigInt(data.totalExternalStorage) : null,
+      storageExternalFree: data.freeExternalStorage ? BigInt(data.freeExternalStorage) : null,
+      ramTotal: data.totalRam ? BigInt(data.totalRam) : null,
+      ramAvailable: data.availableRam ? BigInt(data.availableRam) : null,
+      networkType: data.networkType || null,
       dndMode: data.dndMode || null,
       volumeRing: data.volumeLevels?.ring,
       volumeMedia: data.volumeLevels?.media,
@@ -57,25 +68,41 @@ async function handleDeviceStatus(topic, data) {
       volumeAlarm: data.volumeLevels?.alarm,
       screenOn: data.screenOn || false,
       bluetoothEnabled: data.bluetoothEnabled || false,
+      cameraFeatures: data.cameraFeatures || [],
+      connectedBluetoothDevices: data.connectedBluetoothDevices || [],
       nfcEnabled: data.nfcEnabled || false,
       locationEnabled: data.isGpsEnabled || false,
       screenLockEnabled: data.isScreenLockEnabled || false,
       developerModeEnabled: data.isDeveloperModeEnabled || false,
+      adbEnabled: data.isAdbEnabled || false,
       vpnActive: data.isVpnActive || false,
-      installedApps: data.installedApps || [],
-      installedAppsCount: data.installedApps?.length ?? data.installedAppsCount ?? 0,
+      installedAppDetails: data.installedAppDetails || [],
+      installedAppsCount: data.installedAppDetails?.length ?? data.installedAppsCount ?? 0,
       bootTime: data.bootTime ? BigInt(data.bootTime) : null,
+      foregroundApp: data.foregroundApp || null,
       lastSeen: new Date(),
       status: 'ONLINE',
     };
 
     if (data.serialNumber) updateData.serialNumber = data.serialNumber;
     if (data.osVersion) updateData.osVersion = data.osVersion;
+    if (data.buildNumber) {
+      const buildNumberParts = data.buildNumber.split(' ');
+      if (buildNumberParts.length > 2) {
+        // From "sdk_gphone64_x86_64-userdebug 16 BE2A.250530.026.F3 ..."
+        // we only want "BE2A.250530.026.F3"
+        updateData.buildNumber = buildNumberParts[2];
+      } else {
+        updateData.buildNumber = data.buildNumber;
+      }
+    }
     if (data.deviceModel) updateData.model = data.deviceModel;
     if (data.brand) updateData.brandName = data.brand;
     if (data.isRooted !== undefined) {
       updateData.rootState = data.isRooted ? 'ROOTED' : 'NOT_ROOTED';
     }
+    if (data.phoneNumber) updateData.phoneNumber = data.phoneNumber;
+    if (data.simSerialNumber) updateData.simSerialNumber = data.simSerialNumber;
     if (data.securityPatch) updateData.securityPatch = data.securityPatch;
     if (data.encryptionStatus) updateData.encryptionStatus = data.encryptionStatus;
     if (data.simOperator) updateData.simOperator = data.simOperator;
@@ -83,6 +110,14 @@ async function handleDeviceStatus(topic, data) {
     if (data.macAddress) updateData.macAddress = data.macAddress;
     if (data.timezone) updateData.timezone = data.timezone;
     if (data.locale) updateData.locale = data.locale;
+    if (data.cpuAbi) updateData.cpuAbi = data.cpuAbi;
+    if (data.isSafeBoot !== undefined) updateData.isSafeBoot = data.isSafeBoot;
+    if (data.wifiStandard) updateData.wifiStandard = data.wifiStandard;
+    if (data.cellularGeneration) updateData.cellularGeneration = data.cellularGeneration;
+    if (data.pendingSystemUpdateInfo) updateData.pendingSystemUpdateInfo = data.pendingSystemUpdateInfo;
+    if (data.lastRebootReason) updateData.lastRebootReason = data.lastRebootReason;
+    if (data.cpuUsage !== undefined) updateData.cpuUsage = data.cpuUsage;
+    if (data.cpuTemperature !== undefined) updateData.cpuTemperature = data.cpuTemperature;
     if (data.rootState && !data.isRooted) updateData.rootState = data.rootState;
     if (data.brandName && !data.brand) updateData.brandName = data.brandName;
     const updatedDevice = await prisma.device.update({
@@ -98,6 +133,7 @@ async function handleDeviceStatus(topic, data) {
       data: {
         serialNumber: updatedDevice.serialNumber,
         osVersion: updatedDevice.osVersion,
+        buildNumber: updatedDevice.buildNumber,
         model: updatedDevice.model,
         battery: updatedDevice.battery,
         wifiStatus: updatedDevice.wifiStatus,
@@ -107,6 +143,7 @@ async function handleDeviceStatus(topic, data) {
         batteryHealth: updatedDevice.batteryHealth,
         batteryTemperature: updatedDevice.batteryTemperature,
         chargingMethod: updatedDevice.chargingMethod,
+        thermalStatus: updatedDevice.thermalStatus,
         batteryCycleCount: updatedDevice.batteryCycleCount,
         mobileDataEnabled: updatedDevice.mobileDataEnabled,
         cellularSignalStrength: updatedDevice.cellularSignalStrength,
@@ -115,7 +152,17 @@ async function handleDeviceStatus(topic, data) {
         powerSaveModeEnabled: updatedDevice.powerSaveModeEnabled,
         screenBrightness: updatedDevice.screenBrightness,
         autoScreenBrightnessEnabled: updatedDevice.autoScreenBrightnessEnabled,
+        screenWidth: updatedDevice.screenWidth,
+        screenHeight: updatedDevice.screenHeight,
+        screenDpi: updatedDevice.screenDpi,
         ringerMode: updatedDevice.ringerMode,
+        storageTotal: updatedDevice.storageTotal ? updatedDevice.storageTotal.toString() : null,
+        storageFree: updatedDevice.storageFree ? updatedDevice.storageFree.toString() : null,
+        storageExternalTotal: updatedDevice.storageExternalTotal ? updatedDevice.storageExternalTotal.toString() : null,
+        storageExternalFree: updatedDevice.storageExternalFree ? updatedDevice.storageExternalFree.toString() : null,
+        ramTotal: updatedDevice.ramTotal ? updatedDevice.ramTotal.toString() : null,
+        ramAvailable: updatedDevice.ramAvailable ? updatedDevice.ramAvailable.toString() : null,
+        networkType: updatedDevice.networkType,
         dndMode: updatedDevice.dndMode,
         screenOn: updatedDevice.screenOn,
         volumeLevels: {
@@ -125,13 +172,16 @@ async function handleDeviceStatus(topic, data) {
           alarm: updatedDevice.volumeAlarm,
         },
         bluetoothEnabled: updatedDevice.bluetoothEnabled,
+        cameraFeatures: updatedDevice.cameraFeatures,
+        connectedBluetoothDevices: updatedDevice.connectedBluetoothDevices,
         nfcEnabled: updatedDevice.nfcEnabled,
         locationEnabled: updatedDevice.locationEnabled,
         screenLockEnabled: updatedDevice.screenLockEnabled,
         developerModeEnabled: updatedDevice.developerModeEnabled,
+        adbEnabled: updatedDevice.adbEnabled,
         vpnActive: updatedDevice.vpnActive,
-        installedApps: updatedDevice.installedApps,
         installedAppsCount: updatedDevice.installedAppsCount,
+        installedAppDetails: updatedDevice.installedAppDetails,
         bootTime: updatedDevice.bootTime ? updatedDevice.bootTime.toString() : null,
         lastSeen: updatedDevice.lastSeen,
         status: updatedDevice.status,
@@ -139,6 +189,17 @@ async function handleDeviceStatus(topic, data) {
         macAddress: updatedDevice.macAddress,
         timezone: updatedDevice.timezone,
         locale: updatedDevice.locale,
+        cpuUsage: updatedDevice.cpuUsage,
+        cpuTemperature: updatedDevice.cpuTemperature,
+        cpuAbi: updatedDevice.cpuAbi,
+        phoneNumber: updatedDevice.phoneNumber,
+        isSafeBoot: updatedDevice.isSafeBoot,
+        wifiStandard: updatedDevice.wifiStandard,
+        cellularGeneration: updatedDevice.cellularGeneration,
+        pendingSystemUpdateInfo: updatedDevice.pendingSystemUpdateInfo,
+        lastRebootReason: updatedDevice.lastRebootReason,
+        simSerialNumber: updatedDevice.simSerialNumber,
+        foregroundApp: updatedDevice.foregroundApp,
       },
     });
 

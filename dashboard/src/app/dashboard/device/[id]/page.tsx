@@ -13,13 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Battery, Wifi, MapPin, Activity, ArrowLeft, 
   Lock, Power, Radio, Settings,
-  Square, Bell, Camera, Zap, Signal, Shield, MemoryStick,
-  User, Package, PackageCheck, Users, MessageCircle, Globe, PhoneCall, WifiOff as WifiOffIcon,
-  Network, RadioTower, MicOff, Usb, AppWindow, Wallpaper, Scan, Clock,
-  ShieldCheck, Fingerprint, UserCog, FileLock, Factory, Bug, ScreenShare, Key, LockIcon, EyeOff,
+  Square, Bell, Camera, Zap, Signal, Shield, MemoryStick, Music, Phone,
+  User, Package, PackageCheck, Users, MessageCircle, Globe, PhoneCall, WifiOff as WifiOffIcon, Sun, Moon, Volume2, VolumeX, Vibrate, Star,
+  Network, RadioTower, MicOff, Usb, AppWindow, Wallpaper, Scan, Clock, AlarmClock, Timer,
+  ShieldCheck, Fingerprint, UserCog, FileLock, Factory, Bug, ScreenShare, Key, LockIcon, EyeOff, Hash, Tag,
   MessageSquare, AlertCircle, Edit, Trash2, Wrench, WifiOff
 } from "lucide-react";
 import Link from "next/link";
+import { FaAndroid, FaApple, FaGoogle, FaTabletAlt, FaSimCard } from "react-icons/fa";
+import { SiSamsung, SiHuawei, SiXiaomi, SiLenovo } from "react-icons/si";
 import Swal from "sweetalert2";
 import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import { Switch } from "@/components/ui/switch";
@@ -35,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -51,6 +54,15 @@ const DeviceMap = dynamic(() => import("@/components/DeviceMap"), {
   ),
 });
 
+const AppList = dynamic(() => import("@/components/AppList"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-96 bg-muted rounded-lg flex items-center justify-center">
+      <p className="text-sm text-muted-foreground">กำลังโหลดรายการแอป...</p>
+    </div>
+  ),
+});
+
 interface Device {
   id: string;
   deviceCode: string;
@@ -58,17 +70,46 @@ interface Device {
   serialNumber?: string | null;
   model?: string | null;
   osVersion?: string | null;
+  buildNumber?: string | null;
   battery: number;
   wifiStatus: boolean;
+  wifiSignalStrength?: number | null;
+  ssid?: string | null;
   isCharging?: boolean;
   batteryHealth?: string | null;
+  batteryTemperature?: number | null;
   chargingMethod?: string | null;
+  thermalStatus?: string | null;
+  batteryCycleCount?: number | null;
   mobileDataEnabled?: boolean;
+  cellularSignalStrength?: number | null;
   networkConnected?: boolean;
+  airplaneModeEnabled?: boolean;
+  powerSaveModeEnabled?: boolean;
+  screenBrightness?: number | null;
+  autoScreenBrightnessEnabled?: boolean;
+  screenWidth?: number | null;
+  screenHeight?: number | null;
+  screenDpi?: number | null;
+  ringerMode?: "NORMAL" | "VIBRATE" | "SILENT" | null;
+  dndMode?: "ALARMS_ONLY" | "PRIORITY_ONLY" | "TOTAL_SILENCE" | "OFF" | null;
   screenOn?: boolean;
-  volumeLevel?: number;
+  volumeLevels?: {
+    ring: number | null;
+    media: number | null;
+    notification: number | null;
+    alarm: number | null;
+  } | null;
   bluetoothEnabled?: boolean;
+  cameraFeatures?: string[];
+  connectedBluetoothDevices?: string[];
+  nfcEnabled?: boolean;
   locationEnabled?: boolean;
+  screenLockEnabled?: boolean;
+  developerModeEnabled?: boolean;
+  adbEnabled?: boolean;
+  vpnActive?: boolean;
+  installedAppDetails?: AppDetail[];
   installedAppsCount?: number;
   bootTime?: string | null;
   latitude: number | null;
@@ -80,10 +121,34 @@ interface Device {
   metrics: any[];
   actionLogs: any[];
   borrowStatus?: "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE";
-  maintenanceStatus?: "NONE" | "HAS_PROBLEM" | "NEEDS_REPAIR" | "IN_MAINTENANCE" | "DAMAGED";
+  maintenanceStatus?:
+    | "NONE"
+    | "HAS_PROBLEM"
+    | "NEEDS_REPAIR"
+    | "IN_MAINTENANCE"
+    | "DAMAGED";
   latestProblem?: string | null;
+  brandName?: string | null;
+  rootState?: string | null;
   encrytionEnable?: boolean;
   factoryResetAllowed?: boolean;
+  securityPatch?: string | null;
+  encryptionStatus?: string | null;
+  simOperator?: string | null;
+  phoneNumber?: string | null;
+  simSerialNumber?: string | null;
+  ipAddress?: string | null;
+  macAddress?: string | null;
+  timezone?: string | null;
+  locale?: string | null;
+  cpuUsage?: number | null;
+  cpuTemperature?: number | null;
+  cpuAbi?: string | null;
+  isSafeBoot?: boolean;
+  wifiStandard?: string | null;
+  cellularGeneration?: string | null;
+  pendingSystemUpdateInfo?: { [key: string]: any } | null;
+  lastRebootReason?: string | null;
   safeModeAllowed?: boolean;
   debugAllowed?: boolean;
   sceenCapAllowed?: boolean;
@@ -98,6 +163,13 @@ interface Device {
   romingAllowed?: boolean;
   vpncfAllowed?: boolean;
   callAllowed?: boolean;
+  storageTotal?: string | null;
+  storageFree?: string | null;
+  storageExternalTotal?: string | null;
+  storageExternalFree?: string | null;
+  ramTotal?: string | null;
+  ramAvailable?: string | null;
+  networkType?: string | null;
   netResetAllowed?: boolean;
   wificfAllowed?: boolean;
   cellBroadcfAllowed?: boolean;
@@ -115,13 +187,49 @@ interface Device {
   datetimeChange?: boolean;
   systemUpdatePolicy?: "AUTOMATIC" | "WINDOWED" | "POSTPONE" | "NONE";
   systemUpdateWindow?: { start: number; end: number };
+  screenOffTimeout?: number;
 }
+
+interface AppDetail {
+  packageName: string;
+  label: string;
+  versionName: string | null;
+  versionCode: number;
+  firstInstallTime: number;
+  lastUpdateTime: number;
+}
+
+const BrandIcon = ({ brandName }: { brandName?: string | null }) => {
+  if (!brandName) {
+    return <FaTabletAlt className="h-4 w-4 text-muted-foreground" />;
+  }
+
+  const brand = brandName.toLowerCase();
+
+  if (brand.includes("samsung")) {
+    return <SiSamsung className="h-4 w-4 text-blue-600" />;
+  }
+  if (brand.includes("google")) {
+    return <FaGoogle className="h-4 w-4 text-red-500" />;
+  }
+  if (brand.includes("apple")) {
+    return <FaApple className="h-4 w-4 text-gray-500" />;
+  }
+  if (brand.includes("huawei")) {
+    return <SiHuawei className="h-4 w-4 text-red-600" />;
+  }
+  if (brand.includes("xiaomi")) {
+    return <SiXiaomi className="h-4 w-4 text-orange-500" />;
+  }
+
+  return <FaTabletAlt className="h-4 w-4 text-muted-foreground" />;
+};
+
 
 export default function DeviceDetailPage() {
   const router = useRouter();
   const params = useParams();
   const deviceId = params.id as string;
-  
   const [device, setDevice] = useState<Device | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendingCommand, setSendingCommand] = useState(false);
@@ -134,6 +242,8 @@ export default function DeviceDetailPage() {
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [messageTitle, setMessageTitle] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [isLockMessageDialogOpen, setIsLockMessageDialogOpen] = useState(false);
+  const [lockScreenMessage, setLockScreenMessage] = useState("");
   const [isReportProblemDialogOpen, setIsReportProblemDialogOpen] = useState(false);
   const [problemData, setProblemData] = useState({
     problem: "",
@@ -153,11 +263,19 @@ export default function DeviceDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activeControlTab, setActiveControlTab] = useState("actions");
+  const [brightnessValue, setBrightnessValue] = useState([0]);
+  const [volumeValues, setVolumeValues] = useState({
+    media: [0],
+    ring: [0],
+    notification: [0],
+    alarm: [0],
+  });
   const [systemUpdatePolicy, setSystemUpdatePolicy] = useState<"AUTOMATIC" | "WINDOWED" | "POSTPONE" | "NONE">("NONE");
   const [updateWindow, setUpdateWindow] = useState<{ start: Date, end: Date }>({
     start: new Date(new Date().setHours(0, 0, 0, 0)),
     end: new Date(new Date().setHours(23, 59, 0, 0)),
   });
+  const [screenOffTimeout, setScreenOffTimeout] = useState<number>(30000); // Default to 30 seconds
 
 
 
@@ -203,6 +321,23 @@ export default function DeviceDetailPage() {
         // Debug: Check lastSeen value
         console.log("Device lastSeen:", deviceData.lastSeen, typeof deviceData.lastSeen);
         setDevice(deviceData);
+        if (deviceData.screenBrightness != null) {
+          setBrightnessValue([deviceData.screenBrightness]);
+        }
+        if (deviceData.screenWidth && deviceData.screenHeight) {
+          // This is just an example, you might want to handle this differently
+        }
+        if (deviceData.screenDpi) {
+          // This is just an example, you might want to handle this differently
+        }
+        if (deviceData.volumeLevels) {
+          setVolumeValues({
+            media: [deviceData.volumeLevels.media ?? 0],
+            ring: [deviceData.volumeLevels.ring ?? 0],
+            notification: [deviceData.volumeLevels.notification ?? 0],
+            alarm: [deviceData.volumeLevels.alarm ?? 0],
+          });
+        }
         setSystemUpdatePolicy(deviceData.systemUpdatePolicy || "NONE");
         if (deviceData.systemUpdateWindow) {
           const { start, end } = deviceData.systemUpdateWindow;
@@ -211,6 +346,9 @@ export default function DeviceDetailPage() {
           const endDate = new Date();
           endDate.setHours(Math.floor(end / 60), end % 60, 0, 0);
           setUpdateWindow({ start: startDate, end: endDate });
+        }
+        if (deviceData.screenOffTimeout) {
+          setScreenOffTimeout(deviceData.screenOffTimeout);
         }
 
       } else {
@@ -368,6 +506,18 @@ export default function DeviceDetailPage() {
             title: "ส่งคำสั่ง Sync แล้ว",
             text: "อุปกรณ์จะทำการส่งข้อมูลล่าสุดในไม่ช้า",
           },
+          PLAY_ALARM_SOUND: {
+            title: "ส่งคำสั่งเปิดเสียงเตือนแล้ว",
+            text: "อุปกรณ์จะส่งเสียงเตือนฉุกเฉินจนกว่าจะมีการสั่งปิด",
+          },
+          STOP_ALARM_SOUND: {
+            title: "ส่งคำสั่งปิดเสียงเตือนแล้ว",
+            text: "เสียงเตือนฉุกเฉินบนอุปกรณ์จะถูกปิด",
+          },
+          SET_LOCK_SCREEN_MESSAGE: {
+            title: "ส่งคำสั่งตั้งค่าข้อความแล้ว",
+            text: "ข้อความจะปรากฏบนหน้าจอล็อกของอุปกรณ์",
+          },
           // Security Policies
           SET_FACTORY_RESET_ALLOWED: { title: "Policy Updated", text: "Factory reset policy has been updated." },
           SET_SAFE_MODE_ALLOWED: { title: "Policy Updated", text: "Safe mode policy has been updated." },
@@ -398,7 +548,38 @@ export default function DeviceDetailPage() {
           SET_MANAGING_APPS_ALLOWED: { title: "Policy Updated", text: "Managing apps policy has been updated." },
           SET_GOOGLE_SECURITY_SCANS_ALLOWED: { title: "Policy Updated", text: "Google security scans policy has been updated." },
           SET_DATE_TIME_CHANGE_ALLOWED: { title: "Policy Updated", text: "Date/Time change policy has been updated." },
+          SILENT_UNINSTALL_APP: {
+            title: "ส่งคำสั่งถอนการติดตั้งแล้ว",
+            text: `แอปพลิเคชันจะถูกถอนการติดตั้งในไม่ช้า`,
+          },
+          SET_SCREEN_BRIGHTNESS: {
+            title: "ส่งคำสั่งปรับความสว่างแล้ว",
+            text: `ความสว่างหน้าจอจะถูกปรับในไม่ช้า`,
+          },
+          SET_SCREEN_BRIGHTNESS_MODE: {
+            title: "ส่งคำสั่งเปลี่ยนโหมดความสว่างแล้ว",
+            text: "โหมดความสว่างหน้าจอจะถูกเปลี่ยนในไม่ช้า",
+          },
+          SET_RINGER_MODE: {
+            title: "ส่งคำสั่งเปลี่ยนโหมดเสียงแล้ว",
+            text: "โหมดเสียงของอุปกรณ์จะถูกเปลี่ยนในไม่ช้า",
+          },
+          SET_VOLUME_LEVEL: {
+            title: "ส่งคำสั่งปรับระดับเสียงแล้ว",
+            text: "ระดับเสียงของอุปกรณ์จะถูกปรับในไม่ช้า",
+          },
+          SET_DND_MODE: {
+            title: "ส่งคำสั่งโหมดห้ามรบกวนแล้ว",
+            text: "โหมดห้ามรบกวนของอุปกรณ์จะถูกเปลี่ยนในไม่ช้า",
+          },
+          WIPE_DEVICE: {
+            title: "ส่งคำสั่งล้างข้อมูลแล้ว",
+            text: "อุปกรณ์จะเริ่มกระบวนการล้างข้อมูลทั้งหมดและรีเซ็ตเป็นการตั้งค่าจากโรงงาน",
+          },
           SET_SYSTEM_UPDATE_POLICY: { title: "Policy Updated", text: "System update policy has been updated." },
+          CLEAR_APP_DATA: { title: "ส่งคำสั่งล้างข้อมูลแล้ว", text: `ข้อมูลของแอปพลิเคชันจะถูกล้างในไม่ช้า` },
+          SET_SCREEN_OFF_TIMEOUT: { title: "ส่งคำสั่งตั้งค่าแล้ว", text: "เวลาปิดหน้าจอจะถูกเปลี่ยนในไม่ช้า" },
+
 
 
         };
@@ -410,7 +591,7 @@ export default function DeviceDetailPage() {
 
         Swal.fire(getToastConfig({
           icon: "success",
-          title: message.title,
+          title: message.title.replace('{appName}', params?.packageName || ''),
           text: message.text,
         }));
 
@@ -500,6 +681,22 @@ export default function DeviceDetailPage() {
     } catch (error) {
       // error ถูก handle แล้วใน sendCommand
     }
+  };
+
+  const handleConfirmLockScreenMessage = async () => {
+    if (!lockScreenMessage.trim()) {
+      Swal.fire(getSwalConfig({
+        icon: "warning",
+        title: "กรุณากรอกข้อความ",
+        text: "ต้องมีข้อความอย่างน้อย 1 ตัวอักษร",
+      }));
+      return;
+    }
+
+    await sendCommand("SET_LOCK_SCREEN_MESSAGE", {
+      message: lockScreenMessage.trim(),
+    });
+    setIsLockMessageDialogOpen(false);
   };
 
   const handleReportProblem = async () => {
@@ -988,10 +1185,10 @@ export default function DeviceDetailPage() {
               <CardHeader>
                 <CardTitle>สถานะอุปกรณ์</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Battery Section */}
+              <CardContent className="space-y-8">
+                {/* Battery & Power Section */}
                 <div>
-                  <h4 className="text-sm font-semibold mb-3 text-foreground">แบตเตอรี่</h4>
+                  <h4 className="text-base font-semibold mb-4 text-foreground">แบตเตอรี่และพลังงาน</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
@@ -1026,59 +1223,196 @@ export default function DeviceDetailPage() {
                         <span className="font-semibold">{device.batteryHealth}</span>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Network Section */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 text-foreground">เครือข่าย</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Wifi className={cn(
-                          "w-4 h-4",
-                          device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                        )} />
-                        <span className="text-sm">WiFi</span>
-                      </div>
-                      <Badge variant={device.wifiStatus ? "success" : "muted"} className="text-xs">
-                        {device.wifiStatus ? "เปิด" : "ปิด"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Signal className={cn(
-                          "w-4 h-4",
-                          device.networkConnected ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                        )} />
-                        <span className="text-sm">เครือข่าย</span>
-                      </div>
-                      <Badge variant={device.networkConnected ? "success" : "muted"} className="text-xs">
-                        {device.networkConnected ? "เชื่อมต่อ" : "ไม่เชื่อมต่อ"}
-                      </Badge>
-                    </div>
-                    {device.mobileDataEnabled && (
+                    {device.batteryTemperature != null && (
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-2">
-                          <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-sm">Mobile Data</span>
+                          <Sun className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">อุณหภูมิแบตเตอรี่</span>
                         </div>
-                        <Badge variant="info" className="text-xs">เปิด</Badge>
+                        <span className="font-semibold">{device.batteryTemperature}°C</span>
+                      </div>
+                    )}
+                    {device.thermalStatus && (() => {
+                      const status = device.thermalStatus?.toLowerCase();
+                      let variant: "success" | "info" | "warning" | "destructive" = "success";
+                      if (status === 'moderate' || status === 'light') variant = 'info';
+                      if (status === 'severe') variant = 'warning';
+                      if (status === 'critical' || status === 'emergency' || status === 'shutdown') variant = 'destructive';
+
+                      return (
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Sun className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">สถานะความร้อน</span>
+                          </div>
+                          <Badge variant={variant} className="text-xs capitalize">
+                            {device.thermalStatus?.replace(/_/g, ' ').toLowerCase()}
+                          </Badge>
+                        </div>
+                      );
+                    })()}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">รอบการชาร์จ</span>
+                      </div>
+                      <span className="font-semibold">{device.batteryCycleCount ?? 0}</span>
+                    </div>
+                    {device.powerSaveModeEnabled !== undefined && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">โหมดประหยัดพลังงาน</span>
+                        </div>
+                        <Badge variant={device.powerSaveModeEnabled ? "warning" : "muted"} className="text-xs">
+                          {device.powerSaveModeEnabled ? "เปิด" : "ปิด"}
+                        </Badge>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* System Section */}
+                {/* Connectivity Section */}
                 <div>
-                  <h4 className="text-sm font-semibold mb-3 text-foreground">ระบบ</h4>
+                  <h4 className="text-base font-semibold mb-4 text-foreground">การเชื่อมต่อและเครือข่าย</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Wi-Fi */}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Wifi className={cn("w-4 h-4", device.wifiStatus ? "text-green-600 dark:text-green-400" : "text-muted-foreground")} />
+                        <span className="text-sm">WiFi</span>
+                      </div>
+                      {device.wifiStatus ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold truncate max-w-[120px]">{device.ssid || "Connected"}</span>
+                          {device.wifiSignalStrength != null && <span className="text-sm font-semibold">{device.wifiSignalStrength} dBm</span>}
+                          <Badge variant="success" className="text-xs">เปิด</Badge>
+                        </div>
+                      ) : (<Badge variant="muted" className="text-xs">ปิด</Badge>)}
+                    </div>
+                    {device.wifiStandard && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Wifi className="w-4 h-4 text-muted-foreground" /><span className="text-sm">WiFi Standard</span></div>
+                        <span className="font-semibold">{device.wifiStandard}</span>
+                      </div>
+                    )}
+                    {device.ipAddress && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Network className="w-4 h-4 text-muted-foreground" /><span className="text-sm">IP Address</span></div>
+                        <span className="font-semibold">{device.ipAddress}</span>
+                      </div>
+                    )}
+                    {device.macAddress && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Network className="w-4 h-4 text-muted-foreground" /><span className="text-sm">MAC Address</span></div>
+                        <span className="font-semibold">{device.macAddress}</span>
+                      </div>
+                    )}
+
+                    {/* Cellular & SIM */}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Radio className={cn("w-4 h-4", device.mobileDataEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                        <span className="text-sm">Mobile Data</span>
+                      </div>
+                      {device.mobileDataEnabled ? (
+                        <div className="flex items-center gap-2">
+                          {device.cellularSignalStrength != null && <span className="text-sm font-semibold">{device.cellularSignalStrength} dBm</span>}
+                          <Badge variant="info" className="text-xs">เปิด</Badge>
+                        </div>
+                      ) : (<Badge variant="muted" className="text-xs">ปิด</Badge>)}
+                    </div>
+                    {device.networkType && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><RadioTower className="w-4 h-4 text-muted-foreground" /><span className="text-sm">ประเภทเครือข่าย</span></div>
+                        <span className="font-semibold">{device.networkType}</span>
+                      </div>
+                    )}
+                    {device.cellularGeneration && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Signal className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Cellular Gen.</span></div>
+                        <span className="font-semibold">{device.cellularGeneration}</span>
+                      </div>
+                    )}
+                    {device.simOperator && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><RadioTower className="w-4 h-4 text-muted-foreground" /><span className="text-sm">ผู้ให้บริการซิม</span></div>
+                        <span className="font-semibold">{device.simOperator}</span>
+                      </div>
+                    )}
+                    {device.phoneNumber && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><span className="text-sm">เบอร์โทรศัพท์</span></div>
+                        <span className="font-semibold">{device.phoneNumber}</span>
+                      </div>
+                    )}
+                    {device.simSerialNumber && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><FaSimCard className="w-4 h-4 text-muted-foreground" /><span className="text-sm">SIM Serial</span></div>
+                        <span className="font-semibold truncate">{device.simSerialNumber}</span>
+                      </div>
+                    )}
+
+                    {/* Other Connectivity */}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Radio className={cn("w-4 h-4", device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                        <span className="text-sm">Bluetooth</span>
+                      </div>
+                      <Badge variant={device.bluetoothEnabled ? "info" : "muted"} className="text-xs">{device.bluetoothEnabled ? "เปิด" : "ปิด"}</Badge>
+                    </div>
+                    {device.connectedBluetoothDevices && device.connectedBluetoothDevices.length > 0 && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Radio className="w-4 h-4 text-muted-foreground" /><span className="text-sm">อุปกรณ์ Bluetooth</span></div>
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {device.connectedBluetoothDevices.map((btDevice) => (<Badge key={btDevice} variant="outline" className="text-xs">{btDevice}</Badge>))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Radio className={cn("w-4 h-4", device.nfcEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                        <span className="text-sm">NFC</span>
+                      </div>
+                      <Badge variant={device.nfcEnabled ? "info" : "muted"} className="text-xs">{device.nfcEnabled ? "เปิด" : "ปิด"}</Badge>
+                    </div>
+                    {device.locationEnabled !== undefined && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <MapPin className={cn("w-4 h-4", device.locationEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                          <span className="text-sm">GPS</span>
+                        </div>
+                        <Badge variant={device.locationEnabled ? "info" : "muted"} className="text-xs">{device.locationEnabled ? "เปิด" : "ปิด"}</Badge>
+                      </div>
+                    )}
+                    {device.vpnActive !== undefined && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Shield className={cn("w-4 h-4", device.vpnActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                          <span className="text-sm">VPN</span>
+                        </div>
+                        <Badge variant={device.vpnActive ? "info" : "muted"} className="text-xs">{device.vpnActive ? "เชื่อมต่ออยู่" : "ไม่ได้เชื่อมต่อ"}</Badge>
+                      </div>
+                    )}
+                    {device.airplaneModeEnabled !== undefined && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Radio className={cn("w-4 h-4", device.airplaneModeEnabled ? "text-yellow-600 dark:text-yellow-400" : "text-muted-foreground")} />
+                          <span className="text-sm">โหมดเครื่องบิน</span>
+                        </div>
+                        <Badge variant={device.airplaneModeEnabled ? "warning" : "muted"} className="text-xs">{device.airplaneModeEnabled ? "เปิด" : "ปิด"}</Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Display & Sound Section */}
+                <div>
+                  <h4 className="text-base font-semibold mb-4 text-foreground">หน้าจอและเสียง</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
-                        <Activity className={cn(
-                          "w-4 h-4",
-                          device.screenOn ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                        )} />
+                        <ScreenShare className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">หน้าจอ</span>
                       </div>
                       <Badge variant={device.screenOn ? "success" : "muted"} className="text-xs">
@@ -1087,66 +1421,161 @@ export default function DeviceDetailPage() {
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
-                        <Settings className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">ระดับเสียง</span>
+                        <Sun className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">ความสว่าง</span>
                       </div>
-                      <span className="font-semibold">
-                        {device.volumeLevel != null && device.volumeLevel > 0
-                          ? `${device.volumeLevel}%`
-                          : "-"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
-                        <Radio className={cn(
-                          "w-4 h-4",
-                          device.bluetoothEnabled ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
-                        )} />
-                        <span className="text-sm">Bluetooth</span>
+                        {device.autoScreenBrightnessEnabled && (
+                          <Badge variant="outline" className="text-xs">อัตโนมัติ</Badge>
+                        )}
+                        <span className="font-semibold">
+                          {device.screenBrightness != null ? `${device.screenBrightness}%` : "-"}
+                        </span>
                       </div>
-                      <Badge variant={device.bluetoothEnabled ? "info" : "muted"} className="text-xs">
-                        {device.bluetoothEnabled ? "เปิด" : "ปิด"}
-                      </Badge>
                     </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Settings className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">Kiosk Mode</span>
-                      </div>
-                      {device.kioskMode ? (
-                        <Badge variant="outline" className="text-xs border-primary/30">เปิด</Badge>
-                      ) : (
-                        <Badge variant="muted" className="text-xs">ปิด</Badge>
-                      )}
-                    </div>
-                    {device.installedAppsCount != null && device.installedAppsCount > 0 && (
+                    {device.screenWidth && device.screenHeight && (
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-2">
-                          <Settings className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">แอปที่ติดตั้ง</span>
+                          <ScreenShare className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">ความละเอียด</span>
                         </div>
-                        <span className="font-semibold">{device.installedAppsCount}</span>
+                        <span className="font-semibold">{device.screenWidth} x {device.screenHeight}px</span>
+                      </div>
+                    )}
+                    {device.screenDpi && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Scan className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">ความหนาแน่น (DPI)</span>
+                        </div>
+                        <span className="font-semibold">{device.screenDpi} dpi</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {device.ringerMode === 'NORMAL' && <Volume2 className="w-4 h-4 text-muted-foreground" />}
+                        {device.ringerMode === 'VIBRATE' && <Vibrate className="w-4 h-4 text-muted-foreground" />}
+                        {device.ringerMode === 'SILENT' && <VolumeX className="w-4 h-4 text-muted-foreground" />}
+                        {!device.ringerMode && <Settings className="w-4 h-4 text-muted-foreground" />}
+                        <span className="text-sm">โหมดเสียง</span>
+                      </div>
+                      {device.ringerMode ? (
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {device.ringerMode}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Moon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">ห้ามรบกวน (DND)</span>
+                      </div>
+                      {device.dndMode && device.dndMode !== 'OFF' ? (
+                        <Badge variant="warning" className="text-xs capitalize">
+                          {device.dndMode.replace(/_/g, ' ')}
+                        </Badge>
+                      ) : (
+                        <Badge variant="muted" className="text-xs">
+                          ปิด
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* System & Security Section */}
+                <div>
+                  <h4 className="text-base font-semibold mb-4 text-foreground">ระบบและความปลอดภัย</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2"><Settings className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Kiosk Mode</span></div>
+                      {device.kioskMode ? (<Badge variant="outline" className="text-xs border-primary/30">เปิด</Badge>) : (<Badge variant="muted" className="text-xs">ปิด</Badge>)}
+                    </div>
+                    {device.rootState && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Root State</span></div>
+                        <Badge variant={device.rootState === 'ROOTED' ? 'destructive' : 'success'} className="text-xs">{device.rootState}</Badge>
+                      </div>
+                    )}
+                    {device.isSafeBoot !== undefined && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Safe Boot</span></div>
+                        <Badge variant={device.isSafeBoot ? "destructive" : "success"} className="text-xs">{device.isSafeBoot ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Badge>
+                      </div>
+                    )}
+                    {device.lastRebootReason && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Power className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Last Reboot Reason</span></div>
+                        <span className="text-sm font-medium capitalize">{device.lastRebootReason.replace(/_/g, ' ').toLowerCase()}</span>
+                      </div>
+                    )}
+                    {device.pendingSystemUpdateInfo && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-500/5 border-blue-500/20">
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4 text-blue-500" /><span className="text-sm text-blue-500">Pending System Update</span>
+                        </div>
+                        <Badge variant="info" className="text-xs">Available</Badge>
+                      </div>
+                    )}
+                    {device.securityPatch && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Security Patch</span></div>
+                        <span className="text-sm font-medium">{device.securityPatch}</span>
+                      </div>
+                    )}
+                    {device.encryptionStatus && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><FileLock className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Encryption</span></div>
+                        <Badge variant="outline" className="text-xs">{device.encryptionStatus.replace(/_/g, ' ')}</Badge>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Bug className={cn("w-4 h-4", device.developerModeEnabled ? "text-red-600 dark:text-red-400" : "text-muted-foreground")} />
+                        <span className="text-sm">Developer Mode</span>
+                      </div>
+                      <Badge variant={device.developerModeEnabled ? "destructive" : "muted"} className="text-xs">{device.developerModeEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Bug className={cn("w-4 h-4", device.adbEnabled ? "text-red-600 dark:text-red-400" : "text-muted-foreground")} />
+                        <span className="text-sm">ADB Status</span>
+                      </div>
+                      <Badge variant={device.adbEnabled ? "destructive" : "muted"} className="text-xs">{device.adbEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Badge>
+                    </div>
+                    {device.timezone && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Timezone</span></div>
+                        <span className="text-sm font-medium">{device.timezone}</span>
+                      </div>
+                    )}
+                    {device.locale && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2"><Globe className="w-4 h-4 text-muted-foreground" /><span className="text-sm">Locale</span></div>
+                        <span className="text-sm font-medium">{device.locale}</span>
                       </div>
                     )}
                     {device.bootTime && (() => {
-                      // bootTime is BigInt string (timestamp in milliseconds)
-                      const bootTimeNum = typeof device.bootTime === 'string' 
-                        ? Number(device.bootTime) 
-                        : device.bootTime;
+                      const bootTimeNum = typeof device.bootTime === 'string' ? Number(device.bootTime) : device.bootTime;
                       const bootDate = new Date(bootTimeNum);
                       if (isNaN(bootDate.getTime())) return null;
                       return (
                         <div className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">เวลาบูต</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {bootDate.toLocaleString('th-TH')}
-                          </span>
+                          <div className="flex items-center gap-2"><Activity className="w-4 h-4 text-muted-foreground" /><span className="text-sm">เวลาบูต</span></div>
+                          <span className="text-xs text-muted-foreground">{bootDate.toLocaleString('th-TH')}</span>
                         </div>
                       );
                     })()}
+                    {device.cameraFeatures && device.cameraFeatures.length > 0 && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg sm:col-span-2">
+                        <div className="flex items-center gap-2"><Camera className="w-4 h-4 text-muted-foreground" /><span className="text-sm">คุณสมบัติกล้อง</span></div>
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {device.cameraFeatures.map((feature) => (<Badge key={feature} variant="outline" className="text-xs capitalize">{feature.replace(/_/g, ' ').toLowerCase()}</Badge>))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1201,6 +1630,25 @@ export default function DeviceDetailPage() {
                             <MessageSquare className="w-4 h-4 mr-2" />
                             ส่งข้อความขึ้นหน้าจอ
                           </Button>
+                          <Button onClick={() => setIsLockMessageDialogOpen(true)} disabled={sendingCommand} variant="outline" className="w-full">
+                            <FileLock className="w-4 h-4 mr-2" />
+                            ตั้งค่าข้อความหน้าจอล็อก
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Emergency Alarm Section */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">เสียงเตือนฉุกเฉิน</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button onClick={() => sendCommand("PLAY_ALARM_SOUND")} disabled={sendingCommand} variant="destructive">
+                            <AlarmClock className="w-4 h-4 mr-2" />
+                            เปิดเสียงเตือน
+                          </Button>
+                          <Button onClick={() => sendCommand("STOP_ALARM_SOUND")} disabled={sendingCommand} variant="outline">
+                            <VolumeX className="w-4 h-4 mr-2" />
+                            ปิดเสียงเตือน
+                          </Button>
                         </div>
                       </div>
 
@@ -1213,12 +1661,18 @@ export default function DeviceDetailPage() {
                             รีสตาร์ท
                           </Button>
                           <Button onClick={() => sendCommand("SHUTDOWN_DEVICE")} disabled={sendingCommand} variant="destructive" className="bg-red-600/10 text-red-600 border-red-600/20 hover:bg-red-600/20">
-                            <Power className="w-4 h-4 mr-2" />
-                            ปิดเครื่อง
+                            <Power className="w-4 h-4 mr-2" />ปิดเครื่อง
                           </Button>
                           <Button onClick={() => sendCommand("LOCK_DEVICE")} disabled={sendingCommand} variant="outline">
-                            <Lock className="w-4 h-4 mr-2" />
-                            ล็อค
+                            <Lock className="w-4 h-4 mr-2" />ล็อค
+                          </Button>
+                          <Button
+                            onClick={() => sendCommand("WIPE_DEVICE")}
+                            disabled={sendingCommand}
+                            variant="destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            ล้างข้อมูลเครื่อง (Wipe)
                           </Button>
                           <Button onClick={() => sendCommand("SEND_DATA_NOW")} disabled={sendingCommand} variant="outline" className="col-span-2">
                             <Zap className="w-4 h-4 mr-2" />
@@ -1323,7 +1777,7 @@ export default function DeviceDetailPage() {
                               <Bug className="w-4 h-4 text-muted-foreground" />
                               <Label htmlFor="debugging-toggle" className="text-sm font-medium cursor-pointer">อนุญาต Debugging</Label>
                             </div>
-                            <Switch id="debugging-toggle" checked={device.debugAllowed} onCheckedChange={async (checked) => {
+                            <Switch id="debugging-toggle" checked={device.debugAllowed ?? device.developerModeEnabled} onCheckedChange={async (checked) => {
                               setDevice((prev) => prev ? { ...prev, debugAllowed: checked } : null);
                               await sendCommand("SET_DEBUGGING_ALLOWED", { allowed: checked });
                             }} disabled={sendingCommand} />
@@ -1585,82 +2039,305 @@ export default function DeviceDetailPage() {
 
                   {/* Hardware Tab */}
                   <TabsContent value="hardware" className="mt-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <MicOff className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="mic-mute-toggle" className="text-sm font-medium cursor-pointer">ปิดไมโครโฟน</Label>
+                    <div className="space-y-6">
+                      {/* Screen Brightness */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">ความสว่างหน้าจอ</h4>
+                        <div className="flex items-center justify-between p-3 border rounded-lg mb-3">
+                          <div className="flex items-center gap-3">
+                            <Sun className="w-4 h-4 text-muted-foreground" />
+                            <Label htmlFor="auto-brightness-toggle" className="text-sm font-medium cursor-pointer">ปรับความสว่างอัตโนมัติ</Label>
+                          </div>
+                          <Switch id="auto-brightness-toggle" checked={device.autoScreenBrightnessEnabled} onCheckedChange={async (checked) => {
+                            setDevice((prev) => prev ? { ...prev, autoScreenBrightnessEnabled: checked } : null);
+                            await sendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: checked ? 'AUTOMATIC' : 'MANUAL' });
+                          }} disabled={sendingCommand} />
                         </div>
-                        <Switch id="mic-mute-toggle" checked={device.micMute} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, micMute: checked } : null);
-                          await sendCommand("SET_MICROPHONE_MUTED", { muted: checked });
-                        }} disabled={sendingCommand} />
+                        <div className="p-3 border rounded-lg space-y-4">
+                          <div className="flex items-center gap-4">
+                            <Sun className="w-5 h-5 text-muted-foreground" />
+                            <Slider
+                              value={brightnessValue}
+                              onValueChange={setBrightnessValue}
+                              max={100}
+                              step={1}
+                              disabled={sendingCommand || device.autoScreenBrightnessEnabled}
+                            />
+                            <span className="text-sm font-semibold w-12 text-center">{brightnessValue[0]}%</span>
+                          </div>
+                          {device.autoScreenBrightnessEnabled && (
+                            <p className="text-xs text-center text-muted-foreground">ปิดโหมดปรับความสว่างอัตโนมัติบนอุปกรณ์เพื่อตั้งค่าด้วยตนเอง</p>
+                          )}
+                          <Button
+                            onClick={() => sendCommand("SET_SCREEN_BRIGHTNESS", { brightness: brightnessValue[0] })}
+                            disabled={sendingCommand || device.autoScreenBrightnessEnabled}
+                            className="w-full"
+                          >
+                            <Sun className="w-4 h-4 mr-2" />
+                            ตั้งค่าความสว่าง
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <MemoryStick className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="sd-card-toggle" className="text-sm font-medium cursor-pointer">อนุญาตใช้ SD Card</Label>
+                      {/* Screen Off Timeout */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">เวลาปิดหน้าจอ</h4>
+                        <div className="p-3 border rounded-lg space-y-3">
+                          <div className="flex items-center gap-4">
+                            <Timer className="w-5 h-5 text-muted-foreground" />
+                            <Select value={String(screenOffTimeout)} onValueChange={(v) => setScreenOffTimeout(Number(v))}>
+                              <SelectTrigger disabled={sendingCommand}>
+                                <SelectValue placeholder="เลือกเวลา" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="15000">15 วินาที</SelectItem>
+                                <SelectItem value="30000">30 วินาที</SelectItem>
+                                <SelectItem value="60000">1 นาที</SelectItem>
+                                <SelectItem value="120000">2 นาที</SelectItem>
+                                <SelectItem value="300000">5 นาที</SelectItem>
+                                <SelectItem value="600000">10 นาที</SelectItem>
+                                <SelectItem value="1800000">30 นาที</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            onClick={() => sendCommand("SET_SCREEN_OFF_TIMEOUT", { timeout: screenOffTimeout })}
+                            disabled={sendingCommand}
+                            className="w-full"
+                          >
+                            <Timer className="w-4 h-4 mr-2" />
+                            ตั้งค่าเวลาปิดหน้าจอ
+                          </Button>
                         </div>
-                        <Switch id="sd-card-toggle" checked={device.sdcardAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, sdcardAllowed: checked } : null);
-                          await sendCommand("SET_EXTERNAL_MEDIA_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
                       </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Usb className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="usb-transfer-toggle" className="text-sm font-muted cursor-pointer">อนุญาตโอนไฟล์ผ่าน USB</Label>
+                      {/* Ringer Mode */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">โหมดเสียง</h4>
+                        <div className="p-3 border rounded-lg">
+                          <div className="grid grid-cols-3 gap-2">
+                            <Button
+                              variant={device.ringerMode === 'NORMAL' ? 'default' : 'outline'}
+                              onClick={() => sendCommand("SET_RINGER_MODE", { mode: "NORMAL" })}
+                              disabled={sendingCommand}
+                            >
+                              <Volume2 className="w-4 h-4 mr-2" />
+                              ปกติ
+                            </Button>
+                            <Button
+                              variant={device.ringerMode === 'VIBRATE' ? 'default' : 'outline'}
+                              onClick={() => sendCommand("SET_RINGER_MODE", { mode: "VIBRATE" })}
+                              disabled={sendingCommand}
+                            >
+                              <Vibrate className="w-4 h-4 mr-2" />
+                              สั่น
+                            </Button>
+                            <Button
+                              variant={device.ringerMode === 'SILENT' ? 'destructive' : 'outline'}
+                              onClick={() => sendCommand("SET_RINGER_MODE", { mode: "SILENT" })}
+                              disabled={sendingCommand}
+                            >
+                              <VolumeX className="w-4 h-4 mr-2" />
+                              เงียบ
+                            </Button>
+                          </div>
                         </div>
-                        <Switch id="usb-transfer-toggle" checked={device.usbfileTranferAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, usbfileTranferAllowed: checked } : null);
-                          await sendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
+                      </div>
+                      {/* Volume Level */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">ระดับเสียง (Volume)</h4>
+                        <div className="p-3 border rounded-lg space-y-4">
+                          {(['media', 'ring', 'notification', 'alarm'] as const).map((type) => (
+                            <div key={type} className="space-y-2">
+                              <Label className="text-xs capitalize flex items-center">
+                                {type === 'media' && <Music className="w-3 h-3 mr-1.5" />}
+                                {type === 'ring' && <Phone className="w-3 h-3 mr-1.5" />}
+                                {type === 'notification' && <Bell className="w-3 h-3 mr-1.5" />}
+                                {type === 'alarm' && <AlarmClock className="w-3 h-3 mr-1.5" />}
+                                {type}
+                              </Label>
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={volumeValues[type]}
+                                  onValueChange={(value) => setVolumeValues(prev => ({ ...prev, [type]: value }))}
+                                  max={100}
+                                  step={1}
+                                  disabled={sendingCommand}
+                                />
+                                <span className="text-sm font-semibold w-10 text-center">{volumeValues[type][0]}%</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => sendCommand("SET_VOLUME_LEVEL", { type, level: volumeValues[type][0] })}
+                                  onClick={() => sendCommand("SET_VOLUME_LEVEL", { 
+                                    ring: volumeValues.ring[0],
+                                    media: volumeValues.media[0],
+                                    notification: volumeValues.notification[0],
+                                    alarm: volumeValues.alarm[0],
+                                    [type]: volumeValues[type][0]
+                                  })}                                  disabled={sendingCommand}
+                                  className="px-2"
+                                >
+                                  <Zap className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button 
+                            onClick={() => {
+                              const params = {
+                                ring: volumeValues.ring[0],
+                                media: volumeValues.media[0],
+                                notification: volumeValues.notification[0],
+                                alarm: volumeValues.alarm[0],
+                              };
+                              sendCommand("SET_VOLUME_LEVEL", params);
+                            }}
+                            disabled={sendingCommand} 
+                            className="w-full">
+                              <Volume2 className="w-4 h-4 mr-2" /> ตั้งค่าระดับเสียงทั้งหมด
+                            </Button>
+                        </div>
+                      </div>
+                      {/* Do Not Disturb (DND) Mode */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">โหมดห้ามรบกวน (DND)</h4>
+                        <div className="p-3 border rounded-lg">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant={!device.dndMode || device.dndMode === 'OFF' ? 'default' : 'outline'}
+                              onClick={() => sendCommand("SET_DND_MODE", { mode: "OFF" })}
+                              disabled={sendingCommand}
+                            >
+                              <Bell className="w-4 h-4 mr-2" />
+                              ปิด
+                            </Button>
+                            <Button
+                              variant={device.dndMode === 'ALARMS_ONLY' ? 'default' : 'outline'}
+                              onClick={() => sendCommand("SET_DND_MODE", { mode: "ALARMS_ONLY" })}
+                              disabled={sendingCommand}
+                            >
+                              <AlertCircle className="w-4 h-4 mr-2" />
+                              เฉพาะการปลุก
+                            </Button>
+                            <Button
+                              variant={device.dndMode === 'PRIORITY_ONLY' ? 'default' : 'outline'}
+                              onClick={() => sendCommand("SET_DND_MODE", { mode: "PRIORITY_ONLY" })}
+                              disabled={sendingCommand}
+                            >
+                              <Star className="w-4 h-4 mr-2" />
+                              เฉพาะรายการสำคัญ
+                            </Button>
+                            <Button
+                              variant={device.dndMode === 'TOTAL_SILENCE' ? 'destructive' : 'outline'}
+                              onClick={() => sendCommand("SET_DND_MODE", { mode: "TOTAL_SILENCE" })}
+                              disabled={sendingCommand}
+                            >
+                              <Moon className="w-4 h-4 mr-2" />
+                              ปิดเสียงทั้งหมด
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Other Hardware Policies */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">นโยบายฮาร์ดแวร์</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <MicOff className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="mic-mute-toggle" className="text-sm font-medium cursor-pointer">ปิดไมโครโฟน</Label>
+                            </div>
+                            <Switch id="mic-mute-toggle" checked={device.micMute} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, micMute: checked } : null);
+                              await sendCommand("SET_MICROPHONE_MUTED", { muted: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <MemoryStick className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="sd-card-toggle" className="text-sm font-medium cursor-pointer">อนุญาตใช้ SD Card</Label>
+                            </div>
+                            <Switch id="sd-card-toggle" checked={device.sdcardAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, sdcardAllowed: checked } : null);
+                              await sendCommand("SET_EXTERNAL_MEDIA_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Usb className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="usb-transfer-toggle" className="text-sm font-medium cursor-pointer">อนุญาตโอนไฟล์ผ่าน USB</Label>
+                            </div>
+                            <Switch id="usb-transfer-toggle" checked={device.usbfileTranferAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, usbfileTranferAllowed: checked } : null);
+                              await sendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </TabsContent>
 
                   {/* Applications Tab */}
                   <TabsContent value="apps" className="mt-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <AppWindow className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="uninstall-toggle" className="text-sm font-medium cursor-pointer">อนุญาตถอนการติดตั้งแอป</Label>
+                    <div className="space-y-6">
+                      {/* App Policies */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">นโยบายแอปพลิเคชัน</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <AppWindow className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="uninstall-toggle" className="text-sm font-medium cursor-pointer">อนุญาตถอนการติดตั้งแอป</Label>
+                            </div>
+                            <Switch id="uninstall-toggle" checked={device.uninstallAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, uninstallAllowed: checked } : null);
+                              await sendCommand("SET_APP_UNINSTALL_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Package className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="unknown-sources-toggle" className="text-sm font-medium cursor-pointer">อนุญาตติดตั้งแอปที่ไม่รู้จัก</Label>
+                            </div>
+                            <Switch id="unknown-sources-toggle" checked={device.installUnknowAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, installUnknowAllowed: checked } : null);
+                              await sendCommand("SET_INSTALL_UNKNOWN_SOURCES_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <AppWindow className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="manage-apps-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจัดการแอป</Label>
+                            </div>
+                            <Switch id="manage-apps-toggle" checked={device.manageAppAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, manageAppAllowed: checked } : null);
+                              await sendCommand("SET_MANAGING_APPS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Scan className="w-4 h-4 text-muted-foreground" />
+                              <Label htmlFor="google-scan-toggle" className="text-sm font-medium cursor-pointer">บังคับสแกนแอปด้วย Google</Label>
+                            </div>
+                            <Switch id="google-scan-toggle" checked={device.googleScanAllowed} onCheckedChange={async (checked) => {
+                              setDevice((prev) => prev ? { ...prev, googleScanAllowed: checked } : null);
+                              await sendCommand("SET_GOOGLE_SECURITY_SCANS_ALLOWED", { allowed: checked });
+                            }} disabled={sendingCommand} />
+                          </div>
                         </div>
-                        <Switch id="uninstall-toggle" checked={device.uninstallAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, uninstallAllowed: checked } : null);
-                          await sendCommand("SET_APP_UNINSTALL_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
                       </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Package className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="unknown-sources-toggle" className="text-sm font-medium cursor-pointer">อนุญาตติดตั้งแอปที่ไม่รู้จัก</Label>
-                        </div>
-                        <Switch id="unknown-sources-toggle" checked={device.installUnknowAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, installUnknowAllowed: checked } : null);
-                          await sendCommand("SET_INSTALL_UNKNOWN_SOURCES_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <AppWindow className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="manage-apps-toggle" className="text-sm font-medium cursor-pointer">อนุญาตจัดการแอป</Label>
-                        </div>
-                        <Switch id="manage-apps-toggle" checked={device.manageAppAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, manageAppAllowed: checked } : null);
-                          await sendCommand("SET_MANAGING_APPS_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Scan className="w-4 h-4 text-muted-foreground" />
-                          <Label htmlFor="google-scan-toggle" className="text-sm font-medium cursor-pointer">บังคับสแกนแอปด้วย Google</Label>
-                        </div>
-                        <Switch id="google-scan-toggle" checked={device.googleScanAllowed} onCheckedChange={async (checked) => {
-                          setDevice((prev) => prev ? { ...prev, googleScanAllowed: checked } : null);
-                          await sendCommand("SET_GOOGLE_SECURITY_SCANS_ALLOWED", { allowed: checked });
-                        }} disabled={sendingCommand} />
+
+                      {/* Installed Apps List */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-foreground">
+                          รายการแอปพลิเคชันที่ติดตั้ง ({device.installedAppsCount || 0})
+                        </h4>
+                        <AppList 
+                          apps={device.installedAppDetails || []} 
+                          onUninstall={(packageName) => sendCommand("SILENT_UNINSTALL_APP", { packageName })}
+                          onClearData={(packageName) => sendCommand("CLEAR_APP_DATA", { packageName })}
+                          foregroundApp={device.foregroundApp}
+                          sendingCommand={sendingCommand}
+                        />
                       </div>
                     </div>
                   </TabsContent>
@@ -2027,11 +2704,11 @@ export default function DeviceDetailPage() {
               </CardContent>
             </Card>
 
-            {/* System Metrics */}
-            {device.metrics && device.metrics.length > 0 && (
+            {/* System Performance & Memory */}
+            {(device.cpuUsage != null || device.cpuTemperature != null || device.ramTotal || device.storageTotal) ? (
               <Card className="card-hover">
                 <CardHeader>
-                  <CardTitle>ประสิทธิภาพระบบ</CardTitle>
+                  <CardTitle>ประสิทธิภาพและหน่วยความจำ</CardTitle>
                   <CardDescription>
                     ข้อมูลล่าสุด
                   </CardDescription>
@@ -2039,79 +2716,92 @@ export default function DeviceDetailPage() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between text-sm">
                         <span className="text-sm text-muted-foreground">CPU</span>
-                        <span className="text-sm font-semibold">
-                          {device.metrics[0]?.cpu?.toFixed(1) || 0}%
-                        </span>
+                        <div className="flex items-baseline gap-2">
+                          {device.cpuTemperature != null ? (
+                            <Badge variant="outline" className="text-xs">
+                              {device.cpuTemperature.toFixed(1)}°C
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" className="text-xs">
+                              ปกติ
+                            </Badge>
+                          )}
+                          {device.cpuUsage != null ? (
+                            <span className="font-semibold">
+                              {device.cpuUsage.toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">ไม่มีข้อมูล</span>
+                          )}
+                        </div>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary transition-all"
-                          style={{ width: `${device.metrics[0]?.cpu || 0}%` }}
+                          style={{ width: `${device.cpuUsage ?? device.metrics?.[0]?.cpu ?? 0}%` }}
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Memory</span>
-                        <span className="text-sm font-semibold">
-                          {device.metrics[0]?.memoryUsed
-                            ? (
-                                (Number(device.metrics[0].memoryUsed) /
-                                  Number(device.metrics[0].memoryTotal)) *
-                                100
-                              ).toFixed(1)
-                            : 0}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 transition-all"
-                          style={{
-                            width: `${device.metrics[0]?.memoryUsed
-                              ? (
-                                  (Number(device.metrics[0].memoryUsed) /
-                                    Number(device.metrics[0].memoryTotal)) *
-                                  100
-                                )
-                              : 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Storage</span>
-                        <span className="text-sm font-semibold">
-                          {device.metrics[0]?.storageUsed
-                            ? (
-                                (Number(device.metrics[0].storageUsed) /
-                                  Number(device.metrics[0].storageTotal)) *
-                                100
-                              ).toFixed(1)
-                            : 0}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 transition-all"
-                          style={{
-                            width: `${device.metrics[0]?.storageUsed
-                              ? (
-                                  (Number(device.metrics[0].storageUsed) /
-                                    Number(device.metrics[0].storageTotal)) *
-                                  100
-                                )
-                              : 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
+                    {device.ramTotal && device.ramAvailable && (() => {
+                      const total = Number(device.ramTotal);
+                      const available = Number(device.ramAvailable);
+                      const used = total - available;
+                      const percentage = total > 0 ? (used / total) * 100 : 0;
+                      const bytesToGb = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(2);
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Memory (RAM)</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({bytesToGb(used)} / {bytesToGb(total)} GB)
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {device.storageTotal && device.storageFree && (() => {
+                      const total = Number(device.storageTotal);
+                      const free = Number(device.storageFree);
+                      const used = total - free;
+                      const percentage = total > 0 ? (used / total) * 100 : 0;
+                      const bytesToGb = (bytes: number) => (bytes / 1024 / 1024 / 1024).toFixed(2);
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Storage</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({bytesToGb(used)} / {bytesToGb(total)} GB)
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500 transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
             {/* Device Info Summary */}
             <Card className="card-hover">
@@ -2124,27 +2814,47 @@ export default function DeviceDetailPage() {
                   <span className="text-sm font-medium">{device.deviceCode}</span>
                 </div>
                 {device.name && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">ชื่อ</span>
-                    <span className="text-sm font-medium">{device.name}</span>
+                    <span className="text-sm font-medium text-right truncate">{device.name}</span>
                   </div>
                 )}
                 {device.serialNumber && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">Serial Number</span>
-                    <span className="text-sm font-medium">{device.serialNumber}</span>
+                    <span className="text-sm font-medium text-right truncate">{device.serialNumber}</span>
                   </div>
                 )}
                 {device.model && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">รุ่น</span>
-                    <span className="text-sm font-medium">{device.model}</span>
+                    <div className="flex items-center gap-1.5">
+                      <BrandIcon brandName={device.brandName} />
+                      <span className="text-sm font-medium text-right truncate">{device.brandName ? `${device.brandName} ` : ""}{device.model}</span>
+                    </div>
                   </div>
                 )}
                 {device.osVersion && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">OS Version</span>
-                    <span className="text-sm font-medium">{device.osVersion}</span>
+                    <div className="flex items-center gap-1.5">
+                      <FaAndroid className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium text-right truncate">{device.osVersion}</span>
+                    </div>
+                  </div>
+                )}
+                {device.buildNumber && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">Build Number</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-right max-w-[150px]">{device.buildNumber}</span>
+                    </div>
+                  </div>
+                )}
+                {device.cpuAbi && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">CPU ABI</span>
+                    <span className="text-sm font-medium text-right max-w-[150px]">{device.cpuAbi}</span>
                   </div>
                 )}
                 <div className="pt-2 border-t">
@@ -2157,9 +2867,7 @@ export default function DeviceDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Last Seen</span>
                     <span className="text-xs text-muted-foreground">
-                      {safeFormatDistanceToNow(device.lastSeen, {
-                        addSuffix: true,
-                      }, "ไม่ทราบเวลา")}
+                      {safeFormatDistanceToNow(device.lastSeen, { addSuffix: true, }, "ไม่ทราบเวลา")}
                     </span>
                   </div>
                 </div>
@@ -2220,6 +2928,44 @@ export default function DeviceDetailPage() {
               >
                 ส่งข้อความ
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Set Lock Screen Message Dialog */}
+        <Dialog open={isLockMessageDialogOpen} onOpenChange={(open) => {
+          setIsLockMessageDialogOpen(open);
+          if (!open) {
+            setLockScreenMessage("");
+          }
+        }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>ตั้งค่าข้อความหน้าจอล็อก</DialogTitle>
+              <DialogDescription>
+                พิมพ์ข้อความที่ต้องการให้แสดงบนหน้าจอล็อกของอุปกรณ์
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="lock-screen-message">ข้อความ</Label>
+                <Input
+                  id="lock-screen-message"
+                  placeholder="เช่น 'หากพบ กรุณาติดต่อ...'"
+                  value={lockScreenMessage}
+                  onChange={(e) => setLockScreenMessage(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsLockMessageDialogOpen(false)}
+              >
+                ยกเลิก
+              </Button>
+              <Button type="button" onClick={handleConfirmLockScreenMessage} disabled={sendingCommand}>ส่งข้อความ</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

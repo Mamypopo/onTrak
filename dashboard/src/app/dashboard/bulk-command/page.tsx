@@ -11,7 +11,7 @@ import Swal from "sweetalert2";
 import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tablet, CheckCircle2, XCircle, Bell, MessageSquare, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, MessageCircle, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings, Vibrate, VolumeX, Moon, Star, AlertCircle, Music, Phone, AlarmClock } from "lucide-react";
+import { Tablet, CheckCircle2, XCircle, Bell, MessageSquare, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, MessageCircle, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings, Vibrate, VolumeX, Moon, Star, AlertCircle, Music, Phone, AlarmClock, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -482,10 +482,10 @@ export default function BulkCommandPage() {
                       <CardTitle className="text-base">ปิดเสียงเฉพาะประเภท</CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "media", level: 0 })} disabled={sending}><Music className="w-4 h-4 mr-2" />ปิดเสียงมีเดีย</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "ring", level: 0 })} disabled={sending}><Phone className="w-4 h-4 mr-2" />ปิดเสียงเรียกเข้า</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "notification", level: 0 })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปิดเสียงแจ้งเตือน</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { type: "alarm", level: 0 })} disabled={sending}><AlarmClock className="w-4 h-4 mr-2" />ปิดเสียงปลุก</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: 0, ring: -1, notification: -1, alarm: -1 })} disabled={sending}><Music className="w-4 h-4 mr-2" />ปิดเสียงมีเดีย</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: 0, notification: -1, alarm: -1 })} disabled={sending}><Phone className="w-4 h-4 mr-2" />ปิดเสียงเรียกเข้า</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: -1, notification: 0, alarm: -1 })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปิดเสียงแจ้งเตือน</Button>
+                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: -1, notification: -1, alarm: 0 })} disabled={sending}><AlarmClock className="w-4 h-4 mr-2" />ปิดเสียงปลุก</Button>
                     </CardContent>
                   </Card>
                 </div>
