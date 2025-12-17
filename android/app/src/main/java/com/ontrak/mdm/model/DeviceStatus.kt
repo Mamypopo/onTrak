@@ -12,6 +12,9 @@ data class DeviceStatus(
     @SerializedName("osVersion")
     val osVersion: String,
 
+    @SerializedName("buildNumber")
+    val buildNumber: String?,
+
     @SerializedName("deviceModel")
     val deviceModel: String,
 
@@ -30,6 +33,12 @@ data class DeviceStatus(
     @SerializedName("simOperator")
     val simOperator: String?,
 
+    @SerializedName("simSerialNumber")
+    val simSerialNumber: String?,
+
+    @SerializedName("phoneNumber")
+    val phoneNumber: String?,
+
     @SerializedName("ipAddress")
     val ipAddress: String?,
 
@@ -45,6 +54,9 @@ data class DeviceStatus(
     @SerializedName("nfcEnabled")
     val nfcEnabled: Boolean = false,
 
+    @SerializedName("isAdbEnabled")
+    val isAdbEnabled: Boolean = false,
+
     @SerializedName("isScreenLockEnabled")
     val isScreenLockEnabled: Boolean = false,
 
@@ -57,8 +69,11 @@ data class DeviceStatus(
     @SerializedName("isGpsEnabled")
     val isGpsEnabled: Boolean = false,
 
-    @SerializedName("installedApps")
-    val installedApps: List<String> = emptyList(),
+    @SerializedName("installedAppDetails")
+    val installedAppDetails: List<AppDetail> = emptyList(),
+
+    @SerializedName("foregroundApp")
+    val foregroundApp: String? = null,
 
     @SerializedName("ssid")
     val ssid: String?,
@@ -149,8 +164,84 @@ data class DeviceStatus(
     @SerializedName("bootTime")
     val bootTime: Long = 0,
 
+    // Storage Info
+    @SerializedName("totalStorage")
+    val totalStorage: Long? = null,
+
+    @SerializedName("freeStorage")
+    val freeStorage: Long? = null,
+
+    @SerializedName("totalExternalStorage")
+    val totalExternalStorage: Long? = null,
+
+    @SerializedName("freeExternalStorage")
+    val freeExternalStorage: Long? = null,
+
+    // Memory Info
+    @SerializedName("totalRam")
+    val totalRam: Long? = null,
+
+    @SerializedName("availableRam")
+    val availableRam: Long? = null,
+
+
+
+    // Additional Network Info
+    @SerializedName("networkType")
+    val networkType: String? = null,
+
+    // Camera and Bluetooth
+    @SerializedName("cameraFeatures")
+    val cameraFeatures: List<String> = emptyList(),
+
+    @SerializedName("connectedBluetoothDevices")
+    val connectedBluetoothDevices: List<String> = emptyList(),
+
+    // Thermal Status
+    @SerializedName("thermalStatus")
+    val thermalStatus: String? = null,
+
+    @SerializedName("cpuUsage")
+    val cpuUsage: Double?,
+
+    @SerializedName("cpuTemperature")
+    val cpuTemperature: Float?,
+
+    @SerializedName("cpuAbi")
+    val cpuAbi: String?,
+
+    @SerializedName("isSafeBoot")
+    val isSafeBoot: Boolean = false,
+
+    @SerializedName("wifiStandard")
+    val wifiStandard: String? = null,
+
+    @SerializedName("cellularGeneration")
+    val cellularGeneration: String? = null,
+
+    @SerializedName("pendingSystemUpdateInfo")
+    val pendingSystemUpdateInfo: Map<String, Any>? = null,
+
+    @SerializedName("lastRebootReason")
+    val lastRebootReason: String? = null,
+
     @SerializedName("timestamp")
     val timestamp: Long = System.currentTimeMillis()
+)
+
+data class AppDetail(
+    @SerializedName("packageName")
+    val packageName: String,
+    @SerializedName("label")
+    val label: String,
+    @SerializedName("versionName")
+    val versionName: String?,
+    @SerializedName("versionCode")
+    val versionCode: Long,
+    @SerializedName("firstInstallTime")
+    val firstInstallTime: Long,
+    @SerializedName("lastUpdateTime")
+    val lastUpdateTime: Long
 )
 
 data class VolumeLevels(

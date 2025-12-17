@@ -93,6 +93,7 @@ class MQTTManager private constructor(private val context: Context) {
                     "unknown"
                 }
                 val osVersion = Build.VERSION.RELEASE
+                val buildNumber = Build.DISPLAY
                 val deviceModel = Build.MODEL
                 val brand = Build.BRAND
                 val isRooted = DeviceInfo.isDeviceRooted()
@@ -104,6 +105,7 @@ class MQTTManager private constructor(private val context: Context) {
                 val timezone = DeviceInfo.getTimezone()
                 val locale = DeviceInfo.getLocale()
                 val nfcEnabled = DeviceInfo.isNfcEnabled(context)
+                val isAdbEnabled = DeviceInfo.isAdbEnabled(context)
                 val isScreenLockEnabled = DeviceInfo.isScreenLockEnabled(context)
                 val isDeveloperModeEnabled = DeviceInfo.isDeveloperModeEnabled(context)
                 val isVpnActive = DeviceInfo.isVpnActive(context)
@@ -123,27 +125,45 @@ class MQTTManager private constructor(private val context: Context) {
                 val screenWidth = DeviceInfo.getScreenWidth(context)
                 val screenHeight = DeviceInfo.getScreenHeight(context)
                 val screenDpi = DeviceInfo.getScreenDpi(context)
+                val thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    DeviceInfo.getThermalStatus(context)
+                } else {
+                    null
+                }
+                val cpuUsage = DeviceInfo.getCpuUsage()
+                val cpuTemperature = DeviceInfo.getCpuTemperature()
+                val simSerialNumber = DeviceInfo.getSimSerialNumber(context)
+                val phoneNumber = try {
+                    DeviceInfo.getPhoneNumber(context)
+                } catch (e: SecurityException) {
+                    Log.w(TAG, "Failed to get phone number. App might not be a device owner or lacks permissions.", e)
+                    "unknown"
+                }
 
                 val willMessage = gson.toJson(DeviceStatus(
                     deviceId = deviceId,
                     serialNumber = serialNumber,
                     osVersion = osVersion,
+                    buildNumber = buildNumber,
                     deviceModel = deviceModel,
                     brand = brand,
                     isRooted = isRooted,
                     securityPatch = securityPatch,
                     encryptionStatus = encryptionStatus,
                     simOperator = simOperator,
+                    simSerialNumber = simSerialNumber,
+                    phoneNumber = phoneNumber,
                     ipAddress = ipAddress,
                     macAddress = macAddress,
                     timezone = timezone,
                     locale = locale,
                     nfcEnabled = nfcEnabled,
+                    isAdbEnabled = isAdbEnabled,
                     isScreenLockEnabled = isScreenLockEnabled,
                     isDeveloperModeEnabled = isDeveloperModeEnabled,
                     isVpnActive = isVpnActive,
                     isGpsEnabled = isGpsEnabled,
-                    installedApps = emptyList(),
+                    installedAppDetails = emptyList(),
                     ssid = ssid,
                     cellularSignalStrength = cellularSignalStrength,
                     wifiSignalStrength = wifiSignalStrength,
@@ -170,7 +190,20 @@ class MQTTManager private constructor(private val context: Context) {
                     volumeLevels = volumeLevels,
                     bluetoothEnabled = false,
                     installedAppsCount = 0,
-                    bootTime = 0
+                    bootTime = 0,
+                    totalStorage = null,
+                    freeStorage = null,
+                    totalExternalStorage = null,
+                    freeExternalStorage = null,
+                    totalRam = null,
+                    availableRam = null,
+                    networkType = null,
+                    cameraFeatures = emptyList(),
+                    connectedBluetoothDevices = emptyList(),
+                    thermalStatus = thermalStatus,
+                    cpuUsage = cpuUsage,
+                    cpuTemperature = cpuTemperature,
+                    cpuAbi = null,
                 ))
                 setWill(willTopic, willMessage.toByteArray(), 1, false)
             }

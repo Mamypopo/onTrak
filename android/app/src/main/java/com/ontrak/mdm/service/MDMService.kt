@@ -2,6 +2,7 @@ package com.ontrak.mdm.service
 
 import android.annotation.SuppressLint
 import android.app.*
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -236,160 +237,243 @@ class MDMService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun publishStatus() {
-        try {
-            val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
-            val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        DeviceInfo.getConnectedBluetoothDevices(this) { connectedBluetoothDevices ->
+            serviceScope.launch {
+                try {
+                    val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+                    val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
 
-            val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val isCharging = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING
+                    val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                    val isCharging = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING
 
-            val batteryHealth = try {
-                when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)) {
-                    BatteryManager.BATTERY_HEALTH_GOOD -> "GOOD"
-                    BatteryManager.BATTERY_HEALTH_OVERHEAT -> "OVERHEAT"
-                    BatteryManager.BATTERY_HEALTH_DEAD -> "DEAD"
-                    BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "OVER_VOLTAGE"
-                    BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "FAILURE"
-                    BatteryManager.BATTERY_HEALTH_COLD -> "COLD"
-                    else -> "UNKNOWN"
-                }
-            } catch (_: Exception) { "UNKNOWN" }
+                    val batteryHealth = try {
+                        when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)) {
+                            BatteryManager.BATTERY_HEALTH_GOOD -> "GOOD"
+                            BatteryManager.BATTERY_HEALTH_OVERHEAT -> "OVERHEAT"
+                            BatteryManager.BATTERY_HEALTH_DEAD -> "DEAD"
+                            BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "OVER_VOLTAGE"
+                            BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "FAILURE"
+                            BatteryManager.BATTERY_HEALTH_COLD -> "COLD"
+                            else -> "UNKNOWN"
+                        }
+                    } catch (_: Exception) { "UNKNOWN" }
 
-            val chargingMethod = try {
-                when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)) {
-                    BatteryManager.BATTERY_PLUGGED_USB -> "USB"
-                    BatteryManager.BATTERY_PLUGGED_AC -> "AC"
-                    BatteryManager.BATTERY_PLUGGED_WIRELESS -> "WIRELESS"
-                    else -> if (isCharging) "UNKNOWN" else "NONE"
-                }
-            } catch (_: Exception) { if (isCharging) "UNKNOWN" else "NONE" }
+                    val chargingMethod = try {
+                        when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)) {
+                            BatteryManager.BATTERY_PLUGGED_USB -> "USB"
+                            BatteryManager.BATTERY_PLUGGED_AC -> "AC"
+                            BatteryManager.BATTERY_PLUGGED_WIRELESS -> "WIRELESS"
+                            else -> if (isCharging) "UNKNOWN" else "NONE"
+                        }
+                    } catch (_: Exception) { if (isCharging) "UNKNOWN" else "NONE" }
 
-            val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-            @Suppress("DEPRECATION")
-            val wifiStatus = wifiManager.isWifiEnabled
-
-            val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val mobileDataEnabled = {
-                val network = connectivityManager.activeNetwork
-                val capabilities = connectivityManager.getNetworkCapabilities(network)
-                capabilities != null && capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)
-            }
-
-            val networkConnected = try {
-                val network = connectivityManager.activeNetwork
-                val capabilities = connectivityManager.getNetworkCapabilities(network)
-                capabilities != null && (
-                    capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
-                    )
-            } catch (_: Exception) { wifiStatus }
-
-            val uptime = SystemClock.elapsedRealtime()
-
-            val screenOn = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
-
-            val volumeLevel = DeviceInfo.getVolumeLevels(this)
-
-            val bluetoothEnabled = android.bluetooth.BluetoothAdapter.getDefaultAdapter()?.isEnabled == true
-            val installedApps = DeviceInfo.getInstalledApps(this)
-            val installedAppsCount = installedApps.size
-            val bootTime = System.currentTimeMillis() - uptime
-
-            val serialNumber = try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    Build.getSerial()
-                } else {
+                    val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
                     @Suppress("DEPRECATION")
-                    Build.SERIAL
+                    val wifiStatus = wifiManager.isWifiEnabled
+
+                    val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                    val mobileDataEnabled = {
+                        val network = connectivityManager.activeNetwork
+                        val capabilities = connectivityManager.getNetworkCapabilities(network)
+                        capabilities != null && capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)
+                    }
+
+                    val networkConnected = try {
+                        val network = connectivityManager.activeNetwork
+                        val capabilities = connectivityManager.getNetworkCapabilities(network)
+                        capabilities != null && (
+                            capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+                            )
+                    } catch (_: Exception) { wifiStatus }
+
+                    val uptime = SystemClock.elapsedRealtime()
+
+                    val screenOn = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+
+                    val volumeLevel = DeviceInfo.getVolumeLevels(this@MDMService)
+
+                    val bluetoothEnabled = android.bluetooth.BluetoothAdapter.getDefaultAdapter()?.isEnabled == true
+                    val installedAppDetails = DeviceInfo.getInstalledAppDetails(this@MDMService)
+                    val installedAppsCount = installedAppDetails.size
+                    val bootTime = System.currentTimeMillis() - uptime
+
+                    val serialNumber = try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            Build.getSerial()
+                        } else {
+                            @Suppress("DEPRECATION")
+                            Build.SERIAL
+                        }
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to get serial number. App is likely not a device owner.")
+                        "unknown"
+                    }
+
+                    val osVersion = Build.VERSION.RELEASE
+                    val buildNumber = Build.DISPLAY
+                    val deviceModel = Build.MODEL
+                    val brand = Build.BRAND
+                    val isRooted = DeviceInfo.isDeviceRooted()
+                    val securityPatch = DeviceInfo.getSecurityPatch()
+                    val encryptionStatus = DeviceInfo.getEncryptionStatus(this@MDMService)
+                    val simOperator = DeviceInfo.getSimOperator(this@MDMService)
+                    val simSerialNumber = DeviceInfo.getSimSerialNumber(this@MDMService)
+                    val phoneNumber = try {
+                        DeviceInfo.getPhoneNumber(this@MDMService)
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Failed to get phone number. App might not be a device owner or lacks permissions.", e)
+                        "unknown"
+                    }
+                    val ipAddress = DeviceInfo.getIpAddress(this@MDMService)
+                    val macAddress = DeviceInfo.getMacAddress(this@MDMService)
+                    val timezone = DeviceInfo.getTimezone()
+                    val locale = DeviceInfo.getLocale()
+                    val nfcEnabled = DeviceInfo.isNfcEnabled(this@MDMService)
+                    val isAdbEnabled = DeviceInfo.isAdbEnabled(this@MDMService)
+                    val isScreenLockEnabled = DeviceInfo.isScreenLockEnabled(this@MDMService)
+                    val isDeveloperModeEnabled = DeviceInfo.isDeveloperModeEnabled(this@MDMService)
+                    val isVpnActive = DeviceInfo.isVpnActive(this@MDMService)
+                    val isGpsEnabled = DeviceInfo.isGpsEnabled(this@MDMService)
+                    val ssid = DeviceInfo.getSsid(this@MDMService)
+                    val cellularSignalStrength = DeviceInfo.getCellularSignalStrength(this@MDMService)
+                    val wifiSignalStrength = DeviceInfo.getWifiSignalStrength(this@MDMService)
+                    val isAirplaneModeEnabled = DeviceInfo.isAirplaneModeEnabled(this@MDMService)
+                    val isPowerSaveModeEnabled = DeviceInfo.isPowerSaveModeEnabled(this@MDMService)
+                    val screenBrightness = DeviceInfo.getScreenBrightness(this@MDMService)
+                    val isAutoScreenBrightnessEnabled = DeviceInfo.isAutoScreenBrightnessEnabled(this@MDMService)
+                    val ringerMode = DeviceInfo.getRingerMode(this@MDMService)
+                    val batteryTemperature = DeviceInfo.getBatteryTemperature(this@MDMService)
+                    val dndMode = DeviceInfo.getDndMode(this@MDMService)
+                    val screenWidth = DeviceInfo.getScreenWidth(this@MDMService)
+                    val screenHeight = DeviceInfo.getScreenHeight(this@MDMService)
+                    val screenDpi = DeviceInfo.getScreenDpi(this@MDMService)
+                    val batteryCycleCount = DeviceInfo.getBatteryCycleCount(this@MDMService)
+
+                    // New fields
+                    val totalStorage = DeviceInfo.getTotalStorage()
+                    val freeStorage = DeviceInfo.getFreeStorage()
+                    val totalExternalStorage = DeviceInfo.getTotalExternalStorage()
+                    val freeExternalStorage = DeviceInfo.getFreeExternalStorage()
+                    val totalRam = DeviceInfo.getTotalRam(this@MDMService)
+                    val availableRam = DeviceInfo.getAvailableRam(this@MDMService)
+                    val networkType = DeviceInfo.getNetworkType(this@MDMService)
+                    val cameraFeatures = DeviceInfo.getCameraFeatures(this@MDMService)
+                    val thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        DeviceInfo.getThermalStatus(this@MDMService)
+                    } else {
+                        null
+                    }
+                    val cpuUsage = DeviceInfo.getCpuUsage()
+                    val cpuTemperature = DeviceInfo.getCpuTemperature()
+                    val cpuAbi = DeviceInfo.getCpuAbi()
+                    val isSafeBoot = DeviceInfo.isSafeBoot(this@MDMService)
+                    val wifiStandard = DeviceInfo.getWifiStandard(this@MDMService)
+                    val cellularGeneration = DeviceInfo.getCellularGeneration(this@MDMService)
+                    val pendingSystemUpdateInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        DeviceInfo.getPendingSystemUpdateInfo(this@MDMService)
+                    } else {
+                        null
+                    }
+                    val lastRebootReason = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        DeviceInfo.getLastRebootReason(this@MDMService)
+                    } else {
+                        null
+                    }
+                    val foregroundApp = getForegroundApp(this@MDMService)
+
+                    val status = DeviceStatus(
+                        deviceId = deviceId,
+                        serialNumber = serialNumber,
+                        osVersion = osVersion,
+                        buildNumber = buildNumber,
+                        deviceModel = deviceModel,
+                        brand = brand,
+                        isRooted = isRooted,
+                        securityPatch = securityPatch,
+                        encryptionStatus = encryptionStatus,
+                        simOperator = simOperator,
+                        simSerialNumber = simSerialNumber,
+                        phoneNumber = phoneNumber,
+                        ipAddress = ipAddress,
+                        macAddress = macAddress,
+                        timezone = timezone,
+                        locale = locale,
+                        nfcEnabled = nfcEnabled,
+                        isAdbEnabled = isAdbEnabled,
+                        isScreenLockEnabled = isScreenLockEnabled,
+                        isDeveloperModeEnabled = isDeveloperModeEnabled,
+                        isVpnActive = isVpnActive,
+                        isGpsEnabled = isGpsEnabled,
+                        installedAppDetails = installedAppDetails,
+                        foregroundApp = foregroundApp,
+                        ssid = ssid,
+                        cellularSignalStrength = cellularSignalStrength,
+                        wifiSignalStrength = wifiSignalStrength,
+                        isAirplaneModeEnabled = isAirplaneModeEnabled,
+                        isPowerSaveModeEnabled = isPowerSaveModeEnabled,
+                        screenBrightness = screenBrightness,
+                        isAutoScreenBrightnessEnabled = isAutoScreenBrightnessEnabled,
+                        ringerMode = ringerMode,
+                        dndMode = dndMode,
+                        battery = batteryLevel,
+                        wifiStatus = wifiStatus,
+                        uptime = uptime,
+                        isCharging = isCharging,
+                        batteryHealth = batteryHealth,
+                        chargingMethod = chargingMethod,
+                        batteryTemperature = batteryTemperature,
+                        screenWidth = screenWidth,
+                        screenHeight = screenHeight,
+                        screenDpi = screenDpi,
+                        batteryCycleCount = batteryCycleCount,
+                        mobileDataEnabled = mobileDataEnabled(),
+                        networkConnected = networkConnected,
+                        screenOn = screenOn,
+                        volumeLevels = volumeLevel,
+                        bluetoothEnabled = bluetoothEnabled,
+                        installedAppsCount = installedAppsCount,
+                        bootTime = bootTime,
+                        totalStorage = totalStorage,
+                        freeStorage = freeStorage,
+                        totalExternalStorage = totalExternalStorage,
+                        freeExternalStorage = freeExternalStorage,
+                        totalRam = totalRam,
+                        availableRam = availableRam,
+                        networkType = networkType,
+                        cameraFeatures = cameraFeatures,
+                        connectedBluetoothDevices = connectedBluetoothDevices,
+                        thermalStatus = thermalStatus,
+                        cpuUsage = cpuUsage,
+                        cpuTemperature = cpuTemperature,
+                        cpuAbi = cpuAbi,
+                        isSafeBoot = isSafeBoot,
+                        wifiStandard = wifiStandard,
+                        cellularGeneration = cellularGeneration,
+                        pendingSystemUpdateInfo = pendingSystemUpdateInfo,
+                        lastRebootReason = lastRebootReason
+                    )
+
+                    Log.d(TAG, "Prepared DeviceStatus: $status")
+                    mqttManager?.publishStatus(status)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error publishing status", e)
                 }
-            } catch (e: SecurityException) {
-                Log.w(TAG, "Failed to get serial number. App is likely not a device owner.")
-                "unknown"
             }
-
-            val osVersion = Build.VERSION.RELEASE
-            val deviceModel = Build.MODEL
-            val brand = Build.BRAND
-            val isRooted = DeviceInfo.isDeviceRooted()
-            val securityPatch = DeviceInfo.getSecurityPatch()
-            val encryptionStatus = DeviceInfo.getEncryptionStatus(this)
-            val simOperator = DeviceInfo.getSimOperator(this)
-            val ipAddress = DeviceInfo.getIpAddress(this)
-            val macAddress = DeviceInfo.getMacAddress(this)
-            val timezone = DeviceInfo.getTimezone()
-            val locale = DeviceInfo.getLocale()
-            val nfcEnabled = DeviceInfo.isNfcEnabled(this)
-            val isScreenLockEnabled = DeviceInfo.isScreenLockEnabled(this)
-            val isDeveloperModeEnabled = DeviceInfo.isDeveloperModeEnabled(this)
-            val isVpnActive = DeviceInfo.isVpnActive(this)
-            val ssid = DeviceInfo.getSsid(this)
-            val cellularSignalStrength = DeviceInfo.getCellularSignalStrength(this)
-            val wifiSignalStrength = DeviceInfo.getWifiSignalStrength(this)
-            val isAirplaneModeEnabled = DeviceInfo.isAirplaneModeEnabled(this)
-            val isPowerSaveModeEnabled = DeviceInfo.isPowerSaveModeEnabled(this)
-            val screenBrightness = DeviceInfo.getScreenBrightness(this)
-            val isAutoScreenBrightnessEnabled = DeviceInfo.isAutoScreenBrightnessEnabled(this)
-            val ringerMode = DeviceInfo.getRingerMode(this)
-            val batteryTemperature = DeviceInfo.getBatteryTemperature(this)
-            val dndMode = DeviceInfo.getDndMode(this)
-            val screenWidth = DeviceInfo.getScreenWidth(this)
-            val screenHeight = DeviceInfo.getScreenHeight(this)
-            val screenDpi = DeviceInfo.getScreenDpi(this)
-
-            val status = DeviceStatus(
-                deviceId = deviceId,
-                serialNumber = serialNumber,
-                osVersion = osVersion,
-                deviceModel = deviceModel,
-                brand = brand,
-                isRooted = isRooted,
-                securityPatch = securityPatch,
-                encryptionStatus = encryptionStatus,
-                simOperator = simOperator,
-                ipAddress = ipAddress,
-                macAddress = macAddress,
-                timezone = timezone,
-                locale = locale,
-                nfcEnabled = nfcEnabled,
-                isScreenLockEnabled = isScreenLockEnabled,
-                isDeveloperModeEnabled = isDeveloperModeEnabled,
-                isVpnActive = isVpnActive,
-                installedApps = installedApps,
-                ssid = ssid,
-                cellularSignalStrength = cellularSignalStrength,
-                wifiSignalStrength = wifiSignalStrength,
-                isAirplaneModeEnabled = isAirplaneModeEnabled,
-                isPowerSaveModeEnabled = isPowerSaveModeEnabled,
-                screenBrightness = screenBrightness,
-                isAutoScreenBrightnessEnabled = isAutoScreenBrightnessEnabled,
-                ringerMode = ringerMode,
-                dndMode = dndMode,
-                battery = batteryLevel,
-                wifiStatus = wifiStatus,
-                uptime = uptime,
-                isCharging = isCharging,
-                batteryHealth = batteryHealth,
-                chargingMethod = chargingMethod,
-                batteryTemperature = batteryTemperature,
-                screenWidth = screenWidth,
-                screenHeight = screenHeight,
-                screenDpi = screenDpi,
-                batteryCycleCount = null,
-                mobileDataEnabled = mobileDataEnabled(),
-                networkConnected = networkConnected,
-                screenOn = screenOn,
-                volumeLevels = volumeLevel,
-                bluetoothEnabled = bluetoothEnabled,
-                installedAppsCount = installedAppsCount,
-                bootTime = bootTime
-            )
-
-            Log.d(TAG, "Prepared DeviceStatus: $status")
-            mqttManager?.publishStatus(status)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error publishing status", e)
         }
+    }
+
+    private fun getForegroundApp(context: Context): String? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val time = System.currentTimeMillis()
+            val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, time - 1000 * 10, time)
+            if (stats != null && stats.isNotEmpty()) {
+                return stats.sortedBy { it.lastTimeUsed }.lastOrNull()?.packageName
+            }
+        }
+        return null
     }
 
     private fun requestLocationUpdate() {

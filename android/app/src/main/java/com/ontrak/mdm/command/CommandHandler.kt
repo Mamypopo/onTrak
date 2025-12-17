@@ -10,7 +10,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -31,12 +33,14 @@ import com.ontrak.mdm.ui.MainActivity
 import com.ontrak.mdm.util.KioskModeManager
 
 object CommandHandler {
-    
+
     private const val TAG = "CommandHandler"
-    
+    private var alarmPlayer: MediaPlayer? = null
+    private var originalAlarmVolume: Int? = null
+
     fun handleCommand(context: Context, command: MQTTCommand) {
         Log.d(TAG, "Handling command: ${command.action}")
-        
+
         when (command.action) {
             CommandAction.LOCK_DEVICE -> lockDevice(context)
             CommandAction.UNLOCK_DEVICE -> unlockDevice(context)
@@ -45,6 +49,8 @@ object CommandHandler {
             CommandAction.OPEN_APP -> openApp(context, command.params)
             CommandAction.SHOW_MESSAGE -> showMessage(context, command.params)
             CommandAction.PLAY_SOUND -> playSound(context)
+            CommandAction.PLAY_ALARM_SOUND -> playAlarmSound(context)
+            CommandAction.STOP_ALARM_SOUND -> stopAlarmSound(context)
             CommandAction.ENABLE_KIOSK -> enableKioskMode(context)
             CommandAction.DISABLE_KIOSK -> disableKioskMode(context)
             CommandAction.OPEN_CAMERA -> openCamera(context)
@@ -55,13 +61,14 @@ object CommandHandler {
             CommandAction.DISABLE_CAMERA -> setCameraEnabled(context, false)
             CommandAction.ENABLE_CAMERA -> setCameraEnabled(context, true)
             CommandAction.SEND_DATA_NOW -> sendDataNow(context)
-            
+
             // App Management
             CommandAction.SILENT_INSTALL_APP -> silentInstallApp(context, command.params)
             CommandAction.SILENT_UNINSTALL_APP -> silentUninstallApp(context, command.params)
             CommandAction.SET_MANAGED_CONFIGURATIONS -> setManagedConfigurations(context, command.params)
             CommandAction.SET_INSTALL_APPS_ALLOWED -> setInstallAppsAllowed(context, command.params)
             CommandAction.SET_APP_UNINSTALL_ALLOWED -> setAppUninstallAllowed(context, command.params)
+            CommandAction.CLEAR_APP_DATA -> clearAppData(context, command.params)
 
             // Security Policies
             CommandAction.SET_ENCRYPTION_ENABLED -> setEncryptionEnabled(context, command.params)
@@ -75,7 +82,7 @@ object CommandHandler {
             CommandAction.SET_FINGERPRINT_UNLOCK_ALLOWED -> setFingerprintUnlockAllowed(context, command.params)
             CommandAction.SET_CHANGE_ACCOUNT_PICTURE_ALLOWED -> setChangeAccountPictureAllowed(context, command.params)
             CommandAction.SET_HIDE_SENSITIVE_INFO_ON_LOCK_SCREEN -> setHideSensitiveInfoOnLockScreen(context, command.params)
-            
+
             // Set 2
             CommandAction.SET_MANAGING_ACCOUNTS_ALLOWED -> setManagingAccountsAllowed(context, command.params)
             CommandAction.SET_SMS_ALLOWED -> setSmsAllowed(context, command.params)
@@ -98,6 +105,9 @@ object CommandHandler {
             CommandAction.SET_DATE_TIME_CHANGE_ALLOWED -> setDateTimeChangeAllowed(context, command.params)
             CommandAction.SET_ORGANIZATION_MESSAGE -> setOrganizationMessage(context, command.params)
 
+            // New Commands
+            CommandAction.SET_LOCK_SCREEN_MESSAGE -> setLockScreenMessage(context, command.params)
+
             // System Update Policy
             CommandAction.SET_SYSTEM_UPDATE_POLICY -> setSystemUpdatePolicy(context, command.params)
 
@@ -106,8 +116,128 @@ object CommandHandler {
             CommandAction.SET_SCREEN_BRIGHTNESS_MODE -> setScreenBrightnessMode(context, command.params)
             CommandAction.SET_RINGER_MODE -> setRingerMode(context, command.params)
             CommandAction.SET_VOLUME_LEVEL -> setVolumeLevel(context, command.params)
+            CommandAction.SET_SCREEN_OFF_TIMEOUT -> setScreenOffTimeout(context, command.params)
 
             else -> Log.w(TAG, "Unhandled command: ${command.action}")
+        }
+    }
+
+    private fun clearAppData(context: Context, params: Map<String, Any>?) {
+        val packageName = params?.get("packageName") as? String ?: return
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.clearApplicationUserData(admin, packageName, context.mainExecutor,
+                    object : DevicePolicyManager.OnClearApplicationUserDataListener {
+                        override fun onApplicationUserDataCleared(packageName: String, succeeded: Boolean) {
+                            if (succeeded) {
+                                Log.d(TAG, "Successfully cleared data for app: $packageName")
+                            } else {
+                                Log.w(TAG, "Failed to clear data for app: $packageName")
+                            }
+                        }
+                    })
+            } else {
+                Log.w(TAG, "Cannot clear app data: Not a device owner.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing app data for $packageName", e)
+        }
+    }
+
+    private fun setScreenOffTimeout(context: Context, params: Map<String, Any>?) {
+        val timeout = (params?.get("timeout") as? Double)?.toLong() ?: return
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.setMaximumTimeToLock(admin, timeout)
+                Log.d(TAG, "Screen off timeout set to: $timeout ms")
+            } else {
+                Log.w(TAG, "Cannot set screen off timeout: Not a device owner.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting screen off timeout", e)
+        }
+    }
+
+    private fun setLockScreenMessage(context: Context, params: Map<String, Any>?) {
+        try {
+            val message = params?.get("message") as? String
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.setDeviceOwnerLockScreenInfo(admin, message)
+                Log.d(TAG, "Lock screen message set to: $message")
+            } else {
+                Log.w(TAG, "Cannot set lock screen message: Not a device owner.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting lock screen message", e)
+        }
+    }
+
+    private fun playAlarmSound(context: Context) {
+        // Stop and release any existing player first.
+        stopAlarmSound(context)
+
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        // Store the original volume if not already stored
+        if (originalAlarmVolume == null) {
+            originalAlarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
+        }
+
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+        audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVolume, 0)
+
+        var player: MediaPlayer? = null
+        try {
+            val afd = context.resources.openRawResourceFd(R.raw.siren_sound)
+            player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                isLooping = true
+                prepare()
+                start()
+            }
+            afd.close()
+            this.alarmPlayer = player
+            Log.d(TAG, "Alarm sound started successfully.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing alarm sound", e)
+            // If setup fails, release the player and restore volume immediately.
+            player?.release()
+            stopAlarmSound(context)
+        }
+    }
+
+    private fun stopAlarmSound(context: Context) {
+        try {
+            alarmPlayer?.let {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+                it.release()
+                Log.d(TAG, "Alarm sound stopped")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping alarm sound", e)
+        } finally {
+            // Always try to restore volume and clear the player instance
+            originalAlarmVolume?.let {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audioManager.setStreamVolume(AudioManager.STREAM_ALARM, it, 0)
+                Log.d(TAG, "Restored original alarm volume.")
+            }
+            alarmPlayer = null
+            originalAlarmVolume = null
         }
     }
 

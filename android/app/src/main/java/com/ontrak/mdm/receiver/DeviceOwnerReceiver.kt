@@ -6,6 +6,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 
 class DeviceOwnerReceiver : DeviceAdminReceiver() {
@@ -31,6 +32,16 @@ class DeviceOwnerReceiver : DeviceAdminReceiver() {
                 Manifest.permission.READ_PHONE_STATE,
                 DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
             )
+
+            // Grant PACKAGE_USAGE_STATS for foreground app detection
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                dpm.setPermissionGrantState(
+                    adminComponentName,
+                    packageName,
+                    Manifest.permission.PACKAGE_USAGE_STATS,
+                    DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
+                )
+            }
         }
     }
 

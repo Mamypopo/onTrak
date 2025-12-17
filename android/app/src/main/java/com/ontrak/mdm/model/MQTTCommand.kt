@@ -31,6 +31,12 @@ enum class CommandAction {
     
     @SerializedName("PLAY_SOUND")
     PLAY_SOUND,
+
+    @SerializedName("PLAY_ALARM_SOUND")
+    PLAY_ALARM_SOUND,
+
+    @SerializedName("STOP_ALARM_SOUND")
+    STOP_ALARM_SOUND,
     
     @SerializedName("ENABLE_KIOSK")
     ENABLE_KIOSK,
@@ -73,6 +79,8 @@ enum class CommandAction {
     SET_INSTALL_APPS_ALLOWED,
     @SerializedName("SET_APP_UNINSTALL_ALLOWED")
     SET_APP_UNINSTALL_ALLOWED,
+    @SerializedName("CLEAR_APP_DATA")
+    CLEAR_APP_DATA,
 
     // Security Policies
     @SerializedName("SET_ENCRYPTION_ENABLED")
@@ -155,6 +163,9 @@ enum class CommandAction {
     @SerializedName("SET_ORGANIZATION_MESSAGE")
     SET_ORGANIZATION_MESSAGE,
 
+    @SerializedName("SET_LOCK_SCREEN_MESSAGE")
+    SET_LOCK_SCREEN_MESSAGE,
+
     // Screen & Audio
     @SerializedName("SET_SCREEN_BRIGHTNESS")
     SET_SCREEN_BRIGHTNESS,
@@ -169,5 +180,8 @@ enum class CommandAction {
     SET_VOLUME_LEVEL,
 
     @SerializedName("SET_DND_MODE")
-    SET_DND_MODE
+    SET_DND_MODE,
+
+    @SerializedName("SET_SCREEN_OFF_TIMEOUT")
+    SET_SCREEN_OFF_TIMEOUT
 }
