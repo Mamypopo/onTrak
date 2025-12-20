@@ -183,5 +183,12 @@ enum class CommandAction {
     SET_DND_MODE,
 
     @SerializedName("SET_SCREEN_OFF_TIMEOUT")
-    SET_SCREEN_OFF_TIMEOUT
+    SET_SCREEN_OFF_TIMEOUT,
+
+    // Time
+    @SerializedName("SET_TIME")
+    SET_TIME,
+
+    @SerializedName("SET_TIMEZONE")
+    SET_TIMEZONE,
 }

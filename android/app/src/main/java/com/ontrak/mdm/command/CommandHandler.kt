@@ -116,7 +116,12 @@ object CommandHandler {
             CommandAction.SET_SCREEN_BRIGHTNESS_MODE -> setScreenBrightnessMode(context, command.params)
             CommandAction.SET_RINGER_MODE -> setRingerMode(context, command.params)
             CommandAction.SET_VOLUME_LEVEL -> setVolumeLevel(context, command.params)
+            CommandAction.SET_DND_MODE -> setDndMode(context, command.params)
             CommandAction.SET_SCREEN_OFF_TIMEOUT -> setScreenOffTimeout(context, command.params)
+
+            // Time
+            CommandAction.SET_TIME -> setTime(context, command.params)
+            CommandAction.SET_TIMEZONE -> setTimeZone(context, command.params)
 
             else -> Log.w(TAG, "Unhandled command: ${command.action}")
         }
@@ -930,6 +935,71 @@ object CommandHandler {
             Log.d(TAG, "Volume level for $stream set to $level%")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting volume level", e)
+        }
+    }
+
+    private fun setTime(context: Context, params: Map<String, Any>?) {
+        val timestamp = (params?.get("timestamp") as? Double)?.toLong() ?: return
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.setTime(admin, timestamp)
+                Log.d(TAG, "Time set to: $timestamp")
+            } else {
+                Log.w(TAG, "Cannot set time: Not a device owner.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting time", e)
+        }
+    }
+
+    private fun setTimeZone(context: Context, params: Map<String, Any>?) {
+        val timeZoneId = params?.get("timeZoneId") as? String ?: return
+        try {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(context, DeviceOwnerReceiver::class.java)
+            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                dpm.setTimeZone(admin, timeZoneId)
+                Log.d(TAG, "Time zone set to: $timeZoneId")
+            } else {
+                Log.w(TAG, "Cannot set time zone: Not a device owner.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting time zone", e)
+        }
+    }
+
+    private fun setDndMode(context: Context, params: Map<String, Any>?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val mode = params?.get("mode") as? String ?: return
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            if (!notificationManager.isNotificationPolicyAccessGranted) {
+                Log.w(TAG, "Do Not Disturb access not granted. Please enable it in settings.")
+                return
+            }
+
+            val interruptionFilter = when (mode.uppercase()) {
+                "ALL" -> NotificationManager.INTERRUPTION_FILTER_ALL
+                "PRIORITY" -> NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                "NONE" -> NotificationManager.INTERRUPTION_FILTER_NONE
+                "ALARMS" -> NotificationManager.INTERRUPTION_FILTER_ALARMS
+                else -> {
+                    Log.w(TAG, "Invalid DND mode: $mode")
+                    return
+                }
+            }
+            try {
+                notificationManager.setInterruptionFilter(interruptionFilter)
+                Log.d(TAG, "Do Not Disturb mode set to $mode")
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Error setting DND mode. ACCESS_NOTIFICATION_POLICY permission might be missing.", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting DND mode", e)
+            }
+        } else {
+            Log.w(TAG, "Setting DND mode is not supported on this Android version (requires API 23+).")
         }
     }
 }
