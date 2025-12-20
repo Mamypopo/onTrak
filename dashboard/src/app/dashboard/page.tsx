@@ -6,6 +6,7 @@ import { useWebSocket, WebSocketMessage } from "@/lib/websocket";
 import api from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
 import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet, ClipboardList, AlertCircle, Signal, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -98,6 +99,24 @@ export default function DashboardPage() {
     }
   };
 
+  const stats = {
+    total: devices.length,
+    online: devices.filter((d) => d.status === "ONLINE").length,
+    offline: devices.filter((d) => d.status === "OFFLINE").length,
+    available: devices.filter((d) => (d.borrowStatus || "AVAILABLE") === "AVAILABLE").length,
+    inUse: devices.filter((d) => d.borrowStatus === "IN_USE").length,
+    inMaintenance: devices.filter((d) => d.borrowStatus === "IN_MAINTENANCE").length,
+  };
+
+  const statsData = [
+    { title: "อุปกรณ์ทั้งหมด", value: stats.total, icon: Tablet, color: "text-primary", iconColor: "text-primary" },
+    { title: "ออนไลน์", value: stats.online, icon: Signal, color: "text-green-600 dark:text-green-400", iconColor: "text-green-500" },
+    { title: "ออฟไลน์", value: stats.offline, icon: WifiOff, color: "text-muted-foreground", iconColor: "text-muted-foreground" },
+    { title: "ว่าง", value: stats.available, icon: Tablet, color: "text-green-600 dark:text-green-400", iconColor: "text-green-500" },
+    { title: "กำลังใช้งาน", value: stats.inUse, icon: Activity, color: "text-amber-600 dark:text-amber-400", iconColor: "text-amber-500" },
+    { title: "มีปัญหา", value: stats.inMaintenance, icon: AlertCircle, color: "text-red-600 dark:text-red-400", iconColor: "text-red-500" },
+  ];
+
   const handleDeviceAdded = () => {
     fetchDevices();
     setIsDialogOpen(false);
@@ -139,8 +158,8 @@ export default function DashboardPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              <div className="flex-1 relative">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <div className="flex-1 relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="ค้นหาอุปกรณ์..."
@@ -149,8 +168,8 @@ export default function DashboardPage() {
                   className="pl-10"
                 />
               </div>
-              <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <span className="text-sm text-muted-foreground">สถานะการยืม:</span>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -184,7 +203,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <Link href="/dashboard/checkouts/new">
-                  <Button size="sm" className="gap-2">
+                  <Button size="sm" className="gap-2 w-full md:w-auto">
                     <ClipboardList className="h-4 w-4" />
                     เบิกอุปกรณ์
                   </Button>
@@ -194,128 +213,53 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          {loading ? (
-            <>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-8 w-12" />
-                      </div>
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                    </div>
-                  </CardContent>
-                </Card>
+        {/* Stats Cards - Carousel for mobile */}
+        <div className="md:hidden px-3">
+          <Carousel className="w-full" opts={{ align: "center", loop: true }}>
+            <CarouselContent>
+              {statsData.map((stat, index) => (
+                <CarouselItem key={index} className="basis-full">
+                  <div className="p-2">
+                    <Card>
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                          <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</p>
+                        </div>
+                        <stat.icon className={`h-8 w-8 ${stat.iconColor}`} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
               ))}
-            </>
-          ) : (
-            <>
-              {/* สถานะการเชื่อมต่อ */}
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">อุปกรณ์ทั้งหมด</p>
-                      <p className="text-2xl font-bold mt-1">{devices.length}</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">ออนไลน์</p>
-                      <p className="text-2xl font-bold mt-1 text-green-600 dark:text-green-400">
-                        {devices.filter((d) => d.status === "ONLINE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-green-500" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">ออฟไลน์</p>
-                      <p className="text-2xl font-bold mt-1 text-muted-foreground">
-                        {devices.filter((d) => d.status === "OFFLINE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            </CarouselContent>
+            <CarouselPrevious className="inline-flex left-0 -translate-x-8" />
+            <CarouselNext className="inline-flex right-0 translate-x-8" />
+          </Carousel>
+        </div>
 
-              {/* สถานะการยืม: ว่าง */}
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">ว่าง</p>
-                      <p className="text-2xl font-bold mt-1 text-green-600 dark:text-green-400">
-                        {devices.filter((d) => (d.borrowStatus || "AVAILABLE") === "AVAILABLE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Tablet className="h-6 w-6 text-green-500" />
-                    </div>
+        {/* Stats Cards - Grid for larger screens */}
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {statsData.map((stat, index) => (
+            <Card key={index} className="card-hover">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* สถานะการยืม: กำลังใช้งาน */}
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">กำลังใช้งาน</p>
-                      <p className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">
-                        {devices.filter((d) => d.borrowStatus === "IN_USE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-amber-500" />
-                    </div>
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* สถานะการยืม: มีปัญหา */}
-              <Card className="card-hover">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">มีปัญหา</p>
-                      <p className="text-2xl font-bold mt-1 text-red-600 dark:text-red-400">
-                        {devices.filter((d) => d.borrowStatus === "IN_MAINTENANCE").length}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
-                      <AlertCircle className="h-6 w-6 text-red-500" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Devices Grid - 6 columns with Add button */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-4">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
               <Card key={i} className="card-hover">
                 <CardContent className="p-6">
@@ -331,7 +275,7 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* Calculate grid: 6 columns, first item is "Add" button */}
-            {/* แสดง Card "เพิ่ม Tablet" เฉพาะเมื่อมี device แล้ว */}
+
             {filteredDevices.length > 0 && (() => {
               const allItems = [
                 { type: "add" as const },
@@ -339,16 +283,16 @@ export default function DashboardPage() {
               ];
 
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-4">
                   {allItems.map((item) => {
                     if (item.type === "add") {
                       return (
                         <Card
                           key="add"
-                          className="card-hover cursor-pointer border-dashed border-2 hover:border-primary hover:bg-primary/5 transition-all"
+                          className="card-hover cursor-pointer border-dashed border-2 hover:border-primary hover:bg-primary/5 transition-all flex flex-col"
                           onClick={() => setIsDialogOpen(true)}
                         >
-                          <CardContent className="p-6 flex flex-col items-center justify-center min-h-[200px] space-y-3">
+                          <CardContent className="p-6 flex flex-col items-center justify-center flex-1 space-y-3">
                             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                               <Plus className="h-6 w-6 text-primary" />
                             </div>

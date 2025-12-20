@@ -228,18 +228,19 @@ export default function CreateCheckoutPage() {
     <AppLayout>
       <div className="flex-1 container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">สร้างการเบิกอุปกรณ์</h1>
-            <p className="text-muted-foreground mt-1">
-              เลือกอุปกรณ์และกรอกรายละเอียดการเบิก
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              สร้างการเบิกอุปกรณ์
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">เลือกอุปกรณ์และกรอกรายละเอียดการเบิก</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => router.back()}
+              className="w-full sm:w-auto"
             >
               กลับ
             </Button>
@@ -248,12 +249,12 @@ export default function CreateCheckoutPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Form + Device selector layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: form */}
-            <div className="space-y-4 lg:col-span-1">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            {/* Left: Form */}
+            <div className="space-y-4 md:col-span-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>ข้อมูลการเบิก</CardTitle>
+                  <CardTitle>1. กรอกข้อมูลการเบิก</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -305,7 +306,7 @@ export default function CreateCheckoutPage() {
                     />
                   </div>
 
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="usageNotes">หมายเหตุการใช้งาน (optional)</Label>
                     <Textarea
@@ -321,19 +322,19 @@ export default function CreateCheckoutPage() {
                 </CardContent>
               </Card>
             </div>
-
+            
             {/* Right: device selector (summary + modal) */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="md:col-span-3 space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                  <CardTitle>อุปกรณ์ที่เลือก</CardTitle>
+                  <CardTitle>2. เลือกอุปกรณ์</CardTitle>
                   <Dialog open={deviceDialogOpen} onOpenChange={setDeviceDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" disabled={loadingDevices}>
-                        เลือกอุปกรณ์
+                        {selectedIds.length > 0 ? `แก้ไข (${selectedIds.length})` : "เลือกอุปกรณ์"}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw]">
+                    <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] sm:w-[90vw]">
                       <DialogHeader>
                         <DialogTitle>เลือกอุปกรณ์ที่จะเบิก</DialogTitle>
                         <DialogDescription>
@@ -353,7 +354,7 @@ export default function CreateCheckoutPage() {
                           onChange={setSelectedIds}
                         />
                       )}
-                      <DialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="text-sm text-muted-foreground">
                           เลือกแล้ว {selectedIds.length} / {devices.length} เครื่อง
                         </div>
@@ -379,8 +380,8 @@ export default function CreateCheckoutPage() {
                 </CardHeader>
                 <CardContent>
                   {selectedIds.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      ยังไม่ได้เลือกอุปกรณ์ คลิกปุ่ม &quot;เลือกอุปกรณ์&quot; เพื่อเริ่มเลือก
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      ยังไม่ได้เลือกอุปกรณ์
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -388,7 +389,7 @@ export default function CreateCheckoutPage() {
                         เลือกแล้ว {selectedIds.length} เครื่อง:
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {devices
+                        {devices // Show only first 4, then a summary
                           .filter((d) => selectedIds.includes(d.id))
                           .map((device) => (
                             <div
@@ -426,16 +427,18 @@ export default function CreateCheckoutPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.back()}
+              className="w-full sm:w-auto"
             >
               ยกเลิก
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? "กำลังสร้างการเบิก..." : "ยืนยันการเบิก"}
+
             </Button>
           </div>
         </form>

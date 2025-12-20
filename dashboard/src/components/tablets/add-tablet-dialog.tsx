@@ -90,16 +90,15 @@ export function AddTabletDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-[500px] max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>เพิ่ม Tablet ใหม่</DialogTitle>
           <DialogDescription>
             กรอกข้อมูลเพื่อเพิ่ม Tablet ใหม่เข้าสู่ระบบ
           </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="overflow-y-auto pr-2 -mr-2">
+          <div className="space-y-4 py-4 ">
             <div className="space-y-2">
               <Label htmlFor="deviceCode">
                 Device Code <span className="text-destructive">*</span>
@@ -159,7 +158,7 @@ export function AddTabletDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -177,4 +176,3 @@ export function AddTabletDialog({
     </Dialog>
   );
 }
-

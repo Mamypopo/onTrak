@@ -261,7 +261,7 @@ export default function MaintenancePage() {
         </Card>
 
         {/* Devices Grid */}
-        {loading ? (
+        {loading ? ( // Skeleton loading grid
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i}>
@@ -308,8 +308,8 @@ export default function MaintenancePage() {
                   </>
                 )}
               </Button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            </div> {/* Actual devices grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredDevices.map((device) => {
                 const isSelected = selectedIds.includes(device.id);
                 return (
@@ -368,4 +368,3 @@ export default function MaintenancePage() {
     </AppLayout>
   );
 }
-

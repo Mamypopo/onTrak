@@ -1,26 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Swal from "sweetalert2";
 import { getSwalConfig, getToastConfig } from "@/lib/swal-config";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tablet, CheckCircle2, XCircle, Bell, MessageSquare, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, MessageCircle, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings, Vibrate, VolumeX, Moon, Star, AlertCircle, Music, Phone, AlarmClock, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox"; 
+import { Tablet, CheckCircle2, XCircle, Bell, Power, Lock, Zap, Square, Camera, Fingerprint, FileLock, Factory, ShieldCheck, Bug, ScreenShare, Key, LockIcon, EyeOff, Users, UserCog, Clock, Radio, MapPin, Globe, Shield, PhoneCall, WifiOff as WifiOffIcon, Network, RadioTower, MicOff, MemoryStick, Usb, AppWindow, Package, Scan, Wifi, Settings, Vibrate, VolumeX, Moon, Star, AlertCircle, Music, Phone, AlarmClock, Trash2, Wrench, Sun, CalendarIcon, MessageCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
+import { Switch } from "@/components/ui/switch";
 
 import { TimePicker } from "@/components/ui/time-picker";
 interface Device {
@@ -50,6 +56,7 @@ export default function BulkCommandPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("actions");
+  const [policyStates, setPolicyStates] = useState<Record<string, any>>({});
   const [approvedApps, setApprovedApps] = useState<ApprovedApp[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
   const [policyApps, setPolicyApps] = useState<Record<string, InstallType>>({});
@@ -58,6 +65,12 @@ export default function BulkCommandPage() {
     start: new Date(new Date().setHours(0, 0, 0, 0)),
     end: new Date(new Date().setHours(23, 59, 0, 0)),
   });
+  
+  const selectedDateTime = useMemo(() => {
+    const timestamp = policyStates['security.SET_TIME.timestamp'];
+    return timestamp ? new Date(timestamp) : new Date();
+  }, [policyStates]);
+
 
   useEffect(() => {
     const fetchDevices = async () => {
@@ -76,7 +89,21 @@ export default function BulkCommandPage() {
 
     fetchDevices();
   }, []);
-
+  
+  useEffect(() => {
+    const fetchPolicyStates = async () => {
+      try {
+        const response = await api.get("/api/bulk-command/states");
+        if (response.data.success) {
+          setPolicyStates(response.data.data || {});
+        }
+      } catch (error) {
+        console.error("Error fetching policy states:", error);
+      }
+    };
+    fetchPolicyStates();
+  }, []);
+  
   const fetchApprovedApps = useCallback(async () => {
     setLoadingApps(true);
     try {
@@ -190,6 +217,18 @@ export default function BulkCommandPage() {
       return;
     }
 
+    // Optimistically update local state
+    const updatedStates = { ...policyStates };
+    if (params) {
+      Object.keys(params).forEach(key => {
+        const stateKey = `${activeTab}.${action}.${key}`;
+        updatedStates[stateKey] = params[key];
+      });
+    } else {
+      updatedStates[`${activeTab}.${action}`] = true; // For simple commands
+    }
+    setPolicyStates(updatedStates);
+
     setSending(true);
     try {
       const response = await api.post('/api/device/bulk/command', {
@@ -197,6 +236,9 @@ export default function BulkCommandPage() {
         action: action,
         params: params || {},
       });
+
+      // Persist state to backend
+      await api.post('/api/bulk-command/states', { states: updatedStates });
 
       if (response.data.success) {
         const { successCount, failureCount } = response.data.data;
@@ -218,7 +260,7 @@ export default function BulkCommandPage() {
     } finally {
       setSending(false);
     }
-  }, [selectedDeviceIds]);
+  }, [selectedDeviceIds, policyStates, activeTab]);
 
   const handleSetSystemUpdatePolicy = useCallback(async () => {
     let params: any = { policy: systemUpdatePolicy };
@@ -344,13 +386,13 @@ export default function BulkCommandPage() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <Skeleton key={i} className="h-28 w-full rounded-lg" />
                 ))}
               </div>
             ) : devices.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {devices.map(device => (
                   <div
                     key={device.id}
@@ -370,13 +412,15 @@ export default function BulkCommandPage() {
                     {selectedDeviceIds.includes(device.id) && (
                       <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
                     )}
-                    <div className="flex flex-col items-center justify-center text-center gap-2">
-                      <Tablet className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm font-semibold leading-tight truncate w-full">{device.name || device.deviceCode}</p>
-                      <p className="text-xs text-muted-foreground truncate w-full">{device.deviceCode}</p>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <div className={cn("h-2 w-2 rounded-full", device.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-400')} />
-                        <span>{device.status}</span>
+                    <div className="flex items-center gap-4">
+                      <Tablet className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-grow overflow-hidden">
+                        <p className="text-sm font-semibold leading-tight truncate w-full text-left">{device.name || device.deviceCode}</p>
+                        <p className="text-xs text-muted-foreground truncate w-full text-left">{device.deviceCode}</p>
+                        <div className="flex items-center gap-1.5 text-xs mt-1">
+                          <div className={cn("h-2 w-2 rounded-full", device.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-400')} />
+                          <span>{device.status}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -426,129 +470,47 @@ export default function BulkCommandPage() {
               </TabsList>
 
               {/* Actions Tab */}
-              <TabsContent value="actions" className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">คำสั่งทั่วไป</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("PLAY_SOUND")} disabled={sending}><Bell className="w-4 h-4 mr-2" />ส่งเสียง</Button>
-                      <Button onClick={() => handleSendCommand("LOCK_DEVICE")} disabled={sending}><Lock className="w-4 h-4 mr-2" />ล็อค</Button>
-                      <Button onClick={() => handleSendCommand("RESTART_DEVICE")} disabled={sending}><Power className="w-4 h-4 mr-2" />รีสตาร์ท</Button>
-                      <Button onClick={() => handleSendCommand("SEND_DATA_NOW")} disabled={sending}><Zap className="w-4 h-4 mr-2" />Sync Data</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Kiosk Mode</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("ENABLE_KIOSK")} disabled={sending}><Square className="w-4 h-4 mr-2" />เปิด Kiosk</Button>
-                      <Button onClick={() => handleSendCommand("DISABLE_KIOSK")} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ปิด Kiosk</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">โหมดเสียง</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "NORMAL" })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปกติ</Button>
-                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "VIBRATE" })} disabled={sending}><Vibrate className="w-4 h-4 mr-2" />สั่น</Button>
-                      <Button onClick={() => handleSendCommand("SET_RINGER_MODE", { mode: "SILENT" })} disabled={sending} variant="destructive"><VolumeX className="w-4 h-4 mr-2" />เงียบ</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">โหมดห้ามรบกวน (DND)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "OFF" })} disabled={sending}>
-                        <Bell className="w-4 h-4 mr-2" />ปิด
-                      </Button>
-                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "ALARMS_ONLY" })} disabled={sending}>
-                        <AlertCircle className="w-4 h-4 mr-2" />เฉพาะการปลุก
-                      </Button>
-                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "PRIORITY_ONLY" })} disabled={sending}>
-                        <Star className="w-4 h-4 mr-2" />เฉพาะรายการสำคัญ
-                      </Button>
-                      <Button onClick={() => handleSendCommand("SET_DND_MODE", { mode: "TOTAL_SILENCE" })} disabled={sending} variant="destructive">
-                        <Moon className="w-4 h-4 mr-2" />ปิดเสียงทั้งหมด
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">ปิดเสียงเฉพาะประเภท</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: 0, ring: -1, notification: -1, alarm: -1 })} disabled={sending}><Music className="w-4 h-4 mr-2" />ปิดเสียงมีเดีย</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: 0, notification: -1, alarm: -1 })} disabled={sending}><Phone className="w-4 h-4 mr-2" />ปิดเสียงเรียกเข้า</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: -1, notification: 0, alarm: -1 })} disabled={sending}><Bell className="w-4 h-4 mr-2" />ปิดเสียงแจ้งเตือน</Button>
-                      <Button onClick={() => handleSendCommand("SET_VOLUME_LEVEL", { media: -1, ring: -1, notification: -1, alarm: 0 })} disabled={sending}><AlarmClock className="w-4 h-4 mr-2" />ปิดเสียงปลุก</Button>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="actions" className="mt-6 animate-in fade-in-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Button onClick={() => handleSendCommand("PLAY_SOUND")} disabled={sending} variant="outline" className="justify-start p-6 text-left h-auto transition-transform duration-200 hover:scale-105"><Bell className="w-5 h-5 mr-4" /><div><p className="font-semibold">ส่งเสียง</p><p className="text-xs text-muted-foreground">ส่งเสียงแจ้งเตือนและสั่น</p></div></Button>
+                  <Button onClick={() => handleSendCommand("LOCK_DEVICE")} disabled={sending} variant="outline" className="justify-start p-6 text-left h-auto transition-transform duration-200 hover:scale-105"><Lock className="w-5 h-5 mr-4" /><div><p className="font-semibold">ล็อคเครื่อง</p><p className="text-xs text-muted-foreground">สั่งล็อคหน้าจอทันที</p></div></Button>
+                  <Button onClick={() => handleSendCommand("RESTART_DEVICE")} disabled={sending} variant="outline" className="justify-start p-6 text-left h-auto transition-transform duration-200 hover:scale-105"><Power className="w-5 h-5 mr-4" /><div><p className="font-semibold">รีสตาร์ท</p><p className="text-xs text-muted-foreground">สั่งรีสตาร์ทเครื่อง</p></div></Button>
+                  <Button onClick={() => handleSendCommand("SEND_DATA_NOW")} disabled={sending} variant="outline" className="justify-start p-6 text-left h-auto transition-transform duration-200 hover:scale-105"><Zap className="w-5 h-5 mr-4" /><div><p className="font-semibold">Sync Data</p><p className="text-xs text-muted-foreground">บังคับให้อุปกรณ์ส่งข้อมูลล่าสุด</p></div></Button>
+                  <Button onClick={() => handleSendCommand("WIPE_DEVICE")} disabled={sending} variant="destructive" className="justify-start p-6 text-left h-auto transition-transform duration-200 hover:scale-105"><Trash2 className="w-5 h-5 mr-4" /><div><p className="font-semibold">ล้างข้อมูลเครื่อง</p><p className="text-xs">ล้างข้อมูลทั้งหมด (Factory Reset)</p></div></Button>
                 </div>
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">ปลดล็อคด้วยลายนิ้วมือ</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_FINGERPRINT_UNLOCK_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_FINGERPRINT_UNLOCK_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Factory Reset</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_FACTORY_RESET_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_FACTORY_RESET_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Safe Mode</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_SAFE_MODE_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_SAFE_MODE_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Debugging</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_DEBUGGING_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_DEBUGGING_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">จับภาพหน้าจอ</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_SCREEN_CAPTURE_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_SCREEN_CAPTURE_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">จัดการบัญชี</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_MANAGING_ACCOUNTS_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_MANAGING_ACCOUNTS_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">เปลี่ยนวัน/เวลา</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_DATE_TIME_CHANGE_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_DATE_TIME_CHANGE_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="security" className="mt-6 animate-in fade-in-0">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><Square className="w-4 h-4 text-muted-foreground" /><Label htmlFor="kiosk-toggle">Kiosk Mode</Label></div>
+                    <Switch id="kiosk-toggle" checked={policyStates['security.kiosk'] ?? false} onCheckedChange={(checked) => handleSendCommand(checked ? "ENABLE_KIOSK" : "DISABLE_KIOSK")} disabled={sending} />
+                  </div>
+                  {[
+                    { id: 'factory-reset', label: 'อนุญาต Factory Reset', command: 'SET_FACTORY_RESET_ALLOWED', stateKey: 'security.SET_FACTORY_RESET_ALLOWED.allowed', icon: Factory },
+                    { id: 'safe-mode', label: 'อนุญาต Safe Mode', command: 'SET_SAFE_MODE_ALLOWED', stateKey: 'security.SET_SAFE_MODE_ALLOWED.allowed', icon: ShieldCheck },
+                    { id: 'debugging', label: 'อนุญาต Debugging', command: 'SET_DEBUGGING_ALLOWED', stateKey: 'security.SET_DEBUGGING_ALLOWED.allowed', icon: Bug },
+                    { id: 'screen-capture', label: 'อนุญาตจับภาพหน้าจอ', command: 'SET_SCREEN_CAPTURE_ALLOWED', stateKey: 'security.SET_SCREEN_CAPTURE_ALLOWED.allowed', icon: ScreenShare },
+                    { id: 'fingerprint-unlock', label: 'อนุญาตปลดล็อกด้วยลายนิ้วมือ', command: 'SET_FINGERPRINT_UNLOCK_ALLOWED', stateKey: 'security.SET_FINGERPRINT_UNLOCK_ALLOWED.allowed', icon: Fingerprint },
+                    { id: 'encryption', label: 'บังคับเข้ารหัสข้อมูล', command: 'SET_ENCRYPTION_ENABLED', stateKey: 'security.SET_ENCRYPTION_ENABLED.enabled', icon: FileLock, type: 'enabled' },
+                    { id: 'config-credentials', label: 'อนุญาตจัดการ Credentials', command: 'SET_CONFIG_CREDENTIALS_ALLOWED', stateKey: 'security.SET_CONFIG_CREDENTIALS_ALLOWED.allowed', icon: Key },
+                    { id: 'smart-lock', label: 'อนุญาต Smart Lock', command: 'SET_SMART_LOCK_ALLOWED', stateKey: 'security.SET_SMART_LOCK_ALLOWED.allowed', icon: LockIcon },
+                    { id: 'hide-sensitive-lockscreen', label: 'ซ่อนข้อมูลบน Lock Screen', command: 'SET_HIDE_SENSITIVE_INFO_ON_LOCK_SCREEN', stateKey: 'security.SET_HIDE_SENSITIVE_INFO_ON_LOCK_SCREEN.hide', icon: EyeOff, type: 'hide' },
+                    { id: 'manage-accounts', label: 'อนุญาตจัดการบัญชี', command: 'SET_MANAGING_ACCOUNTS_ALLOWED', stateKey: 'security.SET_MANAGING_ACCOUNTS_ALLOWED.allowed', icon: Users },
+                    { id: 'date-time-change', label: 'อนุญาตเปลี่ยนวัน/เวลา', command: 'SET_DATE_TIME_CHANGE_ALLOWED', stateKey: 'security.SET_DATE_TIME_CHANGE_ALLOWED.allowed', icon: Clock },
+                  ].map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3"><item.icon className="w-4 h-4 text-muted-foreground" /><Label htmlFor={`${item.id}-toggle`}>{item.label}</Label></div>
+                      <Switch id={`${item.id}-toggle`} checked={policyStates[item.stateKey] ?? false} onCheckedChange={(checked) => handleSendCommand(item.command, { [item.type || 'allowed']: checked })} disabled={sending} />
+                    </div>
+                  ))}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">นโยบายอัปเดต OS</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <Select value={systemUpdatePolicy} onValueChange={(v: any) => setSystemUpdatePolicy(v)}>
+                      <Select value={policyStates['security.SET_SYSTEM_UPDATE_POLICY.policy'] || 'NONE'} onValueChange={(v: any) => setPolicyStates(prev => ({...prev, 'security.SET_SYSTEM_UPDATE_POLICY.policy': v}))}>
                         <SelectTrigger>
                           <SelectValue placeholder="เลือกนโยบาย" />
                         </SelectTrigger>
@@ -559,7 +521,7 @@ export default function BulkCommandPage() {
                           <SelectItem value="POSTPONE">เลื่อนได้ 30 วัน (Postpone)</SelectItem>
                         </SelectContent>
                       </Select>
-                      {systemUpdatePolicy === 'WINDOWED' && (
+                      {policyStates['security.SET_SYSTEM_UPDATE_POLICY.policy'] === 'WINDOWED' && (
                         <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                           <p className="text-xs font-medium text-muted-foreground">กำหนดช่วงเวลา</p>
                           <div className="flex items-center justify-around gap-2">
@@ -568,107 +530,131 @@ export default function BulkCommandPage() {
                           </div>
                         </div>
                       )}
-                      <Button onClick={handleSetSystemUpdatePolicy} disabled={sending} className="w-full">
+                      <Button onClick={() => {
+                        const policy = policyStates['security.SET_SYSTEM_UPDATE_POLICY.policy'] || 'NONE';
+                        let params: any = { policy };
+                        if (policy === 'WINDOWED') {
+                          params.start = updateWindow.start.getHours() * 60 + updateWindow.start.getMinutes();
+                          params.end = updateWindow.end.getHours() * 60 + updateWindow.end.getMinutes();
+                        }
+                        handleSendCommand("SET_SYSTEM_UPDATE_POLICY", params);
+                      }} disabled={sending} className="w-full">
                         <Settings className="w-4 h-4 mr-2" /> บันทึกนโยบายอัปเดต
                       </Button>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardHeader><CardTitle className="text-base text-destructive">ล้างข้อมูลเครื่อง (Wipe)</CardTitle></CardHeader>
-                    <CardContent>
-                      <Button onClick={() => handleSendCommand("WIPE_DEVICE")} disabled={sending} variant="destructive" className="w-full"><Trash2 className="w-4 h-4 mr-2" />ล้างข้อมูลทั้งหมด</Button>
+                    <CardHeader>
+                      <CardTitle className="text-base">ตั้งค่าวัน-เวลา และโซน</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                       {/* Date & Time */}
+                       <div className="space-y-2">
+                        <Label>ตั้งค่าวันและเวลา</Label>
+                        <div className="flex items-center gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("justify-start text-left font-normal w-full", !selectedDateTime && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {selectedDateTime ? format(selectedDateTime, "PPP HH:mm", { locale: th }) : <span>เลือกวันที่</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar mode="single" selected={selectedDateTime} onSelect={(d) => d && setPolicyStates(prev => ({...prev, 'security.SET_TIME.timestamp': d.getTime()}))} initialFocus />
+                              <div className="p-3 border-t border-border"><TimePicker setDate={(d) => d && setPolicyStates(prev => ({...prev, 'security.SET_TIME.timestamp': d.getTime()}))} date={selectedDateTime} /></div>
+                            </PopoverContent>
+                          </Popover>
+                          <Button size="icon" variant="outline" onClick={() => handleSendCommand("SET_TIME", { timestamp: selectedDateTime.getTime() })} disabled={sending}><Zap className="w-4 h-4" /></Button>
+                        </div>
+                        <Button onClick={() => setPolicyStates(prev => ({...prev, 'security.SET_TIME.timestamp': new Date().getTime()}))} disabled={sending} variant="outline" className="w-full"><Clock className="w-4 h-4 mr-2" />ซิงค์เวลากับเซิร์ฟเวอร์</Button>
+                      </div>
+                      {/* Timezone */}
+                      <div className="space-y-2">
+                        <Label>ตั้งค่าโซนเวลา (Timezone)</Label>
+                        <div className="flex items-center gap-2">
+                          <Select value={policyStates['security.SET_TIMEZONE.timezone'] || 'Asia/Bangkok'} onValueChange={(v) => setPolicyStates(prev => ({...prev, 'security.SET_TIMEZONE.timezone': v}))}>
+                            <SelectTrigger disabled={sending}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup><SelectLabel>Asia</SelectLabel><SelectItem value="Asia/Bangkok">Asia/Bangkok (UTC+07:00)</SelectItem><SelectItem value="Asia/Tokyo">Asia/Tokyo (UTC+09:00)</SelectItem></SelectGroup>
+                              <SelectGroup><SelectLabel>America</SelectLabel><SelectItem value="America/New_York">America/New_York (ET)</SelectItem><SelectItem value="America/Los_Angeles">America/Los_Angeles (PT)</SelectItem></SelectGroup>
+                              <SelectGroup><SelectLabel>Europe</SelectLabel><SelectItem value="Europe/London">Europe/London (GMT/BST)</SelectItem><SelectItem value="Europe/Paris">Europe/Paris (CET/CEST)</SelectItem></SelectGroup>
+                              <SelectGroup><SelectLabel>Other</SelectLabel><SelectItem value="UTC">Coordinated Universal Time (UTC)</SelectItem></SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          <Button size="icon" variant="outline" onClick={() => handleSendCommand("SET_TIMEZONE", { timezone: policyStates['security.SET_TIMEZONE.timezone'] || 'Asia/Bangkok' })} disabled={sending}><Zap className="w-4 h-4" /></Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
               </TabsContent>
 
               {/* Network Tab */}
-              <TabsContent value="network" className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Bluetooth</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("BLUETOOTH_ON")} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />เปิด</Button>
-                      <Button onClick={() => handleSendCommand("BLUETOOTH_OFF")} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ปิด</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Data Roaming</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_DATA_ROAMING_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_DATA_ROAMING_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">ปล่อย Hotspot</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_TETHERING_CONFIG_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_TETHERING_CONFIG_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">ตั้งค่า Wi-Fi</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_WIFI_CONFIG_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_WIFI_CONFIG_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="network" className="mt-6 animate-in fade-in-0">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><Radio className="w-4 h-4 text-muted-foreground" /><Label htmlFor="bluetooth-toggle">เปิด Bluetooth</Label></div>
+                    <Switch id="bluetooth-toggle" checked={policyStates['network.bluetooth'] ?? false} onCheckedChange={(checked) => handleSendCommand(checked ? "BLUETOOTH_ON" : "BLUETOOTH_OFF")} disabled={sending} />
+                  </div>
+                  {[
+                    { id: 'data-roaming', label: 'อนุญาต Data Roaming', command: 'SET_DATA_ROAMING_ALLOWED', stateKey: 'network.SET_DATA_ROAMING_ALLOWED.allowed', icon: Globe },
+                    { id: 'tethering', label: 'อนุญาตปล่อย Hotspot', command: 'SET_TETHERING_CONFIG_ALLOWED', stateKey: 'network.SET_TETHERING_CONFIG_ALLOWED.allowed', icon: Network },
+                    { id: 'wifi-config', label: 'อนุญาตตั้งค่า Wi-Fi', command: 'SET_WIFI_CONFIG_ALLOWED', stateKey: 'network.SET_WIFI_CONFIG_ALLOWED.allowed', icon: Wifi },
+                    { id: 'vpn-config', label: 'อนุญาตตั้งค่า VPN', command: 'SET_VPN_CONFIG_ALLOWED', stateKey: 'network.SET_VPN_CONFIG_ALLOWED.allowed', icon: Shield },
+                    { id: 'outgoing-calls', label: 'อนุญาตโทรออก', command: 'SET_OUTGOING_CALLS_ALLOWED', stateKey: 'network.SET_OUTGOING_CALLS_ALLOWED.allowed', icon: PhoneCall },
+                    { id: 'network-reset', label: 'อนุญาตรีเซ็ตเครือข่าย', command: 'SET_NETWORK_RESET_ALLOWED', stateKey: 'network.SET_NETWORK_RESET_ALLOWED.allowed', icon: WifiOffIcon },
+                    { id: 'sms', label: 'อนุญาต SMS', command: 'SET_SMS_ALLOWED', stateKey: 'network.SET_SMS_ALLOWED.allowed', icon: MessageCircle },
+                    { id: 'cell-broadcast', label: 'อนุญาตตั้งค่า Cell Broadcast', command: 'SET_CELL_BROADCASTS_CONFIG_ALLOWED', stateKey: 'network.SET_CELL_BROADCASTS_CONFIG_ALLOWED.allowed', icon: RadioTower },
+                    { id: 'bluetooth-policy', label: 'อนุญาตตั้งค่า Bluetooth', command: 'SET_BLUETOOTH_POLICY_ALLOWED', stateKey: 'network.SET_BLUETOOTH_POLICY_ALLOWED.allowed', icon: Radio },
+                    { id: 'location-services', label: 'อนุญาต Location Services', command: 'SET_LOCATION_SERVICES_ALLOWED', stateKey: 'network.SET_LOCATION_SERVICES_ALLOWED.allowed', icon: MapPin },
+                  ].map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3"><item.icon className="w-4 h-4 text-muted-foreground" /><Label htmlFor={`${item.id}-toggle`}>{item.label}</Label></div>
+                      <Switch id={`${item.id}-toggle`} checked={policyStates[item.stateKey] ?? false} onCheckedChange={(checked) => handleSendCommand(item.command, { allowed: checked })} disabled={sending} />
+                    </div>
+                  ))}
                 </div>
               </TabsContent>
 
               {/* Hardware Tab */}
-              <TabsContent value="hardware" className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">กล้อง</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("ENABLE_CAMERA")} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />เปิด</Button>
-                      <Button onClick={() => handleSendCommand("DISABLE_CAMERA")} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ปิด</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">ไมโครโฟน</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_MICROPHONE_MUTED", { muted: false })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />เปิด</Button>
-                      <Button onClick={() => handleSendCommand("SET_MICROPHONE_MUTED", { muted: true })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ปิด</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">SD Card</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_EXTERNAL_MEDIA_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_EXTERNAL_MEDIA_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">โอนไฟล์ผ่าน USB</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                      <Button onClick={() => handleSendCommand("SET_USB_FILE_TRANSFER_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">โหมดความสว่างหน้าจอ</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => handleSendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: "AUTOMATIC" })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อัตโนมัติ</Button>
-                      <Button onClick={() => handleSendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: "MANUAL" })} disabled={sending}><XCircle className="w-4 h-4 mr-2" />กำหนดเอง</Button>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="hardware" className="mt-6 animate-in fade-in-0">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><Camera className="w-4 h-4 text-muted-foreground" /><Label htmlFor="camera-toggle">ปิดใช้งานกล้อง</Label></div>
+                    <Switch id="camera-toggle" checked={policyStates['hardware.camera.disabled'] ?? false} onCheckedChange={(checked) => handleSendCommand(checked ? "DISABLE_CAMERA" : "ENABLE_CAMERA")} disabled={sending} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><MicOff className="w-4 h-4 text-muted-foreground" /><Label htmlFor="mic-mute-toggle">ปิดไมโครโฟน</Label></div>
+                    <Switch id="mic-mute-toggle" checked={policyStates['hardware.SET_MICROPHONE_MUTED.muted'] ?? false} onCheckedChange={(checked) => handleSendCommand("SET_MICROPHONE_MUTED", { muted: checked })} disabled={sending} />
+                  </div>
+                  {[
+                    { id: 'sd-card', label: 'อนุญาตใช้ SD Card', command: 'SET_EXTERNAL_MEDIA_ALLOWED', icon: MemoryStick },
+                    { id: 'usb-transfer', label: 'อนุญาตโอนไฟล์ผ่าน USB', command: 'SET_USB_FILE_TRANSFER_ALLOWED', icon: Usb },
+                  ].map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3"><item.icon className="w-4 h-4 text-muted-foreground" /><Label htmlFor={`${item.id}-toggle`}>{item.label}</Label></div>
+                      <Switch id={`${item.id}-toggle`} checked={policyStates[`hardware.${item.command}.allowed`] ?? false} onCheckedChange={(checked) => handleSendCommand(item.command, { allowed: checked })} disabled={sending} />
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><Sun className="w-4 h-4 text-muted-foreground" /><Label htmlFor="brightness-mode-toggle">ปรับความสว่างอัตโนมัติ</Label></div>
+                    <Switch id="brightness-mode-toggle" checked={policyStates['hardware.SET_SCREEN_BRIGHTNESS_MODE.mode'] === 'AUTOMATIC'} onCheckedChange={(checked) => handleSendCommand("SET_SCREEN_BRIGHTNESS_MODE", { mode: checked ? 'AUTOMATIC' : 'MANUAL' })} disabled={sending} />
+                  </div>
                 </div>
               </TabsContent>
 
               {/* Apps Tab */}
-              <TabsContent value="apps" className="mt-6">
+              <TabsContent value="apps" className="mt-6 animate-in fade-in-0">
                 <div className="space-y-6">
                   {/* App Policy Management */}
                   <Card>
                     <CardHeader>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                           <CardTitle>จัดการแอปพลิเคชัน (Policy)</CardTitle>
                           <CardDescription>เลือกแอปที่ต้องการบังคับติดตั้งหรือถอนการติดตั้งบนอุปกรณ์</CardDescription>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Button onClick={handleOpenPlayStore} variant="outline"><Package className="w-4 h-4 mr-2" /> อนุมัติแอป</Button>
                           <Button onClick={handleDeployPolicy} disabled={sending}><Zap className="w-4 h-4 mr-2" /> ใช้ Policy</Button>
                         </div>
@@ -682,27 +668,29 @@ export default function BulkCommandPage() {
                       ) : approvedApps.length > 0 ? (
                         <div className="space-y-3">
                           {approvedApps.map(app => (
-                            <div key={app.productId} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex items-center gap-3">
+                            <div key={app.productId} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-3 border rounded-lg">
+                              <div className="flex items-center gap-3 flex-grow">
                                 <img src={app.iconUrl} alt={app.title} className="h-10 w-10 rounded-md" />
-                                <div>
+                                <div className="overflow-hidden">
                                   <p className="font-medium">{app.title}</p>
                                   <p className="text-xs text-muted-foreground">{app.packageName}</p>
                                 </div>
                               </div>
-                              <Select
-                                value={policyApps[app.packageName] || "AVAILABLE"}
-                                onValueChange={(value: InstallType) => handlePolicyChange(app.packageName, value)}
-                              >
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="เลือกสถานะ" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="AVAILABLE">ปล่อยตามเดิม</SelectItem>
-                                  <SelectItem value="REQUIRED">บังคับติดตั้ง</SelectItem>
-                                  <SelectItem value="UNAVAILABLE">ถอนการติดตั้ง</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex-shrink-0 w-full md:w-auto">
+                                <Select
+                                  value={policyApps[app.packageName] || "AVAILABLE"}
+                                  onValueChange={(value: InstallType) => handlePolicyChange(app.packageName, value)}
+                                >
+                                  <SelectTrigger className="w-full md:w-[180px]">
+                                    <SelectValue placeholder="เลือกสถานะ" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AVAILABLE">ปล่อยตามเดิม</SelectItem>
+                                    <SelectItem value="REQUIRED">บังคับติดตั้ง</SelectItem>
+                                    <SelectItem value="UNAVAILABLE">ถอนการติดตั้ง</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -729,15 +717,15 @@ export default function BulkCommandPage() {
                       ) : approvedApps.length > 0 ? (
                         <div className="space-y-3">
                           {approvedApps.map(app => (
-                            <div key={app.productId} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex items-center gap-3">
+                            <div key={app.productId} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 border rounded-lg">
+                              <div className="flex items-center gap-3 flex-grow">
                                 <img src={app.iconUrl} alt={app.title} className="h-10 w-10 rounded-md" />
-                                <div>
+                                <div className="overflow-hidden">
                                   <p className="font-medium">{app.title}</p>
                                   <p className="text-xs text-muted-foreground">{app.packageName}</p>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-shrink-0">
                                 <Button size="sm" onClick={() => handleSendCommand("INSTALL_APP", { packageName: app.packageName })} disabled={sending}>
                                   <Package className="w-4 h-4 mr-2" /> ติดตั้ง
                                 </Button>
@@ -758,21 +746,19 @@ export default function BulkCommandPage() {
 
                   {/* General App Commands */}
                   <h3 className="text-lg font-medium pt-4 border-t">คำสั่งเกี่ยวกับแอปทั่วไป</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader><CardTitle className="text-base">ถอนการติดตั้งแอป</CardTitle></CardHeader>
-                      <CardContent className="grid grid-cols-2 gap-2">
-                        <Button onClick={() => handleSendCommand("SET_APP_UNINSTALL_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                        <Button onClick={() => handleSendCommand("SET_APP_UNINSTALL_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader><CardTitle className="text-base">ติดตั้งแอปจากภายนอก</CardTitle></CardHeader>
-                      <CardContent className="grid grid-cols-2 gap-2">
-                        <Button onClick={() => handleSendCommand("SET_INSTALL_UNKNOWN_SOURCES_ALLOWED", { allowed: true })} disabled={sending}><CheckCircle2 className="w-4 h-4 mr-2" />อนุญาต</Button>
-                        <Button onClick={() => handleSendCommand("SET_INSTALL_UNKNOWN_SOURCES_ALLOWED", { allowed: false })} disabled={sending} variant="destructive"><XCircle className="w-4 h-4 mr-2" />ห้าม</Button>
-                      </CardContent>
-                    </Card>
+                  <div className="space-y-4">
+                    {[
+                      { id: 'app-uninstall', label: 'อนุญาตถอนการติดตั้งแอป', command: 'SET_APP_UNINSTALL_ALLOWED', stateKey: 'apps.SET_APP_UNINSTALL_ALLOWED.allowed', icon: AppWindow },
+                      { id: 'unknown-sources', label: 'อนุญาตติดตั้งแอปที่ไม่รู้จัก', command: 'SET_INSTALL_UNKNOWN_SOURCES_ALLOWED', stateKey: 'apps.SET_INSTALL_UNKNOWN_SOURCES_ALLOWED.allowed', icon: Package },
+                      { id: 'manage-apps', label: 'อนุญาตจัดการแอป', command: 'SET_MANAGING_APPS_ALLOWED', stateKey: 'apps.SET_MANAGING_APPS_ALLOWED.allowed', icon: Settings },
+                      { id: 'google-scan', label: 'บังคับสแกนแอปด้วย Google', command: 'SET_GOOGLE_SECURITY_SCANS_ALLOWED', stateKey: 'apps.SET_GOOGLE_SECURITY_SCANS_ALLOWED.allowed', icon: Scan },
+                      { id: 'account-picture', label: 'อนุญาตเปลี่ยนรูปโปรไฟล์', command: 'SET_CHANGE_ACCOUNT_PICTURE_ALLOWED', stateKey: 'apps.SET_CHANGE_ACCOUNT_PICTURE_ALLOWED.allowed', icon: UserCog },
+                    ].map(item => (
+                      <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3"><item.icon className="w-4 h-4 text-muted-foreground" /><Label htmlFor={`${item.id}-toggle`}>{item.label}</Label></div>
+                        <Switch id={`${item.id}-toggle`} checked={policyStates[item.stateKey] ?? false} onCheckedChange={(checked) => handleSendCommand(item.command, { allowed: checked })} disabled={sending} />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </TabsContent>

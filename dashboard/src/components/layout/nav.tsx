@@ -3,10 +3,11 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LogOut, Menu, X, LayoutDashboard, Users, Settings2, ClipboardList, Wrench, Terminal } from "lucide-react"
+import { LogOut, Menu, X, LayoutDashboard, Users, Settings2, ClipboardList, Wrench, Terminal, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AnimatePresence, motion } from "framer-motion"
 import Swal from "sweetalert2"
 import { getSwalConfig } from "@/lib/swal-config"
 
@@ -146,71 +147,55 @@ export function Nav() {
       </TooltipProvider>
 
       {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background/95 backdrop-blur">
-          <div className="container px-4 py-3 space-y-1">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              href="/dashboard/bulk-command"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Terminal className="h-4 w-4" />
-              <span>Bulk Command</span>
-            </Link>
-            <Link
-              href="/dashboard/users"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Users className="h-4 w-4" />
-              <span>Users</span>
-            </Link>
-            <Link
-              href="/dashboard/checkouts"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <ClipboardList className="h-4 w-4" />
-              <span>Checkouts</span>
-            </Link>
-            <Link
-              href="/dashboard/maintenance"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Wrench className="h-4 w-4" />
-              <span>Maintenance</span>
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="flex items-center gap-2 py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Settings2 className="h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-            <div className="pt-2 mt-1 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="w-full justify-start"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="md:hidden border-t bg-background absolute w-full"
+          >
+            <div className="container px-4 py-4 space-y-1">
+              {[
+                { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+                { href: "/dashboard/bulk-command", icon: Terminal, label: "Bulk Command" },
+                { href: "/dashboard/users", icon: Users, label: "Users" },
+                { href: "/dashboard/checkouts", icon: ClipboardList, label: "Checkouts" },
+                { href: "/dashboard/maintenance", icon: Wrench, label: "Maintenance" },
+                { href: "/dashboard/settings", icon: Settings2, label: "Settings" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between gap-2 py-2.5 text-sm font-medium rounded-md px-2 hover:bg-muted"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="h-4 w-4 text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              ))}
+              <div className="pt-3 mt-2 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4 mr-3" />
+                  ออกจากระบบ
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
 
   )
