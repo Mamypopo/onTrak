@@ -14,6 +14,11 @@ import authRoutes from './routes/auth.js';
 import deviceRoutes from './routes/devices.js';
 import userRoutes from './routes/users.js';
 import checkoutRoutes from './routes/checkouts.js';
+import { checkAndEnrollEnterprise } from './utils/enterpriseSetup.js';
+import enterpriseRoutes from './routes/enterprise.js';
+
+// Fix for BigInt serialization in JSON
+BigInt.prototype.toJSON = function() { return this.toString(); };
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -50,6 +55,7 @@ await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(deviceRoutes, { prefix: '/api/device' });
 await fastify.register(userRoutes, { prefix: '/api/user' });
 await fastify.register(checkoutRoutes, { prefix: '/api/checkouts' });
+await fastify.register(enterpriseRoutes, { prefix: '/api/enterprise' });
 
 // WebSocket endpoint
 fastify.register(async function (fastify) {
@@ -107,6 +113,11 @@ fastify.register(async function (fastify) {
   });
 });
 
+// Add a route to handle Chrome DevTools requests and avoid 404 noise in logs
+fastify.get('/.well-known/appspecific/com.chrome.devtools.json', async (request, reply) => {
+  return reply.code(204).send();
+});
+
 // Health check endpoint
 fastify.get('/health', async (request, reply) => {
   return {
@@ -122,6 +133,9 @@ fastify.get('/health', async (request, reply) => {
 // Start server
 const start = async () => {
   try {
+    // Check for Enterprise ID and create if it doesn't exist
+    await checkAndEnrollEnterprise();
+
     // Connect MQTT
     mqttClient.connect();
     setupMQTTHandlers();
@@ -154,4 +168,3 @@ process.on('SIGTERM', async () => {
 });
 
 start();
-
