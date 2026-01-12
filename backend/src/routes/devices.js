@@ -1,4 +1,5 @@
 import * as deviceController from "../controllers/device.controller.js";
+import bulkCommandRoutes from "./bulk-command.js";
 
 async function deviceRoutes(fastify, options) {
   // Create a new device
@@ -90,6 +91,9 @@ async function deviceRoutes(fastify, options) {
     },
     deviceController.deleteDevice
   );
+
+  // Register bulk command routes
+  fastify.register(bulkCommandRoutes, { prefix: "/bulk" });
 }
 
 export default deviceRoutes;

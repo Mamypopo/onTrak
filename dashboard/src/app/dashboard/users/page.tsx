@@ -290,7 +290,7 @@ export default function UsersPage() {
     <AppLayout>
       <div className="flex-1 container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
               จัดการผู้ใช้
@@ -305,92 +305,97 @@ export default function UsersPage() {
                   สร้างผู้ใช้
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="w-[95vw] sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{editingUser ? "แก้ไขผู้ใช้" : "สร้างผู้ใช้"}</DialogTitle>
                   <DialogDescription>
                     {editingUser ? "แก้ไขข้อมูลผู้ใช้ในระบบ" : "เพิ่มผู้ใช้ใหม่เข้าสู่ระบบ"}
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
-                  <div>
-                    <Label htmlFor="username">ชื่อผู้ใช้</Label>
-                    <Input
-                      id="username"
-                      {...register("username")}
-                      placeholder="กรอกชื่อผู้ใช้"
-                      disabled={!!editingUser}
-                    />
-                    {errors.username && (
-                      <p className="text-sm text-destructive mt-1">{String(errors.username?.message || "")}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="password">
-                      รหัสผ่าน {editingUser && "(เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)"}
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      {...register("password")}
-                      placeholder="กรอกรหัสผ่าน"
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive mt-1">{String(errors.password?.message || "")}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email">อีเมล (ไม่บังคับ)</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register("email")}
-                      placeholder="กรอกอีเมล"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive mt-1">{String(errors.email?.message || "")}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="fullName">ชื่อ (ไม่บังคับ)</Label>
-                    <Input
-                      id="fullName"
-                      {...register("fullName")}
-                      placeholder="กรอกชื่อ"
-                    />
-                    {errors.fullName && (
-                      <p className="text-sm text-destructive mt-1">{String(errors.fullName?.message || "")}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="role">บทบาท</Label>
-                    <Controller
-                      name="role"
-                      control={control}
-                      defaultValue="STAFF"
-                      render={({ field }) => (
-                        <Select value={field.value || "STAFF"} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="เลือกบทบาท" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
-                            <SelectItem value="STAFF">พนักงาน</SelectItem>
-                          </SelectContent>
-                        </Select>
+                <form onSubmit={handleSubmit(onSubmit as any)}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 max-h-[60vh] sm:max-h-none overflow-y-auto px-1">
+                    <div className="sm:col-span-1">
+                      <Label htmlFor="username">ชื่อผู้ใช้</Label>
+                      <Input
+                        id="username"
+                        {...register("username")}
+                        placeholder="กรอกชื่อผู้ใช้"
+                        disabled={!!editingUser}
+                        className="mt-1"
+                      />
+                      {errors.username && (
+                        <p className="text-sm text-destructive mt-1">{String(errors.username?.message || "")}</p>
                       )}
-                    />
-                    {errors.role && (
-                      <p className="text-sm text-destructive mt-1">{String(errors.role?.message || "")}</p>
-                    )}
-                  </div>
+                    </div>
 
-                  {editingUser && (
-                    <div>
+                    <div className="sm:col-span-1">
+                      <Label htmlFor="password">
+                        รหัสผ่าน {editingUser && "(เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)"}
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        {...register("password")}
+                        placeholder="กรอกรหัสผ่าน"
+                        className="mt-1"
+                      />
+                      {errors.password && (
+                        <p className="text-sm text-destructive mt-1">{String(errors.password?.message || "")}</p>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="fullName">ชื่อ (ไม่บังคับ)</Label>
+                      <Input
+                        id="fullName"
+                        {...register("fullName")}
+                        placeholder="กรอกชื่อ"
+                        className="mt-1"
+                      />
+                      {errors.fullName && (
+                        <p className="text-sm text-destructive mt-1">{String(errors.fullName?.message || "")}</p>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="email">อีเมล (ไม่บังคับ)</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        {...register("email")}
+                        placeholder="กรอกอีเมล"
+                        className="mt-1"
+                      />
+                      {errors.email && (
+                        <p className="text-sm text-destructive mt-1">{String(errors.email?.message || "")}</p>
+                      )}
+                    </div>
+
+                    <div className={cn("sm:col-span-1", !editingUser && "sm:col-span-2")}>
+                      <Label htmlFor="role">บทบาท</Label>
+                      <Controller
+                        name="role"
+                        control={control}
+                        defaultValue="STAFF"
+                        render={({ field }) => (
+                          <Select value={field.value || "STAFF"} onValueChange={field.onChange}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="เลือกบทบาท" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
+                              <SelectItem value="STAFF">พนักงาน</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.role && (
+                        <p className="text-sm text-destructive mt-1">{String(errors.role?.message || "")}</p>
+                      )}
+                    </div>
+
+                    {editingUser && (
+                    <div className="sm:col-span-1">
                       <Label htmlFor="isActive">สถานะ</Label>
                       <Controller
                         name="isActive"
@@ -401,7 +406,7 @@ export default function UsersPage() {
                             value={field.value ? "true" : "false"}
                             onValueChange={(val) => field.onChange(val === "true")}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="mt-1">
                               <SelectValue placeholder="เลือกสถานะ" />
                             </SelectTrigger>
                             <SelectContent>
@@ -412,9 +417,9 @@ export default function UsersPage() {
                         )}
                       />
                     </div>
-                  )}
-
-                  <DialogFooter className="gap-2 sm:gap-0">
+                    )}
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
                     <Button
                       type="button"
                       variant="outline"
@@ -465,7 +470,7 @@ export default function UsersPage() {
             <CardTitle>รายการผู้ใช้</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading ? ( // Loading Skeleton
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -508,12 +513,80 @@ export default function UsersPage() {
                 </Table>
               </div>
             ) : users.length === 0 ? (
+              // No users found
               <div className="flex flex-col items-center justify-center py-12">
                 <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">ไม่พบข้อมูลผู้ใช้</p>
               </div>
             ) : (
-              <div className="rounded-md border">
+              <>
+                {/* Mobile View - Cards */}
+                <div className="md:hidden space-y-4">
+                  {users.map((user) => (
+                    <div key={user.id} className="p-4 border rounded-lg space-y-3">
+                      {/* Top section: Name and Actions */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {getRoleIcon(user.role)}
+                            <span className="line-clamp-1">{user.fullName || user.username}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{user.username}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {currentUser?.role === "ADMIN" && (
+                            <>
+                              <Tooltip content="แก้ไขผู้ใช้">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingUser(user);
+                                    setIsDialogOpen(true);
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Tooltip>
+                              {user.id !== currentUser.id && (
+                                <Tooltip content="ลบผู้ใช้">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(user.id, user.username)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {/* Middle section: Role and Status */}
+                      <div className="flex items-center justify-between gap-4 border-t pt-3">
+                        <Tooltip content={getRoleDescription(user.role)}>
+                          <span>
+                            <Badge variant="outline" className={cn("border", roleColors[user.role])}>
+                              {roleLabels[user.role]}
+                            </Badge>
+                          </span>
+                        </Tooltip>
+                        <Tooltip content={user.isActive ? "ผู้ใช้สามารถเข้าสู่ระบบได้" : "ผู้ใช้ไม่สามารถเข้าสู่ระบบได้"}>
+                          <span>
+                            <Badge variant={user.isActive ? "success" : "muted"} className="text-xs">
+                              {user.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </span>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop View - Table */}
+                <div className="rounded-md border hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -594,6 +667,7 @@ export default function UsersPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

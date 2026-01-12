@@ -33,7 +33,6 @@ import {
 
 interface CreateCheckoutForm {
   company: string;
-  borrowerId: string;
   charger: number | null;
   startTime: string;
   endTime: string;
@@ -54,12 +53,10 @@ export default function CreateCheckoutPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);
   const [users, setUsers] = useState<CheckoutUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [form, setForm] = useState<CreateCheckoutForm>({
     company: "",
-    borrowerId: "",
     charger: null,
     startTime: "",
     endTime: "",
@@ -73,8 +70,7 @@ export default function CreateCheckoutPage() {
       return;
     }
     fetchAvailableDevices();
-    fetchUsers();
-  }, [router]);
+  }, [router]); // Removed fetchUsers
 
   const fetchAvailableDevices = async () => {
     try {
@@ -105,22 +101,6 @@ export default function CreateCheckoutPage() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const res = await api.get("/api/user");
-      if (res.data?.success) {
-        const all: CheckoutUser[] = res.data.data;
-        const active = all.filter((u) => u.isActive);
-        setUsers(active);
-      }
-    } catch (error) {
-      console.error("Error fetching users for borrower dropdown:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
   const handleInputChange = (
     field: keyof CreateCheckoutForm,
     value: string
@@ -134,21 +114,43 @@ export default function CreateCheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedIds.length === 0) {
+    if (selectedIds.length === 0) { // Assuming selectedIds is the correct state variable
       await Swal.fire(
-        getToastConfig({
+        getSwalConfig({
           icon: "warning",
-          title: "กรุณาเลือกอุปกรณ์อย่างน้อย 1 เครื่อง",
+          title: "ยังไม่ได้เลือกอุปกรณ์",
+          text: "กรุณาเลือกอุปกรณ์อย่างน้อย 1 เครื่อง",
         })
       );
       return;
     }
 
-    if (!form.borrowerId) {
+    if (!form.company.trim()) {
+      await Swal.fire(
+        getSwalConfig({
+          icon: "warning",
+          title: "กรุณากรอกข้อมูล",
+          text: "กรุณากรอกชื่อบริษัท / หน่วยงาน",
+        })
+      );
+      return;
+    }
+
+    if (!form.startTime) {
       await Swal.fire(
         getToastConfig({
           icon: "warning",
-          title: "กรุณาเลือกผู้เบิก",
+          title: "กรุณาเลือกวันที่เริ่มใช้งาน",
+        })
+      );
+      return;
+    }
+
+    if (!form.endTime) {
+      await Swal.fire(
+        getToastConfig({
+          icon: "warning",
+          title: "กรุณาเลือกวันที่สิ้นสุด",
         })
       );
       return;
@@ -157,17 +159,14 @@ export default function CreateCheckoutPage() {
     // Confirmation dialog
     const selectedDevices = devices.filter((d) => selectedIds.includes(d.id));
     const deviceNames = selectedDevices.map((d) => d.deviceCode).join(", ");
-    const borrower = users.find((u) => u.id === form.borrowerId);
-    const borrowerName = borrower?.fullName || borrower?.username || "ไม่ระบุ";
 
     const confirmResult = await Swal.fire(
       getSwalConfig({
-        title: "ยืนยันการเบิกอุปกรณ์",
+        title: "ยืนยันการเบิกอุปกรณ์ (ในชื่อของคุณ)",
         html: `
           <div class="text-left space-y-2">
             <p><strong>จำนวนอุปกรณ์:</strong> ${selectedIds.length} เครื่อง</p>
             <p><strong>อุปกรณ์:</strong> ${deviceNames}</p>
-            <p><strong>ผู้เบิก:</strong> ${borrowerName}</p>
             ${form.company ? `<p><strong>บริษัท/หน่วยงาน:</strong> ${form.company}</p>` : ""}
           </div>
         `,
@@ -188,7 +187,6 @@ export default function CreateCheckoutPage() {
       setSubmitting(true);
       const payload = {
         company: form.company || null,
-        borrowerId: form.borrowerId || null,
         charger: form.charger,
         startTime: form.startTime || null,
         endTime: form.endTime || null,
@@ -230,18 +228,19 @@ export default function CreateCheckoutPage() {
     <AppLayout>
       <div className="flex-1 container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">สร้างการเบิกอุปกรณ์</h1>
-            <p className="text-muted-foreground mt-1">
-              เลือกอุปกรณ์และกรอกรายละเอียดการเบิก
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              สร้างการเบิกอุปกรณ์
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">เลือกอุปกรณ์และกรอกรายละเอียดการเบิก</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => router.back()}
+              className="w-full sm:w-auto"
             >
               กลับ
             </Button>
@@ -250,16 +249,16 @@ export default function CreateCheckoutPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Form + Device selector layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: form */}
-            <div className="space-y-4 lg:col-span-1">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            {/* Left: Form */}
+            <div className="space-y-4 md:col-span-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>ข้อมูลการเบิก</CardTitle>
+                  <CardTitle>1. กรอกข้อมูลการเบิก</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company">บริษัท / หน่วยงาน</Label>
+                    <Label htmlFor="company">บริษัท / หน่วยงาน <span className="text-destructive">*</span></Label>
                     <Input
                       id="company"
                       placeholder="เช่น ฝ่ายคลังสินค้า, แผนกขาย"
@@ -268,35 +267,6 @@ export default function CreateCheckoutPage() {
                         handleInputChange("company", e.target.value)
                       }
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="borrower">
-                      ผู้เบิก <span className="text-destructive">*</span>
-                    </Label>
-                    {loadingUsers ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <Select
-                        value={form.borrowerId || ""}
-                        onValueChange={(value) =>
-                          handleInputChange("borrowerId", value || "")
-                        }
-                        required
-                      >
-                        <SelectTrigger id="borrower">
-                          <SelectValue placeholder="กรุณาเลือกผู้เบิก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.fullName || user.username}{" "}
-                              {user.role === "ADMIN" ? "(Admin)" : "(Staff)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -313,10 +283,10 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="startTime">วันที่และเวลาเริ่มใช้งาน (optional)</Label>
+                    <Label htmlFor="startTime">วันที่เริ่มใช้งาน <span className="text-destructive">*</span></Label>
                     <Input
                       id="startTime"
-                      type="datetime-local"
+                      type="date"
                       value={form.startTime}
                       onChange={(e) =>
                         handleInputChange("startTime", e.target.value)
@@ -325,10 +295,10 @@ export default function CreateCheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="endTime">วันที่และเวลาสิ้นสุด (optional)</Label>
+                    <Label htmlFor="endTime">วันที่สิ้นสุด <span className="text-destructive">*</span></Label>
                     <Input
                       id="endTime"
-                      type="datetime-local"
+                      type="date"
                       value={form.endTime}
                       onChange={(e) =>
                         handleInputChange("endTime", e.target.value)
@@ -336,7 +306,7 @@ export default function CreateCheckoutPage() {
                     />
                   </div>
 
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="usageNotes">หมายเหตุการใช้งาน (optional)</Label>
                     <Textarea
@@ -352,19 +322,19 @@ export default function CreateCheckoutPage() {
                 </CardContent>
               </Card>
             </div>
-
+            
             {/* Right: device selector (summary + modal) */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="md:col-span-3 space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                  <CardTitle>อุปกรณ์ที่เลือก</CardTitle>
+                  <CardTitle>2. เลือกอุปกรณ์</CardTitle>
                   <Dialog open={deviceDialogOpen} onOpenChange={setDeviceDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" disabled={loadingDevices}>
-                        เลือกอุปกรณ์
+                        {selectedIds.length > 0 ? `แก้ไข (${selectedIds.length})` : "เลือกอุปกรณ์"}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw]">
+                    <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] sm:w-[90vw]">
                       <DialogHeader>
                         <DialogTitle>เลือกอุปกรณ์ที่จะเบิก</DialogTitle>
                         <DialogDescription>
@@ -384,7 +354,7 @@ export default function CreateCheckoutPage() {
                           onChange={setSelectedIds}
                         />
                       )}
-                      <DialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="text-sm text-muted-foreground">
                           เลือกแล้ว {selectedIds.length} / {devices.length} เครื่อง
                         </div>
@@ -410,8 +380,8 @@ export default function CreateCheckoutPage() {
                 </CardHeader>
                 <CardContent>
                   {selectedIds.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      ยังไม่ได้เลือกอุปกรณ์ คลิกปุ่ม &quot;เลือกอุปกรณ์&quot; เพื่อเริ่มเลือก
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      ยังไม่ได้เลือกอุปกรณ์
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -419,7 +389,7 @@ export default function CreateCheckoutPage() {
                         เลือกแล้ว {selectedIds.length} เครื่อง:
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {devices
+                        {devices // Show only first 4, then a summary
                           .filter((d) => selectedIds.includes(d.id))
                           .map((device) => (
                             <div
@@ -457,16 +427,18 @@ export default function CreateCheckoutPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.back()}
+              className="w-full sm:w-auto"
             >
               ยกเลิก
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? "กำลังสร้างการเบิก..." : "ยืนยันการเบิก"}
+
             </Button>
           </div>
         </form>
@@ -474,5 +446,3 @@ export default function CreateCheckoutPage() {
     </AppLayout>
   );
 }
-
-

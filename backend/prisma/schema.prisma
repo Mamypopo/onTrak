@@ -19,60 +19,117 @@ model Device {
   serialNumber  String?
   model         String?
   osVersion     String?
+  buildNumber   String?
   lastSeen      DateTime @default(now())
   battery       Int      @default(0)
   wifiStatus    Boolean  @default(false)
+  ssid          String?
+  wifiSignalStrength Int?
   isCharging    Boolean  @default(false)
   batteryHealth String?
+  batteryTemperature Int?
   chargingMethod String? // USB, AC, WIRELESS, NONE
+  thermalStatus    String?
+  batteryCycleCount Int?
   mobileDataEnabled Boolean @default(false)
+  cellularSignalStrength Int?
   networkConnected Boolean @default(false)
+  airplaneModeEnabled Boolean @default(false)
+  powerSaveModeEnabled Boolean @default(false)
   screenOn         Boolean  @default(false)
-  volumeLevel      Int      @default(0)
+  screenBrightness Int?
+  autoScreenBrightnessEnabled Boolean @default(false)
+  screenWidth      Int?
+  screenHeight     Int?
+  screenDpi        Int?
+  ringerMode       String? // NORMAL, VIBRATE, SILENT
+  storageTotal     BigInt?
+  storageFree      BigInt?
+  storageExternalTotal BigInt?
+  storageExternalFree  BigInt?
+  ramTotal         BigInt?
+  ramAvailable     BigInt?
+  networkType      String?
+  dndMode          String? // ALARMS_ONLY, PRIORITY_ONLY, TOTAL_SILENCE, OFF
+  volumeRing       Int?
+  volumeMedia      Int?
+  volumeNotification Int?
+  volumeAlarm      Int?
   bluetoothEnabled Boolean  @default(false)
+  cameraFeatures            String[] @default([])
+  connectedBluetoothDevices String[] @default([])
+  nfcEnabled       Boolean @default(false)
+  locationEnabled  Boolean  @default(false)
   installedAppsCount Int    @default(0)
+  screenLockEnabled    Boolean  @default(false) 
+  developerModeEnabled Boolean  @default(false)
+  adbEnabled           Boolean  @default(false)
+  vpnActive            Boolean  @default(false)
+  installedAppDetails  Json     @default("[]")
   bootTime         BigInt?  
   latitude      Float?
   longitude     Float?
+  rootState     String?
+  brandName     String?
+  securityPatch String?
+  encryptionStatus String?
+  simOperator     String?
+  phoneNumber     String?
+  simSerialNumber String?
+  ipAddress     String?
+  macAddress    String?
+  timezone      String?
+  locale        String?
+  cpuUsage      Float?
+  cpuTemperature Float?
+  cpuAbi        String?
+  isSafeBoot        Boolean  @default(false)
+  wifiStandard      String?
+  cellularGeneration String?
+  pendingSystemUpdateInfo Json?
+  lastRebootReason        String?
   kioskMode     Boolean  @default(false)
+  foregroundApp String?
   status        DeviceStatus @default(OFFLINE)
   maintenanceStatus MaintenanceStatus @default(NONE) // สถานะซ่อมบำรุงปัจจุบัน
 
 
   encrytionEnable  Boolean@default(true)
-factoryResetAllowed Boolean@default(false)
-safeModeAllowed  Boolean@default(false)
-debugAllowed   Boolean@default(false)
-sceenCapAllowed  Boolean@default(false)
-credentialAllowed  Boolean@default(false)
-smartLockAllowed  Boolean@default(false)
-locationServiceAllowed Boolean@default(true)
-fingerUnlockAllowed Boolean@default(true)
-accPicAllowed   Boolean@default(true)
-hideSensitiveLSceen Boolean@default(true)
+  factoryResetAllowed Boolean@default(false)
+  safeModeAllowed  Boolean@default(false)
+  debugAllowed   Boolean@default(false)
+  sceenCapAllowed  Boolean@default(true)
+  credentialAllowed  Boolean@default(false)
+  smartLockAllowed  Boolean@default(false)
+  locationServiceAllowed Boolean@default(true)
+  fingerUnlockAllowed Boolean@default(true)
+  accPicAllowed   Boolean@default(true)
+  hideSensitiveLSceen Boolean@default(true)
 
-accManageAllowed  Boolean@default(false)
-smsAllowed   Boolean@default(true)
-romingAllowed  Boolean@default(false)
-vpncfAllowed   Boolean@default(false)
-callAllowed   Boolean@default(true)
-netResetAllowed  Boolean@default(false)
-wificfAllowed   Boolean@default(false)
-cellBroadcfAllowed  Boolean@default(false)
-tetheringcfAllowed  Boolean@default(false)
-bluePolicyAllowed  Boolean@default(true)
-micMute    Boolean@default(false)
-sdcardAllowed   Boolean@default(false)
-usbfileTranferAllowed Boolean@default(false)
-uninstallAllowed  Boolean@default(false)
-installUnknowAllowed Boolean@default(false)
-systemAppEnable  Boolean@default(true)
-wallpaperAllowed  Boolean@default(true)
-manageAppAllowed Boolean@default(false)
-googleScanAllowed  Boolean@default(false)
-datetimeChange  Boolean@default(false)
+  accManageAllowed  Boolean@default(false)
+  smsAllowed   Boolean@default(true)
+  romingAllowed  Boolean@default(false)
+  vpncfAllowed   Boolean@default(false)
+  callAllowed   Boolean@default(true)
+  netResetAllowed  Boolean@default(false)
+  wificfAllowed   Boolean@default(false)
+  cellBroadcfAllowed  Boolean@default(false)
+  tetheringcfAllowed  Boolean@default(false)
+  bluePolicyAllowed  Boolean@default(true)
+  micMute    Boolean@default(false)
+  sdcardAllowed   Boolean@default(false)
+  usbfileTranferAllowed Boolean@default(false)
+  uninstallAllowed  Boolean@default(false)
+  installUnknowAllowed Boolean@default(false)
+  systemAppEnable  Boolean@default(true)
+  wallpaperAllowed  Boolean@default(true)
+  manageAppAllowed Boolean@default(false)
+  googleScanAllowed  Boolean@default(false)
+  datetimeChange  Boolean@default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  systemUpdatePolicy String? // NONE, AUTOMATIC, WINDOWED, POSTPONE
+  systemUpdateWindow Json?   // { start: number, end: number }
 
   metrics       DeviceMetrics[]
   checkoutItems CheckoutItem[] // ใช้ Checkout แทน BorrowRecord
@@ -318,3 +375,23 @@ enum MaintenanceStatus {
   DAMAGED           // เสียหาย (ไม่สามารถซ่อมได้)
 }
 
+// ============================================
+// System Settings
+// ============================================
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model BulkCommandState {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("bulk_command_states")
+}

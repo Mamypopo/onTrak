@@ -26,7 +26,20 @@ export const config = {
   
   // CORS
   cors: {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000', 'http://localhost:3001'],
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000','http://localhost:3001','http://192.168.1.74:3000','https://debatable-overbusy-dessie.ngrok-free.dev'],
+  },
+
+  // Google API
+  google: {
+    serviceAccountKeyPath: process.env.SERVICE_ACCOUNT_KEY_PATH,
+    projectId: process.env.GOOGLE_PROJECT_ID,
+    enterpriseId: process.env.GOOGLE_ENTERPRISE_ID,
   },
 };
 
+/**
+ * Allows updating the enterpriseId in the config at runtime.
+ */
+export function updateEnterpriseId(newId) {
+  config.google.enterpriseId = newId;
+}

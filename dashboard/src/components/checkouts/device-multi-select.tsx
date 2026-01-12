@@ -70,13 +70,13 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span>เลือกอุปกรณ์ที่จะเบิก</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-3">
             <button
               type="button"
               onClick={toggleAll}
-              className="text-xs text-primary hover:underline"
+              className="text-xs font-medium text-primary hover:underline"
             >
               {allSelected ? "ยกเลิกการเลือกทั้งหมด" : "เลือกทั้งหมด"}
             </button>
@@ -86,13 +86,13 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 max-h-[60vh] overflow-y-auto pr-3">
         {devices.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
             ไม่มีอุปกรณ์ที่ว่างสำหรับการเบิก
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {devices.map((device) => {
               const selected = selectedIds.includes(device.id);
               return (
@@ -100,50 +100,46 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
                   key={device.id}
                   type="button"
                   onClick={() => toggleOne(device.id)}
-                  className={cn(
-                    "relative text-left rounded-lg border p-4 transition-all",
-                    "hover:border-primary hover:bg-primary/5",
-                    selected && "border-primary bg-primary/5 shadow-sm"
-                  )}
+                  className={cn("flex flex-col text-left rounded-lg border p-3 transition-all", "hover:border-primary hover:bg-primary/5", selected && "border-primary bg-primary/5 shadow-sm")}
                 >
-                  <div className="absolute top-3 right-3">
+                  <div className="flex items-start justify-between w-full">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-mono text-xs md:text-sm truncate pr-2">
+                          {device.deviceCode}
+                        </div>
+                        {device.status === "ONLINE" ? (
+                          <Badge variant="success" className="text-[10px] px-1.5 py-0.5">
+                            ออนไลน์
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                            ออฟไลน์
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs md:text-sm font-medium truncate pr-2">
+                        {device.name || "-"}
+                      </div>
+                      <div className="text-[11px] md:text-xs text-muted-foreground truncate pr-2">
+                        {device.model || "ไม่ทราบรุ่น"}
+                      </div>
+                    </div>
                     <Checkbox
                       checked={selected}
                       indeterminate={false}
                       onCheckedChange={() => toggleOne(device.id)}
                       aria-label={`เลือก ${device.deviceCode}`}
                       onClick={(e) => e.stopPropagation()}
+                      className="mt-0.5"
                     />
                   </div>
-                  <div className="space-y-2 pr-6">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-mono text-xs md:text-sm truncate">
-                        {device.deviceCode}
-                      </div>
-                      {device.status === "ONLINE" ? (
-                        <Badge variant="success">ออนไลน์</Badge>
-                      ) : (
-                        <Badge variant="outline">ออฟไลน์</Badge>
-                      )}
+                  <div className="flex items-center justify-between w-full mt-3 pt-2 border-t">
+                    <div className="flex items-center gap-1.5 text-[11px] md:text-xs">
+                      <Battery className={cn("h-3.5 w-3.5", getBatteryColor(device.battery))} strokeWidth={2} />
+                      <span className={cn("font-medium", getBatteryColor(device.battery))}>{device.battery != null ? `${device.battery}%` : "-"}</span>
                     </div>
-                    <div className="text-xs md:text-sm font-medium truncate">
-                      {device.name || "-"}
-                    </div>
-                    <div className="text-[11px] md:text-xs text-muted-foreground truncate">
-                      {device.model || "ไม่ทราบรุ่น"}
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-1 text-[11px] md:text-xs">
-                        <Battery
-                          className={cn("h-3 w-3", getBatteryColor(device.battery))}
-                          strokeWidth={2}
-                        />
-                        <span className={cn("font-medium", getBatteryColor(device.battery))}>
-                          {device.battery != null ? `${device.battery}%` : "-"}
-                        </span>
-                      </div>
-                      <div>{getBorrowBadge(device.borrowStatus)}</div>
-                    </div>
+                    <div>{getBorrowBadge(device.borrowStatus)}</div>
                   </div>
                 </button>
               );
@@ -154,5 +150,3 @@ export function DeviceMultiSelect({ devices, selectedIds, onChange }: DeviceMult
     </Card>
   );
 }
-
-

@@ -9,13 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Eye, Package, Calendar, User, Building2, ClipboardList, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 interface Checkout {
   id: string;
@@ -107,6 +107,14 @@ export default function CheckoutsPage() {
     cancelled: allCheckouts.filter((c) => c.status === "CANCELLED").length,
   };
 
+  const statsData = [
+    { title: "ทั้งหมด", value: stats.total, icon: ClipboardList, color: "text-muted-foreground", iconColor: "text-muted-foreground" },
+    { title: "กำลังใช้งาน", value: stats.active, icon: Package, color: "text-amber-600", iconColor: "text-amber-500" },
+    { title: "คืนบางส่วน", value: stats.partialReturn, icon: Package, color: "text-blue-600", iconColor: "text-blue-500" },
+    { title: "คืนแล้ว", value: stats.returned, icon: CheckCircle2, color: "text-emerald-600", iconColor: "text-emerald-500" },
+    { title: "ยกเลิก", value: stats.cancelled, icon: XCircle, color: "text-gray-600", iconColor: "text-gray-500" },
+  ];
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE":
@@ -158,62 +166,46 @@ export default function CheckoutsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">ทั้งหมด</p>
-                  <p className="text-2xl font-bold mt-1">{stats.total}</p>
+        {/* Carousel for mobile */}
+        <div className="md:hidden px-3">
+          <Carousel className="w-full" opts={{ align: "center", loop: true }}>
+            <CarouselContent>
+              {statsData.map((stat, index) => (
+                <CarouselItem key={index} className="basis-full">
+                  <div className="p-2">
+                    <Card>
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                          <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+                        </div>
+                        <stat.icon className={`h-8 w-8 ${stat.iconColor}`} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="inline-flex left-0 -translate-x-8" />
+            <CarouselNext className="inline-flex right-0 translate-x-8" />
+          </Carousel>
+        </div>
+
+        {/* Grid for larger screens */}
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {statsData.map((stat, index) => (
+            <Card key={index}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+                  </div>
+                  <stat.icon className={`h-8 w-8 ${stat.iconColor}`} />
                 </div>
-                <ClipboardList className="h-8 w-8 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">กำลังใช้งาน</p>
-                  <p className="text-2xl font-bold mt-1 text-amber-600">{stats.active}</p>
-                </div>
-                <Package className="h-8 w-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">คืนบางส่วน</p>
-                  <p className="text-2xl font-bold mt-1 text-blue-600">{stats.partialReturn}</p>
-                </div>
-                <Package className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">คืนแล้ว</p>
-                  <p className="text-2xl font-bold mt-1 text-emerald-600">{stats.returned}</p>
-                </div>
-                <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">ยกเลิก</p>
-                  <p className="text-2xl font-bold mt-1 text-gray-600">{stats.cancelled}</p>
-                </div>
-                <XCircle className="h-8 w-8 text-gray-500" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Filters */}
@@ -252,17 +244,17 @@ export default function CheckoutsPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>เลขที่การเบิก</TableHead>
-                      <TableHead>บริษัท</TableHead>
+                      <TableHead className="hidden md:table-cell">บริษัท</TableHead>
                       <TableHead>ผู้เบิก</TableHead>
                       <TableHead>จำนวนอุปกรณ์</TableHead>
                       <TableHead>สถานะ</TableHead>
-                      <TableHead>วันที่เบิก</TableHead>
-                      <TableHead className="text-right">จัดการ</TableHead>
+                      <TableHead className="hidden md:table-cell">วันที่เบิก</TableHead>
+                      <TableHead className="text-right min-w-[140px]">จัดการ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -271,7 +263,7 @@ export default function CheckoutsPage() {
                         <TableCell>
                           <Skeleton className="h-4 w-32" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell>
@@ -283,7 +275,7 @@ export default function CheckoutsPage() {
                         <TableCell>
                           <Skeleton className="h-5 w-20 rounded-full" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell className="text-right">
@@ -306,17 +298,17 @@ export default function CheckoutsPage() {
                 </Link>
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>เลขที่การเบิก</TableHead>
-                      <TableHead>บริษัท</TableHead>
+                      <TableHead className="hidden md:table-cell">บริษัท</TableHead>
                       <TableHead>ผู้เบิก</TableHead>
                       <TableHead>จำนวนอุปกรณ์</TableHead>
                       <TableHead>สถานะ</TableHead>
-                      <TableHead>วันที่เบิก</TableHead>
-                      <TableHead className="text-right">จัดการ</TableHead>
+                      <TableHead className="hidden md:table-cell">วันที่เบิก</TableHead>
+                      <TableHead className="text-right min-w-[140px]">จัดการ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -325,7 +317,7 @@ export default function CheckoutsPage() {
                         <TableCell className="font-mono text-sm font-medium">
                           {checkout.checkoutNumber}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
                             <span>{checkout.company || "-"}</span>
@@ -348,7 +340,7 @@ export default function CheckoutsPage() {
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(checkout.status)}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
                             <span>
@@ -359,9 +351,9 @@ export default function CheckoutsPage() {
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link href={`/dashboard/checkouts/${checkout.id}`}>
-                              <Button variant="default" size="sm" className="gap-2">
+                              <Button variant="default" size="sm" className="gap-2 w-full sm:w-auto">
                                 <Eye className="h-4 w-4" />
-                                ดูรายละเอียด
+                                <span className="hidden sm:inline">ดูรายละเอียด</span>
                               </Button>
                             </Link>
                           </div>
@@ -378,4 +370,3 @@ export default function CheckoutsPage() {
     </AppLayout>
   );
 }
-

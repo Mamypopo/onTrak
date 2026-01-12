@@ -5,61 +5,54 @@
 @layer base {
   :root {
     /* Light Mode - Clean & Modern */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 195 88% 95%; /* #E8F9FD - New very light blue */
+    --foreground: 215 28% 17%; /* #1D2939 - Dark slate blue text for contrast */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 28% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262.1 83.3% 57.8%; /* Purple - สีหลักสำหรับ CTA, links, important actions */
+    --popover-foreground: 215 28% 17%;
+    --primary: 205 76% 42%; /* #207ABF - A complementary darker blue for actions */
     --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%; /* Slate - สีรองสำหรับ secondary buttons, backgrounds (ต่างจาก background) */
-    --secondary-foreground: 210 40% 98%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 280 70% 60%; /* Lighter Purple - สีเน้นสำหรับ hover, highlights, special elements (ต่างจาก primary) */
-    --accent-foreground: 0 0% 100%;
+    --secondary: 192 71% 93%; /* #E0F7FA - New secondary background */
+    --secondary-foreground: 215 28% 17%;
+    --muted: 192 71% 93%;
+    --muted-foreground: 215 16% 47%; /* #64748B - Muted text */
+    --accent: 185 68% 86%; /* #C4F1F4 - New accent/hover color */
+    --accent-foreground: 215 28% 17%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%; /* Purple */
+    --destructive-foreground: 0 0% 98%;
+    --border: 190 44% 80%; /* #B2E0E6 - New border color */
+    --input: 190 44% 80%;
+    --ring: 205 76% 42%;
     --radius: 0.5rem;
+    --chart-1: 217 91% 60%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   .dark {
     /* Dark Mode - macOS Style */
-    --background: 0 0% 11%; /* macOS dark gray */
-    --foreground: 0 0% 98%;
-    --card: 0 0% 13%; /* Slightly lighter than background */
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 13%;
-    --popover-foreground: 0 0% 98%;
-
-    /* Primary Colors - Purple Theme */
-    /* Option 1: Blue (macOS default) */
-    /* --primary: 217.2 91.2% 59.8%; */
-    /* Option 2: Purple - ใช้งานอยู่ */
-    --primary: 262.1 83.3% 57.8%;
-    /* Option 3: Teal/Cyan (uncomment to use) */
-    /* --primary: 188.7 85.7% 53.3%; */
-    /* Option 4: Green (uncomment to use) */
-    /* --primary: 142.1 70.6% 45.3%; */
-    /* Option 5: Orange/Amber (uncomment to use) */
-    /* --primary: 24.6 95% 53.1%; */
-
-    --primary-foreground: 0 0% 98%; /* สีขาวสำหรับข้อความบนปุ่ม primary ใน dark mode */
-    --secondary: 217.2 32.6% 25%; /* Slate - สีรองสำหรับ secondary buttons, backgrounds (ต่างจาก background 11%) */
+    --background: 0 0% 5.1%; /* #0D0D0D */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 0 0% 8%; /* Slightly lighter than background */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 5.1%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 217 100% 56%; /* #1E90FF - electric blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 63%; /* Softer gray for muted text */
-    --accent: 280 70% 65%; /* Lighter Purple - สีเน้นสำหรับ hover, highlights, special elements (ต่างจาก primary) */
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 327 100% 50%; /* #FF0099 - vivid pink for hover */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 50%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%; /* Subtle border */
-    --input: 0 0% 18%;
-    --ring: 262.1 83.3% 57.8%; /* Purple - Match primary */
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 217 100% 56%; /* #1E90FF - electric blue */ --chart-1: 152 100% 50%; --chart-2: 217 100% 56%; --chart-3: 327 100% 50%; --chart-4: 280 65% 60%; --chart-5: 340 75% 55%;
   }
 }
 
@@ -267,4 +260,15 @@
 
 .swal2-backdrop-show {
   pointer-events: auto !important;
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

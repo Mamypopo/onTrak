@@ -504,22 +504,24 @@ export default function CheckoutDetailPage() {
     <AppLayout>
       <div className="flex-1 container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-4">
             <Link href="/dashboard/checkouts">
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                 {checkout.checkoutNumber}
-              </h1>
+                </h1>
+                {getStatusBadge(checkout.status)}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">รายละเอียดการเบิกอุปกรณ์</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {getStatusBadge(checkout.status)}
+          <div className="flex items-center gap-2 justify-end">
             {activeItems.length > 0 && (checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
               <>
                 <Button 
@@ -537,12 +539,12 @@ export default function CheckoutDetailPage() {
                     setReturnDialogOpen(true);
                   }} 
                   className="gap-2"
+                  size="sm"
                 >
                   <Package className="h-4 w-4" />
                   คืนอุปกรณ์
                 </Button>
                 <Button
-                  variant="destructive"
                   onClick={handleCancelCheckout}
                   disabled={cancelling}
                   className="gap-2"
@@ -615,12 +617,13 @@ export default function CheckoutDetailPage() {
             {/* Active Devices */}
             {activeItems.length > 0 && (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
                     <CardTitle className="flex items-center gap-2">
                       <Package className="h-5 w-5" />
                       กำลังใช้งาน ({activeItems.length} เครื่อง)
                     </CardTitle>
+                  </div>
                     {(checkout.status === "ACTIVE" || checkout.status === "PARTIAL_RETURN") && (
                       <Button
                         variant="outline"
@@ -636,7 +639,6 @@ export default function CheckoutDetailPage() {
                         {selectedItems.length === activeItems.length ? "ยกเลิกการเลือก" : "เลือกทั้งหมด"}
                       </Button>
                     )}
-                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -704,18 +706,19 @@ export default function CheckoutDetailPage() {
             {/* Returned Devices */}
             {allReturnedItems.length > 0 && (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
                     <CardTitle className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5" />
                       คืนแล้ว ({filteredReturnedItems.length} / {allReturnedItems.length} เครื่อง)
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                  </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                       <Select
                         value={returnedFilter}
                         onValueChange={(value: "ALL" | "WITH_PROBLEM" | "NO_PROBLEM") => setReturnedFilter(value)}
                       >
-                        <SelectTrigger className="w-[140px] h-8">
+                        <SelectTrigger className="w-full sm:w-[140px] h-8">
                           <Filter className="h-3.5 w-3.5 mr-2" />
                           <SelectValue />
                         </SelectTrigger>
@@ -729,7 +732,7 @@ export default function CheckoutDetailPage() {
                         value={returnedSort}
                         onValueChange={(value: "DATE_DESC" | "DATE_ASC" | "NAME_ASC" | "NAME_DESC") => setReturnedSort(value)}
                       >
-                        <SelectTrigger className="w-[140px] h-8">
+                        <SelectTrigger className="w-full sm:w-[140px] h-8">
                           <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
                           <SelectValue />
                         </SelectTrigger>
@@ -741,7 +744,6 @@ export default function CheckoutDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   {returnedItems.length === 0 ? (
@@ -917,8 +919,8 @@ export default function CheckoutDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {checkout.events.map((event, index) => (
-                    <div key={event.id} className="flex gap-4">
+                  {checkout.events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((event, index) => (
+                    <div key={event.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
                           {getEventIcon(event.eventType)}
@@ -927,12 +929,14 @@ export default function CheckoutDetailPage() {
                           <div className="w-0.5 h-full bg-border mt-2" />
                         )}
                       </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center justify-between">
-                          <div>
+                      <div className="flex-1 pb-4 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                          <div className="min-w-0">
                             <div className="font-medium text-sm">{getEventLabel(event.eventType)}</div>
                             {event.notes && (
-                              <div className="text-xs text-muted-foreground mt-1">{event.notes}</div>
+                              <Tooltip content={event.notes}>
+                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.notes}</div>
+                              </Tooltip>
                             )}
                             {event.user && (
                               <div className="text-xs text-muted-foreground mt-1">
@@ -940,7 +944,7 @@ export default function CheckoutDetailPage() {
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground shrink-0 mt-1 sm:mt-0">
                             {format(new Date(event.createdAt), "dd MMM yyyy HH:mm", { locale: th })}
                           </div>
                         </div>
@@ -973,7 +977,7 @@ export default function CheckoutDetailPage() {
                 เลือกอุปกรณ์ที่ต้องการคืนและกรอกข้อมูลเพิ่มเติม
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto pr-2 max-h-[60vh] space-y-6 p-1">
+            <div className="overflow-y-auto pr-4 -mr-2 max-h-[calc(90vh-200px)] space-y-6 p-1">
               {/* Global Return Notes - Moved to top */}
               <div className="border-b pb-4 pt-2">
                 <Label htmlFor="returnNotes" className="text-base font-semibold ">หมายเหตุการคืน (สำหรับทุกอุปกรณ์)</Label>
@@ -1004,7 +1008,7 @@ export default function CheckoutDetailPage() {
                         </Badge>
                       )}
                     </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {activeItems
                     .filter((item) => selectedItems.includes(item.id))
                     .map((item) => {
@@ -1012,7 +1016,7 @@ export default function CheckoutDetailPage() {
                       // Default to true (collapsed) if not set
                       const isCollapsed = collapsedItems[item.id] ?? true;
                       return (
-                        <div key={item.id} className={cn(
+                        <Card key={item.id} className={cn(
                           "border rounded-lg bg-card transition-all duration-200 self-start",
                           problemData.hasProblem 
                             ? "border-orange-500/50 shadow-sm" 
@@ -1020,12 +1024,12 @@ export default function CheckoutDetailPage() {
                           "hover:shadow-md"
                         )}>
                           <div className="p-4 space-y-3">
-                            {/* Device Header */}
+                            {/* Device Header in Dialog */}
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 {problemData.hasProblem && (
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="icon"
                                     className="h-6 w-6 shrink-0"
                                     onClick={() => setCollapsedItems((prev) => ({
@@ -1065,10 +1069,10 @@ export default function CheckoutDetailPage() {
                           </div>
 
                           {problemData.hasProblem && !isCollapsed && (
-                            <div className="px-4 pb-4 space-y-3 border-t bg-muted/30 animate-in slide-in-from-top-2">
-                              <div className="pt-3">
+                            <div className="px-4 pb-4 border-t bg-muted/30 animate-in slide-in-from-top-2">
+                              <div className="pt-4 space-y-4">
 
-                              <div>
+                                <div>
                                   <Label htmlFor={`maintenanceStatus-${item.id}`} className="text-sm font-medium">
                                     สถานะการซ่อม
                                   </Label>
@@ -1078,7 +1082,7 @@ export default function CheckoutDetailPage() {
                                       updateItemProblem(item.id, "maintenanceStatus", value)
                                     }
                                   >
-                                    <SelectTrigger className="mt-2">
+                                    <SelectTrigger id={`maintenanceStatus-${item.id}`} className="mt-2">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1124,7 +1128,7 @@ export default function CheckoutDetailPage() {
                               </div>
                             </div>
                           )}
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>
@@ -1146,4 +1150,3 @@ export default function CheckoutDetailPage() {
     </AppLayout>
   );
 }
-
