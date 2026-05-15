@@ -12,8 +12,8 @@ import api from "@/lib/api";
 import Swal from "sweetalert2";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  username: z.string().min(1, "กรุณากรอก Username หรือ Email"),
+  password: z.string().min(1, "กรุณากรอก Password"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -129,11 +129,11 @@ export default function LoginPage() {
           >
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium">
-                Username
+                Username หรือ Email
               </label>
               <Input
                 id="username"
-                placeholder="Enter your username"
+                placeholder="กรอก Username หรือ Email"
                 {...register("username")}
               />
               {errors.username && (
@@ -150,7 +150,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="กรอก Password"
                 {...register("password")}
               />
               {errors.password && (

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Eye, Package, Calendar, User, Building2, ClipboardList, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
+import { PaginationControl } from "@/components/ui/pagination-control";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
@@ -45,74 +46,67 @@ interface Checkout {
 export default function CheckoutsPage() {
   const router = useRouter();
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
-  const [allCheckouts, setAllCheckouts] = useState<Checkout[]>([]); // สำหรับคำนวณ stats
+  const [checkoutStats, setCheckoutStats] = useState({ total: 0, active: 0, partialReturn: 0, returned: 0, cancelled: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
 
-  // Debounce search
+  // Debounce search — reset page on new search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => { setPage(1); }, [statusFilter]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
+    if (!token) { router.push("/login"); return; }
     fetchCheckouts();
-  }, [router, debouncedSearch, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, debouncedSearch, statusFilter, page]);
 
   const fetchCheckouts = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch filtered checkouts
       const params = new URLSearchParams();
-      if (debouncedSearch) {
-        params.append("search", debouncedSearch);
-      }
-      if (statusFilter !== "all") {
-        params.append("status", statusFilter);
-      }
+      if (debouncedSearch) params.append("search", debouncedSearch);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      params.append("limit", String(limit));
+      params.append("offset", String((page - 1) * limit));
 
-      const response = await api.get(`/api/checkouts?${params.toString()}`);
+      const [response, statsResponse] = await Promise.all([
+        api.get(`/api/checkouts?${params.toString()}`),
+        api.get("/api/checkouts/stats"),
+      ]);
+
       if (response.data.success) {
         setCheckouts(response.data.data);
+        setTotal(response.data.total ?? 0);
       }
-
-      // Fetch all checkouts for stats (without filter)
-      const statsResponse = await api.get("/api/checkouts");
       if (statsResponse.data.success) {
-        setAllCheckouts(statsResponse.data.data);
+        setCheckoutStats(statsResponse.data.data);
       }
     } catch (error: any) {
       console.error("Error fetching checkouts:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, statusFilter]);
-
-  // Calculate stats
-  const stats = {
-    total: allCheckouts.length,
-    active: allCheckouts.filter((c) => c.status === "ACTIVE").length,
-    partialReturn: allCheckouts.filter((c) => c.status === "PARTIAL_RETURN").length,
-    returned: allCheckouts.filter((c) => c.status === "RETURNED").length,
-    cancelled: allCheckouts.filter((c) => c.status === "CANCELLED").length,
-  };
+  }, [debouncedSearch, statusFilter, page, limit]);
 
   const statsData = [
-    { title: "ทั้งหมด", value: stats.total, icon: ClipboardList, color: "text-muted-foreground", iconColor: "text-muted-foreground" },
-    { title: "กำลังใช้งาน", value: stats.active, icon: Package, color: "text-amber-600", iconColor: "text-amber-500" },
-    { title: "คืนบางส่วน", value: stats.partialReturn, icon: Package, color: "text-blue-600", iconColor: "text-blue-500" },
-    { title: "คืนแล้ว", value: stats.returned, icon: CheckCircle2, color: "text-emerald-600", iconColor: "text-emerald-500" },
-    { title: "ยกเลิก", value: stats.cancelled, icon: XCircle, color: "text-gray-600", iconColor: "text-gray-500" },
+    { title: "ทั้งหมด", value: checkoutStats.total, icon: ClipboardList, color: "text-muted-foreground", iconColor: "text-muted-foreground" },
+    { title: "กำลังใช้งาน", value: checkoutStats.active, icon: Package, color: "text-amber-600", iconColor: "text-amber-500" },
+    { title: "คืนบางส่วน", value: checkoutStats.partialReturn, icon: Package, color: "text-blue-600", iconColor: "text-blue-500" },
+    { title: "คืนแล้ว", value: checkoutStats.returned, icon: CheckCircle2, color: "text-emerald-600", iconColor: "text-emerald-500" },
+    { title: "ยกเลิก", value: checkoutStats.cancelled, icon: XCircle, color: "text-gray-600", iconColor: "text-gray-500" },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -364,6 +358,17 @@ export default function CheckoutsPage() {
                 </Table>
               </div>
             )}
+            <div className="pt-2">
+              <PaginationControl
+                page={page}
+                totalPages={Math.ceil(total / limit) || 1}
+                total={total}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(l) => { setLimit(l); setPage(1); }}
+                isLoading={isLoading}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>

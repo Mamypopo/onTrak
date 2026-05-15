@@ -8,11 +8,12 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
-import { Battery, Wifi, MapPin, Activity, Search, Plus, Tablet, ClipboardList, AlertCircle, Signal, WifiOff } from "lucide-react";
+import { Battery, Wifi, Activity, Search, Plus, Tablet, ClipboardList, AlertCircle, Signal, WifiOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AddTabletDialog } from "@/components/tablets/add-tablet-dialog";
+import { PaginationControl } from "@/components/ui/pagination-control";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { safeFormatDistanceToNow } from "@/lib/date-utils";
@@ -35,11 +36,23 @@ interface Device {
 export default function DashboardPage() {
   const router = useRouter();
   const [devices, setDevices] = useState<Device[]>([]);
-  const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [borrowFilter, setBorrowFilter] = useState<"ALL" | "AVAILABLE" | "IN_USE" | "IN_MAINTENANCE">("ALL");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState({ total: 0, online: 0, offline: 0, available: 0, inUse: 0, inMaintenance: 0 });
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => { setPage(1); }, [borrowFilter]);
 
   // WebSocket for realtime updates
   const { isConnected } = useWebSocket((message: WebSocketMessage) => {
@@ -55,42 +68,23 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    // Check authentication
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    // Fetch devices
+    if (!token) { router.push("/login"); return; }
     fetchDevices();
-  }, [router]);
-
-  useEffect(() => {
-    // Filter devices based on search + borrowStatus
-    let list = devices;
-
-    if (searchQuery) {
-      list = list.filter(
-        (device) =>
-          device.deviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          device.name?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (borrowFilter !== "ALL") {
-      list = list.filter((device) => (device.borrowStatus || "AVAILABLE") === borrowFilter);
-    }
-
-    setFilteredDevices(list);
-  }, [searchQuery, devices, borrowFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, debouncedSearch, borrowFilter, page, limit]);
 
   const fetchDevices = async () => {
     try {
-      const response = await api.get("/api/device");
+      setLoading(true);
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (borrowFilter !== "ALL") params.borrowStatus = borrowFilter;
+      const response = await api.get("/api/device", { params });
       if (response.data.success) {
         setDevices(response.data.data);
-        setFilteredDevices(response.data.data);
+        setTotal(response.data.total ?? 0);
+        if (response.data.stats) setStats(response.data.stats);
       }
     } catch (error) {
       console.error("Error fetching devices:", error);
@@ -99,14 +93,7 @@ export default function DashboardPage() {
     }
   };
 
-  const stats = {
-    total: devices.length,
-    online: devices.filter((d) => d.status === "ONLINE").length,
-    offline: devices.filter((d) => d.status === "OFFLINE").length,
-    available: devices.filter((d) => (d.borrowStatus || "AVAILABLE") === "AVAILABLE").length,
-    inUse: devices.filter((d) => d.borrowStatus === "IN_USE").length,
-    inMaintenance: devices.filter((d) => d.borrowStatus === "IN_MAINTENANCE").length,
-  };
+  const totalPages = Math.ceil(total / limit);
 
   const statsData = [
     { title: "อุปกรณ์ทั้งหมด", value: stats.total, icon: Tablet, color: "text-primary", iconColor: "text-primary" },
@@ -224,7 +211,7 @@ export default function DashboardPage() {
                       <CardContent className="flex items-center justify-between p-4">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                          <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</p>
+                          <div className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</div>
                         </div>
                         <stat.icon className={`h-8 w-8 ${stat.iconColor}`} />
                       </CardContent>
@@ -246,7 +233,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</p>
+                    <div className={`text-2xl font-bold mt-1 ${stat.color}`}>{loading ? <Skeleton className="h-8 w-12" /> : stat.value}</div>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
@@ -276,10 +263,10 @@ export default function DashboardPage() {
           <>
             {/* Calculate grid: 6 columns, first item is "Add" button */}
 
-            {filteredDevices.length > 0 && (() => {
+            {devices.length > 0 && (() => {
               const allItems = [
                 { type: "add" as const },
-                ...filteredDevices.map((device) => ({ type: "device" as const, device })),
+                ...devices.map((device) => ({ type: "device" as const, device })),
               ];
 
               return (
@@ -415,7 +402,7 @@ export default function DashboardPage() {
             })()}
 
             {/* Empty State */}
-            {filteredDevices.length === 0 && !searchQuery && (
+            {devices.length === 0 && !searchQuery && (
               <Card>
                 <CardContent className="p-12 text-center">
                   <Tablet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -435,7 +422,7 @@ export default function DashboardPage() {
             )}
 
             {/* No Search Results */}
-            {filteredDevices.length === 0 && searchQuery && (
+            {devices.length === 0 && searchQuery && (
               <Card>
                 <CardContent className="p-12 text-center">
                   <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -446,6 +433,16 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
+
+            <PaginationControl
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={limit}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+              isLoading={loading}
+            />
           </>
         )}
 

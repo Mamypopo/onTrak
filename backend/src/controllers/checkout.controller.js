@@ -8,6 +8,33 @@ import {
 } from '../services/device-status-realtime.service.js';
 
 /**
+ * Checkout status stats
+ * GET /api/checkouts/stats
+ */
+export async function getCheckoutStats(request, reply) {
+  try {
+    const checkouts = await prisma.checkout.findMany({
+      where: { deletedAt: null },
+      select: { items: { select: { returnedAt: true } } },
+    });
+
+    let active = 0, partialReturn = 0, returned = 0, cancelled = 0;
+    for (const c of checkouts) {
+      const total = c.items.length;
+      const ret = c.items.filter((i) => i.returnedAt !== null).length;
+      if (total === 0 || ret === 0) active++;
+      else if (ret === total) returned++;
+      else partialReturn++;
+    }
+
+    return { success: true, data: { total: checkouts.length, active, partialReturn, returned, cancelled } };
+  } catch (error) {
+    logger.error({ error }, 'Error fetching checkout stats');
+    return reply.code(500).send({ error: 'Internal server error' });
+  }
+}
+
+/**
  * List checkouts with filters and pagination
  * GET /api/checkouts
  */
@@ -31,12 +58,18 @@ export async function listCheckouts(request, reply) {
       ];
     }
 
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
+
+    // When status filter is active we must post-filter in JS (status is computed),
+    // so fetch all matching rows; otherwise honour limit/offset directly.
+    const needsStatusFilter = !!status;
+
     const [items, total] = await Promise.all([
       prisma.checkout.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        take: parseInt(limit) * 2, // Get more items to account for filtering
-        skip: parseInt(offset),
+        ...(needsStatusFilter ? {} : { take: limitNum, skip: offsetNum }),
         include: {
           borrower: {
             select: { id: true, username: true, fullName: true },
@@ -72,43 +105,12 @@ export async function listCheckouts(request, reply) {
       };
     });
 
-    // Filter by status if provided (after computing status)
+    // Filter by status if provided (status is computed, not stored)
     let filteredTotal = total;
     if (status) {
-      // If filtering by status, we need to get all items to count properly
-      // For better performance, we could cache this or use a different approach
-      const allItems = await prisma.checkout.findMany({
-        where,
-        include: {
-          items: {
-            select: { id: true, returnedAt: true },
-          },
-        },
-      });
-
-      const allItemsWithStatus = allItems.map((checkout) => {
-        const returnedCount = checkout.items.filter((item) => item.returnedAt !== null).length;
-        const totalCount = checkout.items.length;
-        
-        let computedStatus = 'ACTIVE';
-        if (checkout.deletedAt) {
-          computedStatus = 'CANCELLED';
-        } else if (returnedCount === totalCount && totalCount > 0) {
-          computedStatus = 'RETURNED';
-        } else if (returnedCount > 0 && returnedCount < totalCount) {
-          computedStatus = 'PARTIAL_RETURN';
-        }
-
-        return {
-          ...checkout,
-          status: computedStatus,
-        };
-      });
-
-      filteredTotal = allItemsWithStatus.filter((item) => item.status === status).length;
-      itemsWithStatus = itemsWithStatus.filter((item) => item.status === status);
-      // Limit to requested limit after filtering
-      itemsWithStatus = itemsWithStatus.slice(0, parseInt(limit));
+      const allWithStatus = itemsWithStatus.filter((item) => item.status === status);
+      filteredTotal = allWithStatus.length;
+      itemsWithStatus = allWithStatus.slice(offsetNum, offsetNum + limitNum);
     }
 
     return {

@@ -1,6 +1,15 @@
 import * as checkoutController from '../controllers/checkout.controller.js';
 
 async function checkoutRoutes(fastify, options) {
+  // Checkout stats (must be before /:id)
+  fastify.get(
+    '/stats',
+    {
+      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
+    },
+    checkoutController.getCheckoutStats,
+  );
+
   // List checkouts
   fastify.get(
     '/',

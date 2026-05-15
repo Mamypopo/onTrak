@@ -299,11 +299,10 @@ function calculateConnectionStatus(lastSeen) {
 /**
  * Get all devices
  */
-export async function getAllDevices() {
+export async function getAllDevices(options = {}) {
   try {
     const { getAllDevicesWithStatus } = await import('./device-status.service.js');
-    
-    // Get devices with borrow status
+
     const devices = await getAllDevicesWithStatus({
       orderBy: { lastSeen: 'desc' },
       include: {
@@ -314,21 +313,14 @@ export async function getAllDevices() {
           },
         },
       },
+      ...options,
     });
 
-    // Serialize BigInt fields to strings for JSON
-    // DateTime fields (like lastSeen) are automatically serialized to ISO strings by Prisma
-    // Calculate connection status on-the-fly (computed, no DB update)
-    return devices.map(device => {
-      const computedStatus = calculateConnectionStatus(device.lastSeen);
-      return {
-        ...device,
-        bootTime: device.bootTime ? device.bootTime.toString() : null,
-        // Override stored status with computed status (more accurate)
-        status: computedStatus,
-        // borrowStatus is already included from getAllDevicesWithStatus
-      };
-    });
+    return devices.map(device => ({
+      ...device,
+      bootTime: device.bootTime ? device.bootTime.toString() : null,
+      status: calculateConnectionStatus(device.lastSeen),
+    }));
   } catch (error) {
     logger.error({ error }, 'Error fetching devices');
     throw error;

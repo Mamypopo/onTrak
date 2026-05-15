@@ -9,34 +9,42 @@ async function userRoutes(fastify, options) {
     preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN', 'STAFF'])],
   }, async (request, reply) => {
     try {
-      const users = await prisma.user.findMany({
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          fullName: true,
-          role: true,
-          isActive: true,
-          lastLogin: true,
-          createdAt: true,
-          updatedAt: true,
-          // Exclude password
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const { page = 1, limit = 20, search, role } = request.query;
+      const pageNum = Number(page);
+      const limitNum = Number(limit);
 
-      await createAuditLog(request, 'VIEW_USERS', 'USER', null, { count: users.length });
+      const where = {};
+      if (search) {
+        where.OR = [
+          { username: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+      if (role && role !== 'all') where.role = role;
 
-      return {
-        success: true,
-        data: users,
-        count: users.length,
+      const select = {
+        id: true, username: true, email: true, fullName: true,
+        role: true, isActive: true, lastLogin: true, createdAt: true, updatedAt: true,
       };
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          select,
+          orderBy: { createdAt: 'desc' },
+          take: limitNum,
+          skip: (pageNum - 1) * limitNum,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      await createAuditLog(request, 'VIEW_USERS', 'USER', null, { count: total });
+
+      return { success: true, data: users, total, page: pageNum, limit: limitNum };
     } catch (error) {
       logger.error({ error }, 'Error fetching users');
-      return reply.code(500).send({
-        error: 'Internal server error',
-      });
+      return reply.code(500).send({ error: 'Internal server error' });
     }
   });
 

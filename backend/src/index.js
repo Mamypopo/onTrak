@@ -16,6 +16,8 @@ import userRoutes from './routes/users.js';
 import checkoutRoutes from './routes/checkouts.js';
 import { checkAndEnrollEnterprise } from './utils/enterpriseSetup.js';
 import enterpriseRoutes from './routes/enterprise.js';
+import importRoutes from './routes/import.js';
+import maintenanceRoutes from './routes/maintenance.js';
 
 // Fix for BigInt serialization in JSON
 BigInt.prototype.toJSON = function() { return this.toString(); };
@@ -56,6 +58,8 @@ await fastify.register(deviceRoutes, { prefix: '/api/device' });
 await fastify.register(userRoutes, { prefix: '/api/user' });
 await fastify.register(checkoutRoutes, { prefix: '/api/checkouts' });
 await fastify.register(enterpriseRoutes, { prefix: '/api/enterprise' });
+await fastify.register(importRoutes, { prefix: '/api/import' });
+await fastify.register(maintenanceRoutes, { prefix: '/api/maintenance' });
 
 // WebSocket endpoint
 fastify.register(async function (fastify) {

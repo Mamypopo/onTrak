@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LogOut, Menu, X, LayoutDashboard, Users, Settings2, ClipboardList, Wrench, Terminal, ChevronRight } from "lucide-react"
+import { LogOut, Menu, X, LayoutDashboard, Users, Settings2, ClipboardList, Wrench, Terminal, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -57,6 +57,7 @@ export function Nav() {
   const isMaintenance = pathname === "/dashboard/maintenance"
   const isBulkCommand = pathname === "/dashboard/bulk-command"
   const isSettings = pathname === "/dashboard/settings"
+  const isImport = pathname === "/dashboard/import"
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -85,6 +86,7 @@ export function Nav() {
                 { href: "/dashboard/users", icon: Users, label: "Users", active: isUsers },
                 { href: "/dashboard/checkouts", icon: ClipboardList, label: "Checkouts", active: isCheckouts },
                 { href: "/dashboard/maintenance", icon: Wrench, label: "Maintenance", active: isMaintenance },
+                { href: "/dashboard/import", icon: FileSpreadsheet, label: "Import", active: isImport },
                 { href: "/dashboard/settings", icon: Settings2, label: "Settings", active: isSettings },
               ].map((item, index) =>
                 item.isSeparator ? (
@@ -163,6 +165,7 @@ export function Nav() {
                 { href: "/dashboard/users", icon: Users, label: "Users" },
                 { href: "/dashboard/checkouts", icon: ClipboardList, label: "Checkouts" },
                 { href: "/dashboard/maintenance", icon: Wrench, label: "Maintenance" },
+                { href: "/dashboard/import", icon: FileSpreadsheet, label: "Import" },
                 { href: "/dashboard/settings", icon: Settings2, label: "Settings" },
               ].map((item) => (
                 <Link

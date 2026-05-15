@@ -16,9 +16,9 @@ async function authRoutes(fastify, options) {
         });
       }
 
-      // Find user
-      const user = await prisma.user.findUnique({
-        where: { username },
+      // ค้นหาด้วย username หรือ email
+      const user = await prisma.user.findFirst({
+        where: { OR: [{ username }, { email: username }] },
       });
 
       if (!user) {

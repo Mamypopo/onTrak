@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Edit, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Shield, User, Eye } from "lucide-react";
+import { Plus, Trash2, Edit, Search, Shield, User, Eye } from "lucide-react";
+import { PaginationControl } from "@/components/ui/pagination-control";
 import Swal from "sweetalert2";
 import { getSwalConfig } from "@/lib/swal-config";
 import { useForm, Controller } from "react-hook-form";
@@ -54,6 +55,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
 
   const {
     register,
@@ -73,23 +77,22 @@ export default function UsersPage() {
     },
   });
 
-  // Debounce search
+  // Debounce search — reset to page 1 on new search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Reset page on role filter change
+  useEffect(() => { setPage(1); }, [roleFilter]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
+    if (!token) { router.push("/login"); return; }
     fetchCurrentUser();
-    fetchUsers();
   }, [router]);
 
   useEffect(() => {
@@ -114,9 +117,6 @@ export default function UsersPage() {
     }
   }, [editingUser, reset]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [debouncedSearch, roleFilter]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -132,42 +132,27 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get("/api/user");
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (roleFilter !== "all") params.role = roleFilter;
+      const response = await api.get("/api/user", { params });
       if (response.data.success) {
-        let filteredUsers = response.data.data;
-
-        // Filter by search
-        if (debouncedSearch) {
-          filteredUsers = filteredUsers.filter(
-            (user: User) =>
-              user.username.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-              user.fullName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-              user.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
-          );
-        }
-
-        // Filter by role
-        if (roleFilter !== "all") {
-          filteredUsers = filteredUsers.filter((user: User) => user.role === roleFilter);
-        }
-
-        setUsers(filteredUsers);
+        setUsers(response.data.data);
+        setTotal(response.data.total ?? 0);
       }
     } catch (error: any) {
       if (error.response?.status === 403) {
-        Swal.fire(
-          getSwalConfig({
-            icon: "error",
-            title: "ไม่มีสิทธิ์เข้าถึง",
-            text: "คุณไม่มีสิทธิ์ในการดูรายชื่อผู้ใช้",
-          })
-        );
+        Swal.fire(getSwalConfig({ icon: "error", title: "ไม่มีสิทธิ์เข้าถึง", text: "คุณไม่มีสิทธิ์ในการดูรายชื่อผู้ใช้" }));
         router.push("/dashboard");
       }
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, roleFilter, router]);
+  }, [debouncedSearch, roleFilter, router, page, limit]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const onSubmit = async (data: any) => {
     try {
@@ -669,6 +654,17 @@ export default function UsersPage() {
               </div>
               </>
             )}
+            <div className="px-2 pt-2">
+              <PaginationControl
+                page={page}
+                totalPages={Math.ceil(total / limit) || 1}
+                total={total}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(l) => { setLimit(l); setPage(1); }}
+                isLoading={isLoading}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>

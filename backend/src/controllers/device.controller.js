@@ -58,17 +58,54 @@ export async function createDevice(request, reply) {
  */
 export async function getAllDevices(request, reply) {
   try {
-    const devices = await deviceService.getAllDevices();
+    const { page = 1, limit = 50, search, borrowStatus, maintenanceStatus, problemsOnly } = request.query;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+
+    const where = {};
+    if (search) {
+      where.OR = [
+        { deviceCode: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (problemsOnly === 'true') {
+      where.maintenanceStatus = { not: 'NONE' };
+    } else if (maintenanceStatus) {
+      where.maintenanceStatus = maintenanceStatus;
+    }
+
+    let devices = await deviceService.getAllDevices({ where });
+
+    // Stats always reflect all devices (before borrowStatus filter)
+    const stats = {
+      total: devices.length,
+      online: devices.filter(d => d.status === 'ONLINE').length,
+      offline: devices.filter(d => d.status === 'OFFLINE').length,
+      available: devices.filter(d => (d.borrowStatus || 'AVAILABLE') === 'AVAILABLE').length,
+      inUse: devices.filter(d => d.borrowStatus === 'IN_USE').length,
+      inMaintenance: devices.filter(d => d.borrowStatus === 'IN_MAINTENANCE').length,
+    };
+
+    if (borrowStatus) {
+      devices = devices.filter(d => (d.borrowStatus || 'AVAILABLE') === borrowStatus);
+    }
+
+    const total = devices.length;
+    const skip = (pageNum - 1) * limitNum;
+    const paginated = devices.slice(skip, skip + limitNum);
+
     return {
       success: true,
-      data: devices,
-      count: devices.length,
+      data: paginated,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      stats,
     };
   } catch (error) {
     logger.error({ error }, 'Error fetching devices');
-    return reply.code(500).send({
-      error: 'Internal server error',
-    });
+    return reply.code(500).send({ error: 'Internal server error' });
   }
 }
 
